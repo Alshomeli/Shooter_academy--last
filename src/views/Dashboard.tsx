@@ -1,0 +1,259 @@
+import { useMemo } from 'react';
+import {
+  Users, Trophy, Wallet, TrendingUp, Activity, Target,
+  Calendar, Award, Percent, Goal, ShieldCheck,
+} from 'lucide-react';
+import type { Player, Subscription, Match, Transaction, Staff, Team, Parent, Lang, Role, ViewId } from '@/types';
+import { StatCard, PageHeader } from '@/components/ui';
+import { DonutChart, BarChart, LineChart } from '@/components/Charts';
+import { RemindersPanel } from '@/components/RemindersPanel';
+import { getSubscriptionReminders } from '@/lib/reminders';
+import { tr } from '@/lib/i18n';
+
+interface DashboardProps {
+  players: Player[];
+  subscriptions: Subscription[];
+  matches: Match[];
+  transactions: Transaction[];
+  staff: Staff[];
+  teams: Team[];
+  parents: Parent[];
+  setCurrentTab: (v: ViewId) => void;
+  activeRole: Role;
+  lang: Lang;
+}
+
+const MONTHS_AR = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس'];
+
+export function Dashboard({ players, subscriptions, matches, transactions, staff, teams, parents, setCurrentTab, lang }: DashboardProps) {
+  const t = tr(lang);
+
+  const reminders = useMemo(
+    () => getSubscriptionReminders(subscriptions, players, parents),
+    [subscriptions, players, parents],
+  );
+
+
+  const stats = useMemo(() => {
+    const activePlayers = players.filter((p) => p.status === 'active').length;
+    const totalRevenue = transactions.filter((t) => t.type === 'revenue').reduce((s, t) => s + t.amount, 0);
+    const totalExpenses = transactions.filter((t) => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+    const netProfit = totalRevenue - totalExpenses;
+    const paidSubs = subscriptions.filter((s) => s.status === 'paid').length;
+    const unpaidSubs = subscriptions.filter((s) => s.status === 'unpaid').length;
+    const completedMatches = matches.filter((m) => m.result !== 'scheduled');
+    const wins = matches.filter((m) => m.result === 'win').length;
+    const draws = matches.filter((m) => m.result === 'draw').length;
+    const losses = matches.filter((m) => m.result === 'loss').length;
+    const scheduled = matches.filter((m) => m.result === 'scheduled').length;
+    const winRate = completedMatches.length > 0 ? Math.round((wins / completedMatches.length) * 100) : 0;
+    const goalsScored = matches.reduce((s, m) => s + m.academyScore, 0);
+    const goalsConceded = matches.reduce((s, m) => s + m.opponentScore, 0);
+
+    return {
+      activePlayers, totalRevenue, totalExpenses, netProfit,
+      paidSubs, unpaidSubs, wins, draws, losses, scheduled,
+      winRate, goalsScored, goalsConceded,
+      totalStaff: staff.length, totalTeams: teams.length,
+    };
+  }, [players, subscriptions, matches, transactions, staff, teams]);
+
+  const positionData = useMemo(() => {
+    const counts: Record<string, number> = {};
+    players.forEach((p) => { counts[p.position] = (counts[p.position] || 0) + 1; });
+    const colors: Record<string, string> = {
+      'حارس مرمى': '#f59e0b',
+      'مدافع': '#3b82f6',
+      'خط وسط': '#10b981',
+      'مهاجم': '#ef4444',
+    };
+    return Object.entries(counts).map(([label, value]) => ({ label, value, color: colors[label] || '#94a3b8' }));
+  }, [players]);
+
+  const teamPlayersData = useMemo(() => {
+    return teams.map((team) => ({
+      label: team.name.replace('فئة ', ''),
+      value: players.filter((p) => p.teamId === team.id).length,
+      color: '#10b981',
+    }));
+  }, [teams, players]);
+
+  const revenueByMonth = useMemo(() => {
+    const byMonth: Record<string, number> = {};
+    transactions.filter((t) => t.type === 'revenue').forEach((t) => {
+      const month = t.transactionDate.substring(5, 7);
+      const idx = parseInt(month) - 1;
+      const label = MONTHS_AR[idx] || month;
+      byMonth[label] = (byMonth[label] || 0) + t.amount;
+    });
+    return MONTHS_AR.slice(0, 7).map((label) => ({ label, value: byMonth[label] || 0 }));
+  }, [transactions]);
+
+  const recentMatches = useMemo(() =>
+    [...matches].sort((a, b) => b.matchDate.localeCompare(a.matchDate)).slice(0, 4),
+  [matches]);
+
+  return (
+    <div className="space-y-6 text-right" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+      <PageHeader title={t.dashboard} subtitle="نظرة شاملة على مؤشرات الأكاديمية والمالية والفنية" />
+
+      {/* KPI cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard icon={<Users className="h-5 w-5" />} label="اللاعبون النشطون" value={stats.activePlayers} sublabel={`موزعون على ${stats.totalTeams} فرق`} color="emerald" onClick={() => setCurrentTab('players')} />
+        <StatCard icon={<Wallet className="h-5 w-5" />} label="صافي الربح" value={`${stats.netProfit.toLocaleString()} ${t.currency}`} sublabel={`إيراد: ${stats.totalRevenue.toLocaleString()}`} color="blue" onClick={() => setCurrentTab('subscriptions')} />
+        <StatCard icon={<Trophy className="h-5 w-5" />} label="معدل الفوز" value={`${stats.winRate}%`} sublabel={`${stats.wins} فوز · ${stats.losses} خسارة`} color="amber" onClick={() => setCurrentTab('schedules')} />
+        <StatCard icon={<Activity className="h-5 w-5" />} label="اشتراكات مدفوعة" value={`${stats.paidSubs}/${stats.paidSubs + stats.unpaidSubs}`} sublabel={`${stats.unpaidSubs} متأخر`} color="red" onClick={() => setCurrentTab('subscriptions')} />
+      </div>
+
+      {/* Secondary KPIs */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard icon={<Goal className="h-5 w-5" />} label="الأهداف المسجلة" value={stats.goalsScored} sublabel={`استقبلنا: ${stats.goalsConceded}`} color="emerald" onClick={() => setCurrentTab('schedules')} />
+        <StatCard icon={<Target className="h-5 w-5" />} label="فرق المباريات" value={stats.goalsScored - stats.goalsConceded} sublabel="فارق الأهداف" color="blue" onClick={() => setCurrentTab('schedules')} />
+        <StatCard icon={<Calendar className="h-5 w-5" />} label="مباريات مجدولة" value={stats.scheduled} sublabel="للأيام القادمة" color="amber" onClick={() => setCurrentTab('schedules')} />
+        <StatCard icon={<Award className="h-5 w-5" />} label="كادر العمل" value={stats.totalStaff} sublabel="مدربون وإداريون" color="slate" onClick={() => setCurrentTab('staff')} />
+      </div>
+
+      {/* Charts row */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        {/* Revenue line chart */}
+        <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-sm font-black text-slate-900 dark:text-white">الإيرادات الشهرية</h3>
+              <p className="text-[11px] text-slate-400 mt-0.5">تطور الإيرادات خلال 7 أشهر</p>
+            </div>
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/20">
+              <TrendingUp className="h-4 w-4 text-emerald-600" />
+              <span className="text-xs font-black text-emerald-600">{stats.totalRevenue.toLocaleString()} {t.currency}</span>
+            </div>
+          </div>
+          <LineChart data={revenueByMonth} color="#10b981" height={200} />
+        </div>
+
+        {/* Position distribution donut */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm">
+          <h3 className="text-sm font-black text-slate-900 dark:text-white mb-1">توزيع المراكز</h3>
+          <p className="text-[11px] text-slate-400 mb-4">حسب المركز الفني للاعبين</p>
+          <DonutChart
+            data={positionData}
+            centerValue={players.length.toString()}
+            centerLabel="لاعب"
+          />
+        </div>
+      </div>
+
+      {/* Bottom row */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        {/* Team players bar chart */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm">
+          <h3 className="text-sm font-black text-slate-900 dark:text-white mb-4">عدد اللاعبين في كل فريق</h3>
+          <BarChart data={teamPlayersData} />
+        </div>
+
+        {/* Match results donut */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm">
+          <h3 className="text-sm font-black text-slate-900 dark:text-white mb-4">نتائج المباريات</h3>
+          <DonutChart
+            data={[
+              { label: 'فوز', value: stats.wins, color: '#10b981' },
+              { label: 'تعادل', value: stats.draws, color: '#f59e0b' },
+              { label: 'خسارة', value: stats.losses, color: '#ef4444' },
+              { label: 'مجدول', value: stats.scheduled, color: '#94a3b8' },
+            ]}
+            centerValue={`${stats.winRate}%`}
+            centerLabel="نسبة الفوز"
+          />
+        </div>
+
+        {/* Recent matches */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-black text-slate-900 dark:text-white">آخر المباريات</h3>
+            <button onClick={() => setCurrentTab('schedules')} className="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 cursor-pointer">عرض الكل</button>
+          </div>
+          <div className="space-y-3">
+            {recentMatches.map((m) => {
+              const team = teams.find((t) => t.id === m.teamId);
+              const resultColor = m.result === 'win' ? 'bg-emerald-500' : m.result === 'loss' ? 'bg-red-500' : m.result === 'draw' ? 'bg-amber-500' : 'bg-slate-400';
+              const resultLabel = m.result === 'win' ? 'فوز' : m.result === 'loss' ? 'خسارة' : m.result === 'draw' ? 'تعادل' : 'مجدول';
+              return (
+                <div key={m.id} className="flex items-center gap-3 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50">
+                  <div className={`w-1.5 h-10 rounded-full ${resultColor}`} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">ضد {m.opponent}</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5 truncate">{team?.ageGroup}</p>
+                  </div>
+                  <div className="text-left shrink-0">
+                    {m.result !== 'scheduled' ? (
+                      <span className="text-sm font-black text-slate-900 dark:text-white">{m.academyScore} - {m.opponentScore}</span>
+                    ) : (
+                      <span className="text-xs font-bold text-slate-400">{resultLabel}</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Reminders panel */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <RemindersPanel reminders={reminders} onNavigate={() => setCurrentTab('subscriptions')} compact />
+
+        {/* Quick stats summary */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm">
+          <h3 className="text-sm font-black text-slate-900 dark:text-white mb-4">ملخص سريع</h3>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="p-3 rounded-xl bg-red-50 dark:bg-red-900/20">
+              <p className="text-[11px] font-bold text-red-600 dark:text-red-400">متأخر</p>
+              <p className="text-xl font-black text-slate-900 dark:text-white mt-1">{reminders.filter((r) => r.status === 'overdue').length}</p>
+            </div>
+            <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20">
+              <p className="text-[11px] font-bold text-amber-600 dark:text-amber-400">قيد الانتهاء</p>
+              <p className="text-xl font-black text-slate-900 dark:text-white mt-1">{reminders.filter((r) => r.status === 'expiring').length}</p>
+            </div>
+            <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20">
+              <p className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">مبالغ مستحقة</p>
+              <p className="text-xl font-black text-slate-900 dark:text-white mt-1">{reminders.reduce((s, r) => s + r.subscription.amount, 0)} {t.currency}</p>
+            </div>
+            <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-900/20">
+              <p className="text-[11px] font-bold text-blue-600 dark:text-blue-400">نسبة التحصيل</p>
+              <p className="text-xl font-black text-slate-900 dark:text-white mt-1">
+                {subscriptions.length > 0 ? Math.round((subscriptions.filter((s) => s.status === 'paid').length / subscriptions.length) * 100) : 0}%
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Quick actions */}
+      <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl p-6 text-white shadow-lg">
+        <div className="flex items-center gap-2 mb-4">
+          <ShieldCheck className="h-5 w-5 text-emerald-400" />
+          <h3 className="text-sm font-black">إجراءات سريعة</h3>
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {[
+            { label: 'إضافة لاعب', icon: Users, tab: 'players' as ViewId },
+            { label: 'تسجيل حضور', icon: Percent, tab: 'attendance' as ViewId },
+            { label: 'جدولة مباراة', icon: Calendar, tab: 'schedules' as ViewId },
+            { label: 'تسجيل دفعة', icon: Wallet, tab: 'subscriptions' as ViewId },
+          ].map((action) => {
+            const Icon = action.icon;
+            return (
+              <button
+                key={action.tab}
+                onClick={() => setCurrentTab(action.tab)}
+                className="flex items-center gap-2 px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all cursor-pointer text-right"
+              >
+                <Icon className="h-4 w-4 text-emerald-400 shrink-0" />
+                <span className="text-xs font-bold">{action.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}

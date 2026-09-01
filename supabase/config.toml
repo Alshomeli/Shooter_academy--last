@@ -1,0 +1,5 @@
+[functions.setup-academy]
+verify_jwt = true
+
+[functions.delete-player-file]
+verify_jwt = true
