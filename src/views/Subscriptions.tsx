@@ -697,8 +697,8 @@ function SubscriptionForm({
               className={inputCls}
             >
               <option value="monthly">شهري — 25</option>
-              <option value="quarterly">ربع سنوي 0</option>
-              <option value="yearly">سنوي — 320</option>
+              <option value="quarterly">ربع سنوي 75</option>
+              <option value="yearly">سنوي — 300</option>
             </select>
           </FormField>
 
