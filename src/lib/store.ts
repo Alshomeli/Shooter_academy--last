@@ -55,8 +55,13 @@ async function fetchAll<T>(table: string, mapper: (r: Record<string, unknown>) =
   return (data || []).map(mapper);
 }
 
+const TABLE_PUBLIC_COLUMNS: Record<string, string> = {
+  staff: 'id,name,email,phone,role,specialization,status,joined_date,avatar_url,licenses,experience_years,rating,tactical_style,notes,user_id,created_at',
+  parents: 'id,name,nationality,phone,whatsapp_phone,email,address,occupation,workplace,avatar_url,status,notes,joined_date,created_at',
+};
+
 async function upsertRow<T>(table: string, row: Record<string, unknown>, mapper: (r: Record<string, unknown>) => T): Promise<T> {
-  const columns = table === 'staff' ? STAFF_PUBLIC_COLUMNS : '*';
+  const columns = TABLE_PUBLIC_COLUMNS[table] || '*';
   const { data, error } = await supabase.from(table).upsert(row).select(columns).single();
   if (error) throw error;
   return mapper(data as unknown as Record<string, unknown>);
@@ -64,11 +69,9 @@ async function upsertRow<T>(table: string, row: Record<string, unknown>, mapper:
 
 /* Salary and national id are not readable through the table; managers read them
    through a privileged function and we merge them back in. */
-const STAFF_PUBLIC_COLUMNS =
-  'id,name,email,phone,role,specialization,status,joined_date,avatar_url,licenses,experience_years,rating,tactical_style,notes,user_id,created_at';
 
 async function fetchStaffRows(): Promise<Record<string, unknown>[]> {
-  const { data, error } = await supabase.from('staff').select(STAFF_PUBLIC_COLUMNS);
+  const { data, error } = await supabase.from('staff').select(TABLE_PUBLIC_COLUMNS.staff);
   if (error) throw error;
   const rows = (data || []) as Record<string, unknown>[];
   const { data: privateRows } = await supabase.rpc('get_staff_private');
@@ -79,6 +82,22 @@ async function fetchStaffRows(): Promise<Record<string, unknown>[]> {
   return rows.map((r) => {
     const priv = byId.get(String(r.id));
     return { ...r, salary: priv?.salary ?? 0, national_id: priv?.national_id ?? null };
+  });
+}
+
+
+async function fetchParentRows(): Promise<Parent[]> {
+  const { data, error } = await supabase.from('parents').select(TABLE_PUBLIC_COLUMNS.parents);
+  if (error) throw error;
+  const rows = (data || []) as Record<string, unknown>[];
+  const { data: privateRows } = await supabase.rpc('get_parent_private');
+  const byId = new Map<string, { national_id?: string | null }>();
+  for (const p of (privateRows || []) as { id: string; national_id: string | null }[]) {
+    byId.set(p.id, { national_id: p.national_id });
+  }
+  return rows.map((r) => {
+    const priv = byId.get(String(r.id));
+    return (mapParent as never as (x: Record<string, unknown>) => Parent)({ ...r, national_id: priv?.national_id ?? null });
   });
 }
 
@@ -124,7 +143,7 @@ export const db = {
   async savePlayer(p: Player): Promise<Player> { return upsertRow('players', playerToRow(p) as unknown as Record<string, unknown>, mapPlayer as never); },
   async deletePlayer(id: string): Promise<void> { return deleteRow('players', id); },
 
-  async getParents(): Promise<Parent[]> { return fetchAll('parents', mapParent as never); },
+  async getParents(): Promise<Parent[]> { return fetchParentRows(); },
   async saveParent(p: Parent): Promise<Parent> { return upsertRow('parents', parentToRow(p) as unknown as Record<string, unknown>, mapParent as never); },
   async deleteParent(id: string): Promise<void> { return deleteRow('parents', id); },
 
