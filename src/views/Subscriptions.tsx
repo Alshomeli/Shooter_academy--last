@@ -1,7 +1,7 @@
 import { useState, useMemo, useDeferredValue, type FormEvent } from 'react';
 import {
   Wallet, Plus, Search, CheckCircle, Clock, TrendingUp, TrendingDown,
-  Receipt, DollarSign, Calendar, Edit2, Trash2, Bell, AlertCircle,
+  Receipt, DollarSign, Calendar, Edit2, Trash2, Bell, AlertCircle, Loader2,
 } from 'lucide-react';
 import type { Subscription, Player, Parent, Transaction, Staff, Settings, Lang, Role } from '@/types';
 import { Badge, Modal, ConfirmDialog, PageHeader, EmptyState, StatCard, FormField, FormError, SaveButton, inputCls } from '@/components/ui';
@@ -115,6 +115,7 @@ export function Subscriptions({
   const [showAddTrans, setShowAddTrans] = useState(false);
   const [deleteSubId, setDeleteSubId] = useState<string | null>(null);
   const [deleteTransId, setDeleteTransId] = useState<string | null>(null);
+  const [markingPaidId, setMarkingPaidId] = useState<string | null>(null);
 
   const canManage = activeRole === 'manager' || activeRole === 'accountant' || activeRole === 'receptionist';
   const recorderName = staff.find((s) => s.role === activeRole)?.name || 'النظام';
@@ -153,24 +154,30 @@ export function Subscriptions({
   const playerOf = (id: string) => players.find((p) => p.id === id);
 
   /* ---- Handlers ---- */
-  const handleMarkPaid = (sub: Subscription) => {
-    const player = playerOf(sub.playerId);
-    const today = todayISO();
-    onSubscriptionsChange(
-      subscriptions.map((s) => (s.id === sub.id ? { ...s, status: 'paid', paidAt: today } : s)),
-    );
-    onTransactionsChange([
-      {
-        id: `txn-${Date.now()}`,
-        type: 'revenue',
-        category: 'subscription',
-        amount: sub.amount,
-        transactionDate: today,
-        description: `سداد اشتراك ${player?.name || 'لاعب'} — ${PLAN_LABELS[sub.planType]}`,
-        recordedBy: recorderName,
-      },
-      ...transactions,
-    ]);
+  const handleMarkPaid = async (sub: Subscription) => {
+    if (markingPaidId) return;
+    setMarkingPaidId(sub.id);
+    try {
+      const player = playerOf(sub.playerId);
+      const today = todayISO();
+      onSubscriptionsChange(
+        subscriptions.map((s) => (s.id === sub.id ? { ...s, status: 'paid', paidAt: today } : s)),
+      );
+      onTransactionsChange([
+        {
+          id: `txn-${Date.now()}`,
+          type: 'revenue',
+          category: 'subscription',
+          amount: sub.amount,
+          transactionDate: today,
+          description: `سداد اشتراك ${player?.name || 'لاعب'} — ${PLAN_LABELS[sub.planType]}`,
+          recordedBy: recorderName,
+        },
+        ...transactions,
+      ]);
+    } finally {
+      setMarkingPaidId(null);
+    }
   };
 
   const handleSaveSub = (data: Omit<Subscription, 'id'>, id?: string) => {
@@ -405,9 +412,15 @@ export function Subscriptions({
                         {!isPaid && canManage && (
                           <button
                             onClick={() => handleMarkPaid(sub)}
-                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition cursor-pointer"
+                            disabled={markingPaidId === sub.id}
+                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            <CheckCircle className="h-3.5 w-3.5" /> تأكيد الدفع
+                            {markingPaidId === sub.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <CheckCircle className="h-3.5 w-3.5" />
+                            )}{' '}
+                            {markingPaidId === sub.id ? 'جاري...' : 'تأكيد الدفع'}
                           </button>
                         )}
                         {canManage && (
