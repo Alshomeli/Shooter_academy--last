@@ -198,6 +198,7 @@ export function Players({ players, teams, onPlayersChange, activeRole, lang }: P
           player={editPlayer}
           teams={teams}
           players={players}
+          activeRole={activeRole}
           onSave={handleSave}
           onClose={() => { setShowAdd(false); setEditPlayer(null); }}
         />
@@ -223,13 +224,15 @@ export function Players({ players, teams, onPlayersChange, activeRole, lang }: P
   );
 }
 
-function PlayerForm({ player, teams, players, onSave, onClose }: {
+function PlayerForm({ player, teams, players, activeRole, onSave, onClose }: {
   player: Player | null;
   teams: Team[];
   players: Player[];
+  activeRole: Role;
   onSave: (data: Omit<Player, 'id'>, id?: string) => void;
   onClose: () => void;
 }) {
+  const canEditSensitive = activeRole === 'manager';
   const [form, setForm] = useState({
     name: player?.name || '',
     birthDate: player?.birthDate || '',
@@ -297,9 +300,10 @@ function PlayerForm({ player, teams, players, onSave, onClose }: {
             </select>
           </FormField>
           <FormField label="فئة الفريق" error={errors.teamId}>
-            <select value={form.teamId} onChange={(e) => { setForm({ ...form, teamId: e.target.value }); setErrors((p) => ({ ...p, teamId: '' })); }} className={`${inputCls} ${errors.teamId ? 'border-red-400 ring-1 ring-red-400' : ''}`} required>
+            <select value={form.teamId} onChange={(e) => { setForm({ ...form, teamId: e.target.value }); setErrors((p) => ({ ...p, teamId: '' })); }} className={`${inputCls} ${errors.teamId ? 'border-red-400 ring-1 ring-red-400' : ''}`} required disabled={!canEditSensitive}>
               {teams.map((tm) => <option key={tm.id} value={tm.id}>{tm.name}</option>)}
             </select>
+            {!canEditSensitive && <p className="text-[10px] text-amber-500 mt-1">يُتاح تعديل الفريق للمدير فقط</p>}
           </FormField>
           <FormField label="فصيلة الدم">
             <select value={form.bloodType} onChange={(e) => setForm({ ...form, bloodType: e.target.value })} className={inputCls}>
@@ -313,7 +317,8 @@ function PlayerForm({ player, teams, players, onSave, onClose }: {
             <input value={form.parentPhone} onChange={(e) => { setForm({ ...form, parentPhone: e.target.value }); setErrors((p) => ({ ...p, parentPhone: '' })); }} className={`${inputCls} ${errors.parentPhone ? 'border-red-400 ring-1 ring-red-400' : ''}`} dir="ltr" />
           </FormField>
           <FormField label="بريد ولي الأمر" error={errors.parentEmail}>
-            <input type="email" value={form.parentEmail} onChange={(e) => { setForm({ ...form, parentEmail: e.target.value }); setErrors((p) => ({ ...p, parentEmail: '' })); }} className={`${inputCls} ${errors.parentEmail ? 'border-red-400 ring-1 ring-red-400' : ''}`} dir="ltr" />
+            <input type="email" value={form.parentEmail} onChange={(e) => { setForm({ ...form, parentEmail: e.target.value }); setErrors((p) => ({ ...p, parentEmail: '' })); }} className={`${inputCls} ${errors.parentEmail ? 'border-red-400 ring-1 ring-red-400' : ''}`} dir="ltr" disabled={!canEditSensitive} />
+            {!canEditSensitive && <p className="text-[10px] text-amber-500 mt-1">يُتاح تعديل البريد للمدير فقط</p>}
           </FormField>
           <FormField label="الحالة">
             <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as 'active' | 'inactive' })} className={inputCls}>
