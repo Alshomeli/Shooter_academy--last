@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-  ShieldCheck, CheckCircle, XCircle, Clock, UserPlus, Search, AlertCircle,
+  ShieldCheck, CheckCircle, XCircle, Clock, UserPlus, Search, AlertCircle, Loader2,
 } from 'lucide-react';
 import type { Player, Staff, Lang, Role } from '@/types';
 import { Badge, PageHeader, EmptyState, ConfirmDialog } from '@/components/ui';
@@ -29,6 +29,7 @@ export function Approvals({ staff, onStaffChange, activeRole, lang }: ApprovalsP
   const [filter, setFilter] = useState<'pending' | 'active' | 'inactive' | 'all'>('pending');
   const [search, setSearch] = useState('');
   const [actionTarget, setActionTarget] = useState<{ id: string; action: 'approve' | 'reject' } | null>(null);
+  const [processingId, setProcessingId] = useState<string | null>(null);
 
   if (activeRole !== 'manager') {
     return (
@@ -58,13 +59,18 @@ export function Approvals({ staff, onStaffChange, activeRole, lang }: ApprovalsP
   });
 
   const handleConfirm = () => {
-    if (!actionTarget) return;
-    const updated = staff.map((s) => {
-      if (s.id !== actionTarget.id) return s;
-      return { ...s, status: actionTarget.action === 'approve' ? 'active' as const : 'inactive' as const };
-    });
-    onStaffChange(updated);
-    setActionTarget(null);
+    if (!actionTarget || processingId) return;
+    setProcessingId(actionTarget.id);
+    try {
+      const updated = staff.map((s) => {
+        if (s.id !== actionTarget.id) return s;
+        return { ...s, status: actionTarget.action === 'approve' ? 'active' as const : 'inactive' as const };
+      });
+      onStaffChange(updated);
+      setActionTarget(null);
+    } finally {
+      setProcessingId(null);
+    }
   };
 
   const statusBadge = (status: string) => {
@@ -176,15 +182,17 @@ export function Approvals({ staff, onStaffChange, activeRole, lang }: ApprovalsP
                   <div className="flex gap-2 shrink-0">
                     <button
                       onClick={() => setActionTarget({ id: member.id, action: 'approve' })}
-                      className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 transition cursor-pointer"
+                      disabled={processingId === member.id}
+                      className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <CheckCircle className="h-4 w-4" /> {isRtl ? 'قبول' : 'Approve'}
+                      {processingId === member.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />} {isRtl ? 'قبول' : 'Approve'}
                     </button>
                     <button
                       onClick={() => setActionTarget({ id: member.id, action: 'reject' })}
-                      className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-bold text-red-600 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 transition cursor-pointer"
+                      disabled={processingId === member.id}
+                      className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-bold text-red-600 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <XCircle className="h-4 w-4" /> {isRtl ? 'رفض' : 'Reject'}
+                      {processingId === member.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />} {isRtl ? 'رفض' : 'Reject'}
                     </button>
                   </div>
                 )}

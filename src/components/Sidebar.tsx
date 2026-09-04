@@ -98,7 +98,7 @@ export function Sidebar({
               <p className="text-[10px] text-slate-400 font-bold tracking-wider mt-0.5 uppercase">SHOOTER ACADEMY</p>
               <p className="text-[9px] text-emerald-500 font-semibold mt-0.5">{t.systemTitle}</p>
             </div>
-            <button onClick={() => setMobileOpen(false)} className="lg:hidden p-1.5 rounded-lg hover:bg-slate-800 transition cursor-pointer">
+            <button onClick={() => setMobileOpen(false)} aria-label={lang === 'ar' ? 'إغلاق القائمة' : 'Close menu'} className="lg:hidden p-1.5 rounded-lg hover:bg-slate-800 transition cursor-pointer">
               <X className="h-5 w-5" />
             </button>
           </div>
@@ -142,6 +142,7 @@ export function Sidebar({
           <div className="flex items-center gap-2">
             <button
               onClick={() => setDarkMode(!darkMode)}
+              aria-label={darkMode ? (lang === 'ar' ? 'تفعيل الوضع الفاتح' : 'Switch to light mode') : (lang === 'ar' ? 'تفعيل الوضع الداكن' : 'Switch to dark mode')}
               className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-bold bg-slate-800/50 hover:bg-slate-700/50 text-slate-300 transition cursor-pointer"
             >
               {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
@@ -149,6 +150,7 @@ export function Sidebar({
             </button>
             <button
               onClick={() => setLang(lang === 'ar' ? 'en' : 'ar')}
+              aria-label={lang === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'}
               className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-bold bg-slate-800/50 hover:bg-slate-700/50 text-slate-300 transition cursor-pointer"
             >
               {lang === 'ar' ? 'EN' : 'ع'}

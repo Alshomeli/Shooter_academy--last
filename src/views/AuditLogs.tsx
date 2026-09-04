@@ -49,17 +49,6 @@ export function AuditLogs({ auditLogs, loginLogs, activeRole, lang }: AuditLogsP
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
 
-  if (activeRole !== 'manager') {
-    return (
-      <div className="text-center py-20" dir={isAr ? 'rtl' : 'ltr'}>
-        <Shield className="h-12 w-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-        <p className="text-sm font-bold text-slate-500 dark:text-slate-400">
-          {isAr ? 'هذه الصفحة متاحة فقط لمدير النظام' : 'This page is only available to the system manager'}
-        </p>
-      </div>
-    );
-  }
-
   const logs = tab === 'activity' ? auditLogs : loginLogs;
 
   const roles = useMemo(() => {
@@ -83,6 +72,17 @@ export function AuditLogs({ auditLogs, loginLogs, activeRole, lang }: AuditLogsP
       })
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   }, [logs, search, roleFilter]);
+
+  if (activeRole !== 'manager') {
+    return (
+      <div className="text-center py-20" dir={isAr ? 'rtl' : 'ltr'}>
+        <Shield className="h-12 w-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
+        <p className="text-sm font-bold text-slate-500 dark:text-slate-400">
+          {isAr ? 'هذه الصفحة متاحة فقط لمدير النظام' : 'This page is only available to the system manager'}
+        </p>
+      </div>
+    );
+  }
 
   const formatDate = (d: string) => {
     try {

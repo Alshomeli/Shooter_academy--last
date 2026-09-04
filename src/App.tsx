@@ -488,6 +488,7 @@ export default function App() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => setMobileOpen(true)}
+              aria-label={lang === 'ar' ? 'فتح القائمة' : 'Open menu'}
               className="lg:hidden p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
             >
               <Menu className="h-6 w-6" />
@@ -514,6 +515,7 @@ export default function App() {
             <div className="relative">
               <button
                 onClick={() => setShowNotifications(!showNotifications)}
+                aria-label={lang === 'ar' ? 'الإشعارات' : 'Notifications'}
                 className="relative p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
               >
                 <Bell className="h-5 w-5 text-slate-500" />
