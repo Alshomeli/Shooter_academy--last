@@ -1,4 +1,4 @@
-import { useState, useMemo, type FormEvent } from 'react';
+import { useState, useMemo, useDeferredValue, type FormEvent } from 'react';
 import {
   UsersRound, Plus, Search, Phone, Mail, Edit2, Trash2, Eye, MessageSquare,
 } from 'lucide-react';
@@ -22,6 +22,7 @@ const AVATAR_EMOJIS = ['👨', '👩', '🧔', '👱', '👴', '👵', '🧑', '
 export function Parents({ parents, players, teams, subscriptions, onParentsChange, activeRole, lang }: ParentsProps) {
   const t = tr(lang);
   const [search, setSearch] = useState('');
+  const deferredSearch = useDeferredValue(search);
   const [statusFilter, setStatusFilter] = useState('all');
   const [showAdd, setShowAdd] = useState(false);
   const [editParent, setEditParent] = useState<Parent | null>(null);
@@ -32,14 +33,14 @@ export function Parents({ parents, players, teams, subscriptions, onParentsChang
 
   const filtered = useMemo(() => {
     return parents.filter((p) => {
-      if (search) {
-        const q = search.trim().toLowerCase();
-        if (!p.name.toLowerCase().includes(q) && !p.phone.includes(search) && !p.whatsappPhone.includes(search)) return false;
+      if (deferredSearch) {
+        const q = deferredSearch.trim().toLowerCase();
+        if (!p.name.toLowerCase().includes(q) && !p.phone.includes(deferredSearch) && !p.whatsappPhone.includes(deferredSearch)) return false;
       }
       if (statusFilter !== 'all' && p.status !== statusFilter) return false;
       return true;
     });
-  }, [parents, search, statusFilter]);
+  }, [parents, deferredSearch, statusFilter]);
 
   const childrenOf = (parentId: string) => players.filter((pl) => pl.parentId === parentId);
   const teamName = (id: string) => teams.find((tm) => tm.id === id)?.name || 'غير محدد';

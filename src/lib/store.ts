@@ -127,17 +127,18 @@ async function syncTable<T extends { id: string }>(
   items: T[],
   toRowFn: (item: T) => Record<string, unknown>,
 ): Promise<void> {
-  const { data: existing } = await supabase.from(table).select('id');
+  const { data: existing, error: selErr } = await supabase.from(table).select('id');
+  if (selErr) throw selErr;
   const existingIds = new Set((existing || []).map((r: { id: string }) => r.id));
   const newIds = new Set(items.map((i) => i.id));
   if (items.length > 0) {
-    const { error } = await supabase.from(table).upsert(items.map(toRowFn));
-    if (error) throw error;
+    const { error: upsertErr } = await supabase.from(table).upsert(items.map(toRowFn));
+    if (upsertErr) throw upsertErr;
   }
   const toDelete = [...existingIds].filter((id) => !newIds.has(id));
   if (toDelete.length > 0) {
-    const { error } = await supabase.from(table).delete().in('id', toDelete);
-    if (error) throw error;
+    const { error: delErr } = await supabase.from(table).delete().in('id', toDelete);
+    if (delErr) throw delErr;
   }
 }
 
@@ -286,5 +287,5 @@ export async function seedDatabaseIfEmpty(): Promise<void> {
 }
 
 export async function resetAndSeedDatabase(): Promise<void> {
-  await callSetupEndpoint({ ...buildSeedPayload(), reset: true, createUsers: true });
+  await callSetupEndpoint({ ...buildSeedPayload(), reset: true, confirm_reset: true, createUsers: true });
 }

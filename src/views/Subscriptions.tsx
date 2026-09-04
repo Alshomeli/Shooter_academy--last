@@ -1,4 +1,4 @@
-import { useState, useMemo, type FormEvent } from 'react';
+import { useState, useMemo, useDeferredValue, type FormEvent } from 'react';
 import {
   Wallet, Plus, Search, CheckCircle, Clock, TrendingUp, TrendingDown,
   Receipt, DollarSign, Calendar, Edit2, Trash2, Bell, AlertCircle,
@@ -108,6 +108,7 @@ export function Subscriptions({
   const t = tr(lang);
   const [activeTab, setActiveTab] = useState<'subscriptions' | 'transactions' | 'reminders'>('subscriptions');
   const [search, setSearch] = useState('');
+  const deferredSearch = useDeferredValue(search);
   const [statusFilter, setStatusFilter] = useState('all');
   const [showAddSub, setShowAddSub] = useState(false);
   const [editSub, setEditSub] = useState<Subscription | null>(null);
@@ -135,14 +136,14 @@ export function Subscriptions({
   const filteredSubs = useMemo(() => {
     return subscriptions.filter((sub) => {
       const player = players.find((p) => p.id === sub.playerId);
-      if (search) {
-        const q = search.toLowerCase();
+      if (deferredSearch) {
+        const q = deferredSearch.toLowerCase();
         if (!player?.name.toLowerCase().includes(q)) return false;
       }
       if (statusFilter !== 'all' && sub.status !== statusFilter) return false;
       return true;
     });
-  }, [subscriptions, players, search, statusFilter]);
+  }, [subscriptions, players, deferredSearch, statusFilter]);
 
   const sortedTransactions = useMemo(
     () => [...transactions].sort((a, b) => b.transactionDate.localeCompare(a.transactionDate)),

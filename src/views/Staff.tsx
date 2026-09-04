@@ -1,4 +1,4 @@
-import { useState, useMemo, type FormEvent } from 'react';
+import { useState, useMemo, useDeferredValue, type FormEvent } from 'react';
 import {
   Dumbbell, Plus, Search, Edit2, Trash2, Eye, Mail, Phone, Award, Star,
   Briefcase, Calendar,
@@ -43,6 +43,7 @@ const ROLE_FILTERS: Array<{ value: string; label: string }> = [
 export function StaffView({ staff, teams, players, onStaffChange, activeRole, lang }: StaffProps) {
   const t = tr(lang);
   const [search, setSearch] = useState('');
+  const deferredSearch = useDeferredValue(search);
   const [roleFilter, setRoleFilter] = useState('all');
   const [showAdd, setShowAdd] = useState(false);
   const [editMember, setEditMember] = useState<Staff | null>(null);
@@ -54,8 +55,8 @@ export function StaffView({ staff, teams, players, onStaffChange, activeRole, la
 
   const filtered = useMemo(() => {
     return staff.filter((s) => {
-      if (search) {
-        const q = search.toLowerCase();
+      if (deferredSearch) {
+        const q = deferredSearch.toLowerCase();
         const matches =
           s.name.toLowerCase().includes(q) ||
           s.email.toLowerCase().includes(q) ||
@@ -65,7 +66,7 @@ export function StaffView({ staff, teams, players, onStaffChange, activeRole, la
       if (roleFilter !== 'all' && s.role !== roleFilter) return false;
       return true;
     });
-  }, [staff, search, roleFilter]);
+  }, [staff, deferredSearch, roleFilter]);
 
   const coachTeams = (coachId: string) =>
     teams.filter((tm) => tm.coachId === coachId).map((tm) => tm.name);

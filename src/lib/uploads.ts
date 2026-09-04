@@ -137,7 +137,11 @@ export async function uploadPlayerFile(
 const SIGNED_URL_TTL = 60 * 60;
 
 async function signedUrlFor(path: string): Promise<string> {
-  const { data } = await supabase.storage.from(BUCKET).createSignedUrl(path, SIGNED_URL_TTL);
+  const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, SIGNED_URL_TTL);
+  if (error) {
+    console.error('[signedUrl]', error.message);
+    throw new UploadError('فشل إنشاء رابط الملف');
+  }
   return data?.signedUrl ?? '';
 }
 
@@ -158,7 +162,10 @@ export async function fetchPlayerFiles(playerId: string): Promise<UploadedFile[]
     .eq('player_id', playerId)
     .order('uploaded_at', { ascending: false });
 
-  if (error) return [];
+  if (error) {
+    console.error('[fetchPlayerFiles]', error.message);
+    return [];
+  }
 
   const rows = data || [];
   const urls = await signedUrlMap(rows.map((r) => r.file_path));
@@ -207,7 +214,10 @@ export async function fetchAllPlayerFiles(): Promise<UploadedFile[]> {
     .select('id, player_id, file_name, file_path, file_type, file_category, file_size, uploaded_at')
     .order('uploaded_at', { ascending: false });
 
-  if (error) return [];
+  if (error) {
+    console.error('[fetchAllPlayerFiles]', error.message);
+    return [];
+  }
 
   const rows = data || [];
   const urls = await signedUrlMap(rows.map((r) => r.file_path));

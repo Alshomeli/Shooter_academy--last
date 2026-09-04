@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, type FormEvent } from 'react';
+import { useState, useMemo, useEffect, useDeferredValue, type FormEvent } from 'react';
 import {
   Users, Plus, Search, Phone, Mail, Edit2, Trash2, Eye,
   FileText,
@@ -32,6 +32,7 @@ const POSITION_COLORS: Record<string, 'red' | 'blue' | 'emerald' | 'amber'> = {
 export function Players({ players, teams, onPlayersChange, activeRole, lang }: PlayersProps) {
   const t = tr(lang);
   const [search, setSearch] = useState('');
+  const deferredSearch = useDeferredValue(search);
   const [teamFilter, setTeamFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [showAdd, setShowAdd] = useState(false);
@@ -39,11 +40,13 @@ export function Players({ players, teams, onPlayersChange, activeRole, lang }: P
   const [viewPlayer, setViewPlayer] = useState<Player | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [photoMap, setPhotoMap] = useState<Record<string, string>>({});
+  const [photosLoading, setPhotosLoading] = useState(true);
 
   const canEdit = activeRole === 'manager' || activeRole === 'receptionist';
 
   useEffect(() => {
     let cancelled = false;
+    setPhotosLoading(true);
     (async () => {
       const files = await fetchAllPlayerFiles();
       if (cancelled) return;
@@ -54,19 +57,20 @@ export function Players({ players, teams, onPlayersChange, activeRole, lang }: P
         }
       }
       setPhotoMap(photos);
+      setPhotosLoading(false);
     })();
     return () => { cancelled = true; };
   }, [players]);
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const q = deferredSearch.trim().toLowerCase();
     return players.filter((p) => {
       if (q && !p.name.toLowerCase().includes(q) && !p.parentName.toLowerCase().includes(q)) return false;
       if (teamFilter !== 'all' && p.teamId !== teamFilter) return false;
       if (statusFilter !== 'all' && p.status !== statusFilter) return false;
       return true;
     });
-  }, [players, search, teamFilter, statusFilter]);
+  }, [players, deferredSearch, teamFilter, statusFilter]);
 
   const teamName = (id: string) => teams.find((t) => t.id === id)?.name || 'غير محدد';
 
@@ -131,10 +135,13 @@ export function Players({ players, teams, onPlayersChange, activeRole, lang }: P
             <div key={p.id} className="relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 pt-14 pb-4 px-4 shadow-sm hover:shadow-md transition-shadow group mt-7">
               {/* Player photo / jersey fallback — floats above the card top edge */}
               <div className="absolute -top-7 left-1/2 -translate-x-1/2 z-10">
-                {photoMap[p.id] ? (
+                {photosLoading && !photoMap[p.id] ? (
+                  <div className="w-14 h-14 rounded-full bg-slate-200 dark:bg-slate-700 animate-pulse border-2 border-white dark:border-slate-900" />
+                ) : photoMap[p.id] ? (
                   <img
                     src={photoMap[p.id]}
                     alt={p.name}
+                    loading="lazy"
                     className="w-14 h-14 rounded-full object-cover border-2 border-white dark:border-slate-900 shadow-lg shadow-emerald-900/20"
                   />
                 ) : (

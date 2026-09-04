@@ -20,6 +20,7 @@ const SEED_ORDER = [
 
 interface SetupRequest {
   reset?: boolean;
+  confirm_reset?: boolean;
   createUsers?: boolean;
   staff?: Array<{ email: string; name: string; role: string }>;
   [key: string]: unknown;
@@ -112,6 +113,13 @@ Deno.serve(async (req: Request) => {
 
     const body = (await req.json()) as SetupRequest;
     const reset = body.reset === true;
+
+    if (reset && body.confirm_reset !== true) {
+      return new Response(
+        JSON.stringify({ error: "Reset confirmation required. Set confirm_reset=true to proceed." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
 
     if (reset) {
       for (const table of TABLES) {

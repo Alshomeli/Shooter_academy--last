@@ -118,6 +118,7 @@ export default function App() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const dataRef = useRef(data);
   dataRef.current = data;
+  const loadingRef = useRef(false);
 
   useEffect(() => {
     setLang(prefs.getLang());
@@ -169,6 +170,8 @@ export default function App() {
   }, []);
 
   const loadAllData = useCallback(async () => {
+    if (loadingRef.current) return;
+    loadingRef.current = true;
     try {
       setLoading(true);
       setLoadError(null);
@@ -195,6 +198,7 @@ export default function App() {
       setLoadError('تعذر تحميل البيانات. يرجى المحاولة مرة أخرى. / Could not load your data. Please try again.');
     } finally {
       setLoading(false);
+      loadingRef.current = false;
     }
   }, []);
 
