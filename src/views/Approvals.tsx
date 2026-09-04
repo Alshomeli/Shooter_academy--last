@@ -4,15 +4,7 @@ import {
 } from 'lucide-react';
 import type { Player, Staff, Lang, Role } from '@/types';
 import { Badge, PageHeader, EmptyState, ConfirmDialog } from '@/components/ui';
-import { tr } from '@/lib/i18n';
-
-const ROLE_LABELS: Record<string, string> = {
-  manager: 'مدير النظام',
-  accountant: 'المحاسب المالي',
-  coach: 'الكابتن / المدرب',
-  receptionist: 'موظف الاستقبال',
-  parent: 'ولي الأمر',
-};
+import { tr, roleLabel } from '@/lib/i18n';
 
 interface ApprovalsProps {
   players: Player[];
@@ -25,7 +17,8 @@ interface ApprovalsProps {
 
 export function Approvals({ staff, onStaffChange, activeRole, lang }: ApprovalsProps) {
   const t = tr(lang);
-  const isRtl = lang === 'ar';
+  const isAr = lang === 'ar';
+  const isRtl = isAr;
   const [filter, setFilter] = useState<'pending' | 'active' | 'inactive' | 'all'>('pending');
   const [search, setSearch] = useState('');
   const [actionTarget, setActionTarget] = useState<{ id: string; action: 'approve' | 'reject' } | null>(null);
@@ -38,7 +31,7 @@ export function Approvals({ staff, onStaffChange, activeRole, lang }: ApprovalsP
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-12 text-center">
           <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-3" />
           <p className="text-sm font-bold text-slate-600 dark:text-slate-300">
-            {isRtl ? 'هذه الصفحة متاحة للمدير العام فقط' : 'This page is available to managers only'}
+            {isAr ? t.managerOnly : 'This page is available to managers only'}
           </p>
         </div>
       </div>
@@ -74,16 +67,16 @@ export function Approvals({ staff, onStaffChange, activeRole, lang }: ApprovalsP
   };
 
   const statusBadge = (status: string) => {
-    if (status === 'pending') return <Badge color="amber"><Clock className="h-3 w-3" /> {isRtl ? 'قيد المراجعة' : 'Pending'}</Badge>;
-    if (status === 'active') return <Badge color="emerald"><CheckCircle className="h-3 w-3" /> {isRtl ? 'مُفعّل' : 'Active'}</Badge>;
-    return <Badge color="red"><XCircle className="h-3 w-3" /> {isRtl ? 'معطّل' : 'Inactive'}</Badge>;
+    if (status === 'pending') return <Badge color="amber"><Clock className="h-3 w-3" /> {t.pending}</Badge>;
+    if (status === 'active') return <Badge color="emerald"><CheckCircle className="h-3 w-3" /> {t.active}</Badge>;
+    return <Badge color="red"><XCircle className="h-3 w-3" /> {t.inactive}</Badge>;
   };
 
   return (
     <div className="space-y-5 text-right" dir={isRtl ? 'rtl' : 'ltr'}>
       <PageHeader
         title={t.approvals}
-        subtitle={isRtl ? 'مراجعة وقبول طلبات تسجيل المستخدمين الجدد' : 'Review and approve new user registrations'}
+        subtitle={isAr ? 'مراجعة وقبول طلبات تسجيل المستخدمين الجدد' : 'Review and approve new user registrations'}
       />
 
       {/* Stats */}
@@ -91,21 +84,21 @@ export function Approvals({ staff, onStaffChange, activeRole, lang }: ApprovalsP
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-4 shadow-sm">
           <div className="flex items-center gap-2 mb-1">
             <Clock className="h-4 w-4 text-amber-500" />
-            <span className="text-xs font-bold text-slate-500">{isRtl ? 'قيد المراجعة' : 'Pending'}</span>
+            <span className="text-xs font-bold text-slate-500">{t.pending}</span>
           </div>
           <p className="text-2xl font-black text-slate-900 dark:text-white">{pendingStaff.length}</p>
         </div>
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-4 shadow-sm">
           <div className="flex items-center gap-2 mb-1">
             <CheckCircle className="h-4 w-4 text-emerald-500" />
-            <span className="text-xs font-bold text-slate-500">{isRtl ? 'مُفعّل' : 'Active'}</span>
+            <span className="text-xs font-bold text-slate-500">{t.active}</span>
           </div>
           <p className="text-2xl font-black text-slate-900 dark:text-white">{activeStaff.length}</p>
         </div>
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-4 shadow-sm">
           <div className="flex items-center gap-2 mb-1">
             <XCircle className="h-4 w-4 text-red-500" />
-            <span className="text-xs font-bold text-slate-500">{isRtl ? 'معطّل' : 'Inactive'}</span>
+            <span className="text-xs font-bold text-slate-500">{t.inactive}</span>
           </div>
           <p className="text-2xl font-black text-slate-900 dark:text-white">{inactiveStaff.length}</p>
         </div>
@@ -119,13 +112,13 @@ export function Approvals({ staff, onStaffChange, activeRole, lang }: ApprovalsP
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder={isRtl ? 'ابحث بالاسم أو البريد...' : 'Search by name or email...'}
+            placeholder={t.searchStaff}
             className="w-full bg-white dark:bg-slate-900 text-sm py-2.5 pr-10 pl-4 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-800 dark:text-white"
           />
         </div>
         <div className="flex flex-wrap gap-1.5">
           {(['pending', 'active', 'inactive', 'all'] as const).map((f) => {
-            const labels = { pending: isRtl ? 'قيد المراجعة' : 'Pending', active: isRtl ? 'مُفعّل' : 'Active', inactive: isRtl ? 'معطّل' : 'Inactive', all: isRtl ? 'الكل' : 'All' };
+            const labels = { pending: t.pending, active: t.active, inactive: t.inactive, all: t.all };
             return (
               <button
                 key={f}
@@ -147,7 +140,7 @@ export function Approvals({ staff, onStaffChange, activeRole, lang }: ApprovalsP
       {filtered.length === 0 ? (
         <EmptyState
           icon={<ShieldCheck className="h-8 w-8" />}
-          title={isRtl ? 'لا توجد طلبات مطابقة' : 'No matching requests'}
+          title={isAr ? 'لا توجد طلبات مطابقة' : 'No matching requests'}
         />
       ) : (
         <div className="space-y-3">
@@ -167,10 +160,10 @@ export function Approvals({ staff, onStaffChange, activeRole, lang }: ApprovalsP
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <p className="text-sm font-black text-slate-900 dark:text-white">{member.name}</p>
                     {statusBadge(member.status)}
-                    <Badge color="blue">{ROLE_LABELS[member.role] || member.role}</Badge>
+                    <Badge color="blue">{roleLabel(member.role, lang)}</Badge>
                   </div>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">
-                    {member.specialization || ROLE_LABELS[member.role]}
+                    {member.specialization || roleLabel(member.role, lang)}
                   </p>
                   <div className="flex items-center gap-3 text-[11px] text-slate-400 flex-wrap">
                     <span dir="ltr">{member.email}</span>
@@ -185,14 +178,14 @@ export function Approvals({ staff, onStaffChange, activeRole, lang }: ApprovalsP
                       disabled={processingId === member.id}
                       className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {processingId === member.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />} {isRtl ? 'قبول' : 'Approve'}
+                      {processingId === member.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />} {t.approve}
                     </button>
                     <button
                       onClick={() => setActionTarget({ id: member.id, action: 'reject' })}
                       disabled={processingId === member.id}
                       className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-bold text-red-600 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {processingId === member.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />} {isRtl ? 'رفض' : 'Reject'}
+                      {processingId === member.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />} {t.reject}
                     </button>
                   </div>
                 )}
@@ -207,12 +200,12 @@ export function Approvals({ staff, onStaffChange, activeRole, lang }: ApprovalsP
         onClose={() => setActionTarget(null)}
         onConfirm={handleConfirm}
         title={actionTarget?.action === 'approve'
-          ? (isRtl ? 'قبول الطلب' : 'Approve Request')
-          : (isRtl ? 'رفض الطلب' : 'Reject Request')}
+          ? (isAr ? 'قبول الطلب' : 'Approve Request')
+          : (isAr ? 'رفض الطلب' : 'Reject Request')}
         message={actionTarget?.action === 'approve'
-          ? (isRtl ? 'هل تريد قبول هذا الطلب وتفعيل حساب المستخدم؟' : 'Approve this request and activate the user account?')
-          : (isRtl ? 'هل تريد رفض هذا الطلب وتعطيل الحساب؟' : 'Reject this request and deactivate the account?')}
-        confirmLabel={actionTarget?.action === 'approve' ? (isRtl ? 'قبول' : 'Approve') : (isRtl ? 'رفض' : 'Reject')}
+          ? (isAr ? 'هل تريد قبول هذا الطلب وتفعيل حساب المستخدم؟' : 'Approve this request and activate the user account?')
+          : (isAr ? 'هل تريد رفض هذا الطلب وتعطيل الحساب؟' : 'Reject this request and deactivate the account?')}
+        confirmLabel={actionTarget?.action === 'approve' ? t.approve : t.reject}
       />
     </div>
   );

@@ -33,7 +33,7 @@ export function ContactLinks({ phone, whatsapp, email, address, small }: Contact
           target="_blank"
           rel="noopener noreferrer"
           className={`${cls} bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 hover:bg-emerald-200 dark:hover:bg-emerald-900/50`}
-          title="واتساب"
+          title="WhatsApp"
         >
           <MessageCircle className={size} />
         </a>
@@ -42,7 +42,7 @@ export function ContactLinks({ phone, whatsapp, email, address, small }: Contact
         <a
           href={telLink}
           className={`${cls} bg-blue-100 dark:bg-blue-900/30 text-blue-600 hover:bg-blue-200 dark:hover:bg-blue-900/50`}
-          title="اتصال"
+          title="Call"
         >
           <Phone className={size} />
         </a>
@@ -51,7 +51,7 @@ export function ContactLinks({ phone, whatsapp, email, address, small }: Contact
         <a
           href={mailLink}
           className={`${cls} bg-slate-100 dark:bg-slate-800 text-slate-600 hover:bg-slate-200 dark:hover:bg-slate-700`}
-          title="بريد إلكتروني"
+          title="Email"
         >
           <Mail className={size} />
         </a>
@@ -62,7 +62,7 @@ export function ContactLinks({ phone, whatsapp, email, address, small }: Contact
           target="_blank"
           rel="noopener noreferrer"
           className={`${cls} bg-amber-100 dark:bg-amber-900/30 text-amber-600 hover:bg-amber-200 dark:hover:bg-amber-900/50`}
-          title="الموقع على الخريطة"
+          title="Location"
         >
           <MapPin className={size} />
         </a>

@@ -44,7 +44,7 @@ export function DocumentUpload({ playerId, category, label, compact }: DocumentU
       }
       await load();
     } catch (err) {
-      const msg = err instanceof UploadError ? err.message : 'حدث خطأ أثناء الرفع';
+      const msg = err instanceof UploadError ? err.message : 'Upload error';
       setError(msg);
     } finally {
       setUploading(false);
@@ -59,7 +59,7 @@ export function DocumentUpload({ playerId, category, label, compact }: DocumentU
       setFiles((prev) => prev.filter((f) => f.id !== deleteTarget.id));
       setDeleteTarget(null);
     } catch (err) {
-      const msg = err instanceof UploadError ? err.message : 'حدث خطأ أثناء الحذف';
+      const msg = err instanceof UploadError ? err.message : 'Delete error';
       setError(msg);
       setDeleteTarget(null);
     }
@@ -81,7 +81,7 @@ export function DocumentUpload({ playerId, category, label, compact }: DocumentU
           {isPhoto ? <ImageIcon className="h-4 w-4 text-emerald-500" /> : <FileText className="h-4 w-4 text-blue-500" />}
           <h4 className="text-sm font-black text-slate-900 dark:text-white">{label}</h4>
           <span className="text-[10px] text-slate-400 font-semibold">
-            {files.length} ملف
+            {files.length} files
           </span>
         </div>
       )}
@@ -109,7 +109,7 @@ export function DocumentUpload({ playerId, category, label, compact }: DocumentU
         {uploading ? (
           <div className="flex flex-col items-center gap-2 py-2">
             <Loader2 className="h-6 w-6 text-emerald-500 animate-spin" />
-            <p className="text-xs font-bold text-slate-500">جاري الرفع والضغط...</p>
+            <p className="text-xs font-bold text-slate-500">Uploading & compressing...</p>
           </div>
         ) : (
           <div className="flex flex-col items-center gap-1.5 py-1">
@@ -117,10 +117,10 @@ export function DocumentUpload({ playerId, category, label, compact }: DocumentU
               <Upload className="h-4 w-4" />
             </div>
             <p className="text-xs font-bold text-slate-600 dark:text-slate-300">
-              اضغط أو اسحب الملفات هنا
+              Click or drag files here
             </p>
             <p className="text-[10px] text-slate-400">
-              {isPhoto ? 'JPG, PNG, WebP — يُضغط تلقائياً' : 'PDF, PNG — حتى 5 ميجابايت'}
+              {isPhoto ? 'JPG, PNG, WebP — auto-compressed' : 'PDF, PNG — up to 5 MB'}
             </p>
           </div>
         )}
@@ -140,7 +140,7 @@ export function DocumentUpload({ playerId, category, label, compact }: DocumentU
           <Loader2 className="h-5 w-5 text-slate-400 animate-spin" />
         </div>
       ) : files.length === 0 ? (
-        <p className="text-center text-[11px] text-slate-400 py-2">لا توجد ملفات مرفوعة بعد</p>
+        <p className="text-center text-[11px] text-slate-400 py-2">No files uploaded yet</p>
       ) : (
         <div className={isPhoto && !compact ? 'grid grid-cols-3 gap-2' : 'space-y-2'}>
           {files.map((f) => (
@@ -153,9 +153,9 @@ export function DocumentUpload({ playerId, category, label, compact }: DocumentU
         open={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}
         onConfirm={handleDelete}
-        title="حذف الملف"
-        message={`هل أنت متأكد من حذف "${deleteTarget?.fileName}"؟ لا يمكن التراجع.`}
-        confirmLabel="حذف"
+        title="Delete File"
+        message={`Are you sure you want to delete "${deleteTarget?.fileName}"? This cannot be undone.`}
+        confirmLabel="Delete"
       />
     </div>
   );
@@ -169,10 +169,10 @@ function FileCard({ file, isPhoto, onDelete, compact }: { file: UploadedFile; is
       <div className="group relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 aspect-square">
         <img src={file.publicUrl} alt={file.fileName} className="w-full h-full object-cover" />
         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2">
-          <a href={file.publicUrl} download={file.fileName} className="p-2 rounded-lg bg-white/90 text-slate-700 hover:bg-white transition cursor-pointer" title="تحميل">
+          <a href={file.publicUrl} download={file.fileName} className="p-2 rounded-lg bg-white/90 text-slate-700 hover:bg-white transition cursor-pointer" title="Download">
             <Download className="h-3.5 w-3.5" />
           </a>
-          <button onClick={onDelete} className="p-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition cursor-pointer" title="حذف">
+          <button onClick={onDelete} className="p-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition cursor-pointer" title="Delete">
             <Trash2 className="h-3.5 w-3.5" />
           </button>
         </div>
@@ -189,10 +189,10 @@ function FileCard({ file, isPhoto, onDelete, compact }: { file: UploadedFile; is
         <p className="text-xs font-bold text-slate-700 dark:text-slate-200 truncate">{file.fileName}</p>
         <p className="text-[10px] text-slate-400">{formatFileSize(file.fileSize)}</p>
       </div>
-      <a href={file.publicUrl} download={file.fileName} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer" title="تحميل">
+      <a href={file.publicUrl} download={file.fileName} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer" title="Download">
         <Download className="h-3.5 w-3.5" />
       </a>
-      <button onClick={onDelete} className="p-1.5 rounded-lg text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30 transition cursor-pointer" title="حذف">
+      <button onClick={onDelete} className="p-1.5 rounded-lg text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30 transition cursor-pointer" title="Delete">
         <Trash2 className="h-3.5 w-3.5" />
       </button>
     </div>

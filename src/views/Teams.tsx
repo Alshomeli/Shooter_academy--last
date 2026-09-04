@@ -4,7 +4,7 @@ import {
 } from 'lucide-react';
 import type { Team, Staff, Player, Lang, Role } from '@/types';
 import { Badge, Modal, ConfirmDialog, PageHeader, EmptyState, SaveButton } from '@/components/ui';
-import { tr } from '@/lib/i18n';
+import { tr, dayLabel } from '@/lib/i18n';
 
 interface TeamsProps {
   teams: Team[];
@@ -22,6 +22,7 @@ const inputCls =
 
 export function Teams({ teams, staff, players, onTeamsChange, activeRole, lang }: TeamsProps) {
   const t = tr(lang);
+  const isAr = lang === 'ar';
   const [showAdd, setShowAdd] = useState(false);
   const [editTeam, setEditTeam] = useState<Team | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -48,7 +49,7 @@ export function Teams({ teams, staff, players, onTeamsChange, activeRole, lang }
 
   return (
     <div className="space-y-5 text-right" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
-      <PageHeader title={t.teams} subtitle={`${teams.length} فئة سنية مسجلة`}>
+      <PageHeader title={t.teams} subtitle={isAr ? `${teams.length} فئة سنية مسجلة` : `${teams.length} age groups registered`}>
         {canEdit && (
           <button
             onClick={() => setShowAdd(true)}
@@ -63,8 +64,8 @@ export function Teams({ teams, staff, players, onTeamsChange, activeRole, lang }
       {teams.length === 0 ? (
         <EmptyState
           icon={<Trophy className="h-8 w-8" />}
-          title="لا توجد فرق مسجلة"
-          subtitle="ابدأ بإضافة فئة سنية جديدة لتنظيم اللاعبين والتدريبات"
+          title={isAr ? 'لا توجد فرق مسجلة' : 'No teams registered'}
+          subtitle={isAr ? 'ابدأ بإضافة فئة سنية جديدة لتنظيم اللاعبين والتدريبات' : 'Start by adding a new age group to organize players and trainings'}
         />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -95,9 +96,9 @@ export function Teams({ teams, staff, players, onTeamsChange, activeRole, lang }
                     {coach?.avatarUrl || '👤'}
                   </span>
                   <div className="min-w-0">
-                    <p className="text-[11px] font-bold text-slate-400">المدرب المسؤول</p>
+                    <p className="text-[11px] font-bold text-slate-400">{t.coach}</p>
                     <p className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate">
-                      {coach?.name || 'غير معيّن'}
+                      {coach?.name || (isAr ? 'غير معيّن' : 'Not assigned')}
                     </p>
                   </div>
                 </div>
@@ -112,11 +113,11 @@ export function Teams({ teams, staff, players, onTeamsChange, activeRole, lang }
                             key={d}
                             className="px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-[10px] font-bold text-slate-600 dark:text-slate-300"
                           >
-                            {d}
+                            {dayLabel(d, lang)}
                           </span>
                         ))
                       ) : (
-                        <span className="text-[11px] text-slate-400">غير محدد</span>
+                        <span className="text-[11px] text-slate-400">{isAr ? 'غير محدد' : 'Not specified'}</span>
                       )}
                     </div>
                   </div>
@@ -124,19 +125,19 @@ export function Teams({ teams, staff, players, onTeamsChange, activeRole, lang }
                   <div className="flex items-center gap-2">
                     <Clock className="h-4 w-4 shrink-0 text-emerald-500" />
                     <span className="font-semibold" dir="ltr">
-                      {tm.trainingTime || 'غير محدد'}
+                      {tm.trainingTime || (isAr ? 'غير محدد' : 'Not specified')}
                     </span>
                   </div>
 
                   <div className="flex items-center gap-2">
                     <MapPin className="h-4 w-4 shrink-0 text-emerald-500" />
-                    <span className="font-semibold">ملعب رقم {tm.pitchNumber}</span>
+                    <span className="font-semibold">{t.pitchNumber} {tm.pitchNumber}</span>
                   </div>
 
                   <div className="flex items-center gap-2">
                     <Users className="h-4 w-4 shrink-0 text-emerald-500" />
                     <span className="font-semibold">
-                      {count} {count === 1 ? 'لاعب' : 'لاعبين'}
+                      {count} {count === 1 ? (isAr ? 'لاعب' : 'player') : (isAr ? 'لاعبين' : 'players')}
                     </span>
                   </div>
 
@@ -181,6 +182,7 @@ export function Teams({ teams, staff, players, onTeamsChange, activeRole, lang }
             setShowAdd(false);
             setEditTeam(null);
           }}
+          lang={lang}
         />
       )}
 
@@ -188,19 +190,17 @@ export function Teams({ teams, staff, players, onTeamsChange, activeRole, lang }
         open={!!deleteId}
         onClose={() => setDeleteId(null)}
         onConfirm={handleDelete}
-        title={lang === 'ar' ? 'حذف الفريق' : 'Delete Team'}
+        title={t.deleteTeam}
         message={(() => {
           const count = deleteId ? players.filter((p) => p.teamId === deleteId).length : 0;
           if (count > 0) {
-            return lang === 'ar'
+            return isAr
               ? `تحذير: هذا الفريق يضم ${count} لاعب. سيتم إلغاء تعيينهم من الفريق. هل تريد المتابعة؟`
               : `Warning: This team has ${count} player(s). They will be unassigned. Continue?`;
           }
-          return lang === 'ar'
-            ? 'هل أنت متأكد من حذف هذا الفريق؟ سيتم إزالة الفئة السنية من النظام ولا يمكن التراجع عن هذا الإجراء.'
-            : 'Are you sure you want to delete this team? This cannot be undone.';
+          return t.deleteTeamConfirm;
         })()}
-        confirmLabel={lang === 'ar' ? 'حذف' : 'Delete'}
+        confirmLabel={t.delete}
       />
     </div>
   );
@@ -211,12 +211,16 @@ function TeamForm({
   staff,
   onSave,
   onClose,
+  lang,
 }: {
   team: Team | null;
   staff: Staff[];
   onSave: (data: Omit<Team, 'id'>, id?: string) => void;
   onClose: () => void;
+  lang: Lang;
 }) {
+  const t = tr(lang);
+  const isAr = lang === 'ar';
   const eligibleCoaches = useMemo(
     () => staff.filter((s) => s.role === 'coach' || s.role === 'manager'),
     [staff],
@@ -255,37 +259,37 @@ function TeamForm({
     <Modal
       open
       onClose={onClose}
-      title={team ? 'تعديل بيانات الفريق' : 'إضافة فريق جديد'}
+      title={team ? t.editTeam : isAr ? 'إضافة فريق جديد' : 'Add New Team'}
       size="lg"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
-          <Field label="اسم الفريق">
+          <Field label={isAr ? 'اسم الفريق' : 'Team name'}>
             <input
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              placeholder="مثال: فئة 2014 (U-12)"
+              placeholder={isAr ? 'مثال: فئة 2014 (U-12)' : 'e.g. 2014 (U-12)'}
               className={inputCls}
               required
             />
           </Field>
-          <Field label="الفئة العمرية">
+          <Field label={t.ageGroup}>
             <input
               value={form.ageGroup}
               onChange={(e) => setForm({ ...form, ageGroup: e.target.value })}
-              placeholder="مثال: U-12"
+              placeholder={isAr ? 'مثال: U-12' : 'e.g. U-12'}
               className={inputCls}
               required
             />
           </Field>
-          <Field label="المدرب المسؤول">
+          <Field label={t.coach}>
             <select
               value={form.coachId}
               onChange={(e) => setForm({ ...form, coachId: e.target.value })}
               className={inputCls}
               required
             >
-              {eligibleCoaches.length === 0 && <option value="">لا يوجد مدربون</option>}
+              {eligibleCoaches.length === 0 && <option value="">{isAr ? 'لا يوجد مدربون' : 'No coaches available'}</option>}
               {eligibleCoaches.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.avatarUrl} {s.name}
@@ -293,26 +297,26 @@ function TeamForm({
               ))}
             </select>
           </Field>
-          <Field label="رقم الملعب">
+          <Field label={t.pitchNumber}>
             <input
               value={form.pitchNumber}
               onChange={(e) => setForm({ ...form, pitchNumber: e.target.value })}
-              placeholder="مثال: 1"
+              placeholder={isAr ? 'مثال: 1' : 'e.g. 1'}
               className={inputCls}
             />
           </Field>
-          <Field label="وقت التدريب">
+          <Field label={t.trainingTime}>
             <input
               value={form.trainingTime}
               onChange={(e) => setForm({ ...form, trainingTime: e.target.value })}
-              placeholder="مثال: 4:00 - 5:30 م"
+              placeholder={isAr ? 'مثال: 4:00 - 5:30 م' : 'e.g. 4:00 - 5:30 PM'}
               className={inputCls}
               dir="ltr"
             />
           </Field>
         </div>
 
-        <Field label="أيام التدريب">
+        <Field label={t.trainingDays}>
           <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
             {WEEK_DAYS.map((day) => {
               const checked = form.trainingDays.includes(day);
@@ -327,7 +331,7 @@ function TeamForm({
                       : 'bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-emerald-400'
                   }`}
                 >
-                  {day}
+                  {dayLabel(day, lang)}
                 </button>
               );
             })}
@@ -340,9 +344,9 @@ function TeamForm({
             onClick={onClose}
             className="px-4 py-2 rounded-lg text-sm font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer"
           >
-            إلغاء
+            {t.cancel}
           </button>
-          <SaveButton loading={saving}>حفظ</SaveButton>
+          <SaveButton loading={saving}>{t.save}</SaveButton>
         </div>
       </form>
     </Modal>

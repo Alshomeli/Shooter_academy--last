@@ -5,7 +5,7 @@ import {
 import type { Parent, Player, Team, Subscription, Lang, Role } from '@/types';
 import { Badge, Modal, ConfirmDialog, PageHeader, EmptyState, SaveButton } from '@/components/ui';
 import { ContactLinks } from '@/components/ContactLinks';
-import { tr } from '@/lib/i18n';
+import { tr, positionLabel, statusLabel } from '@/lib/i18n';
 
 interface ParentsProps {
   parents: Parent[];
@@ -21,6 +21,7 @@ const AVATAR_EMOJIS = ['👨', '👩', '🧔', '👱', '👴', '👵', '🧑', '
 
 export function Parents({ parents, players, teams, subscriptions, onParentsChange, activeRole, lang }: ParentsProps) {
   const t = tr(lang);
+  const isAr = lang === 'ar';
   const [search, setSearch] = useState('');
   const deferredSearch = useDeferredValue(search);
   const [statusFilter, setStatusFilter] = useState('all');
@@ -43,7 +44,7 @@ export function Parents({ parents, players, teams, subscriptions, onParentsChang
   }, [parents, deferredSearch, statusFilter]);
 
   const childrenOf = (parentId: string) => players.filter((pl) => pl.parentId === parentId);
-  const teamName = (id: string) => teams.find((tm) => tm.id === id)?.name || 'غير محدد';
+  const teamName = (id: string) => teams.find((tm) => tm.id === id)?.name || (isAr ? 'غير محدد' : 'Not specified');
   const subOf = (playerId: string) => subscriptions.find((s) => s.playerId === playerId);
 
   const handleSave = (data: Omit<Parent, 'id'>, id?: string) => {
@@ -63,7 +64,7 @@ export function Parents({ parents, players, teams, subscriptions, onParentsChang
 
   return (
     <div className="space-y-5 text-right" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
-      <PageHeader title={t.parents} subtitle={`${parents.length} ولي أمر مسجل في الأكاديمية`}>
+      <PageHeader title={t.parents} subtitle={isAr ? `${parents.length} ولي أمر مسجل في الأكاديمية` : `${parents.length} parents registered`}>
         {canEdit && (
           <button
             onClick={() => setShowAdd(true)}
@@ -83,7 +84,7 @@ export function Parents({ parents, players, teams, subscriptions, onParentsChang
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="ابحث باسم ولي الأمر أو رقم الهاتف..."
+            placeholder={t.searchParents}
             className="w-full bg-white dark:bg-slate-900 text-sm py-2.5 pr-10 pl-4 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-800 dark:text-white"
           />
         </div>
@@ -92,9 +93,9 @@ export function Parents({ parents, players, teams, subscriptions, onParentsChang
           onChange={(e) => setStatusFilter(e.target.value)}
           className="px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-semibold text-slate-700 dark:text-slate-200 cursor-pointer"
         >
-          <option value="all">كل الحالات</option>
-          <option value="active">نشط</option>
-          <option value="inactive">موقوف</option>
+          <option value="all">{isAr ? 'كل الحالات' : 'All statuses'}</option>
+          <option value="active">{t.active}</option>
+          <option value="inactive">{t.inactive}</option>
         </select>
       </div>
 
@@ -102,8 +103,8 @@ export function Parents({ parents, players, teams, subscriptions, onParentsChang
       {filtered.length === 0 ? (
         <EmptyState
           icon={<UsersRound className="h-8 w-8" />}
-          title="لا يوجد أولياء أمور مطابقون"
-          subtitle="جرّب تعديل الفلاتر أو أضف ولي أمر جديد"
+          title={isAr ? 'لا يوجد أولياء أمور مطابقون' : 'No matching parents'}
+          subtitle={isAr ? 'جرّب تعديل الفلاتر أو أضف ولي أمر جديد' : 'Try adjusting filters or add a new parent'}
         />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -122,7 +123,7 @@ export function Parents({ parents, players, teams, subscriptions, onParentsChang
                     <div className="min-w-0">
                       <p className="text-sm font-black text-slate-900 dark:text-white truncate">{p.name}</p>
                       <p className="text-[11px] text-slate-400 mt-0.5 truncate">
-                        {p.occupation || 'غير محدد'}
+                        {p.occupation || (isAr ? 'غير محدد' : 'Not specified')}
                       </p>
                     </div>
                   </div>
@@ -134,7 +135,7 @@ export function Parents({ parents, players, teams, subscriptions, onParentsChang
                 <div className="flex items-center gap-2 mb-3">
                   <Badge color="blue">
                     <UsersRound className="h-3 w-3" />
-                    {kids.length} أبناء
+                    {kids.length} {isAr ? 'أبناء' : 'children'}
                   </Badge>
                   {p.nationality && (
                     <span className="text-[11px] text-slate-400 font-semibold truncate">{p.nationality}</span>
@@ -165,7 +166,7 @@ export function Parents({ parents, players, teams, subscriptions, onParentsChang
                     onClick={() => setViewParent(p)}
                     className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[11px] font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer"
                   >
-                    <Eye className="h-3.5 w-3.5" /> عرض
+                    <Eye className="h-3.5 w-3.5" /> {isAr ? 'عرض' : 'View'}
                   </button>
                   <ContactLinks phone={p.phone} whatsapp={p.whatsappPhone} email={p.email} address={p.address} small />
                   {canEdit && (
@@ -174,7 +175,7 @@ export function Parents({ parents, players, teams, subscriptions, onParentsChang
                         onClick={() => setEditParent(p)}
                         className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[11px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition cursor-pointer"
                       >
-                        <Edit2 className="h-3.5 w-3.5" /> تعديل
+                        <Edit2 className="h-3.5 w-3.5" /> {t.edit}
                       </button>
                       <button
                         onClick={() => setDeleteId(p.id)}
@@ -200,17 +201,19 @@ export function Parents({ parents, players, teams, subscriptions, onParentsChang
             setShowAdd(false);
             setEditParent(null);
           }}
+          lang={lang}
         />
       )}
 
       {/* View modal */}
       {viewParent && (
-        <Modal open onClose={() => setViewParent(null)} title="ملف ولي الأمر" size="lg">
+        <Modal open onClose={() => setViewParent(null)} title={isAr ? 'ملف ولي الأمر' : 'Parent Profile'} size="lg">
           <ParentDetail
             parent={viewParent}
             children={childrenOf(viewParent.id)}
             teamName={teamName}
             subOf={subOf}
+            lang={lang}
           />
         </Modal>
       )}
@@ -220,20 +223,18 @@ export function Parents({ parents, players, teams, subscriptions, onParentsChang
         open={!!deleteId}
         onClose={() => setDeleteId(null)}
         onConfirm={handleDelete}
-        title={lang === 'ar' ? 'حذف ولي الأمر' : 'Delete Parent'}
+        title={t.deleteParent}
         message={(() => {
           const linked = deleteId ? childrenOf(deleteId) : [];
           if (linked.length > 0) {
-            const names = linked.map((p) => p.name).join(lang === 'ar' ? '، ' : ', ');
-            return lang === 'ar'
+            const names = linked.map((p) => p.name).join(isAr ? '، ' : ', ');
+            return isAr
               ? `تحذير: ولي الأمر مرتبط بـ ${linked.length} لاعب (${names}). سيتم إزالة الربط مع هؤلاء اللاعبين. هل تريد المتابعة؟`
               : `Warning: This parent is linked to ${linked.length} player(s) (${names}). They will be unlinked. Continue?`;
           }
-          return lang === 'ar'
-            ? 'هل أنت متأكد من حذف هذا ولي الأمر؟ لا يمكن التراجع عن هذا الإجراء.'
-            : 'Are you sure you want to delete this parent? This cannot be undone.';
+          return t.deleteParentConfirm;
         })()}
-        confirmLabel={lang === 'ar' ? 'حذف' : 'Delete'}
+        confirmLabel={t.delete}
       />
     </div>
   );
@@ -243,15 +244,19 @@ function ParentForm({
   parent,
   onSave,
   onClose,
+  lang,
 }: {
   parent: Parent | null;
   onSave: (data: Omit<Parent, 'id'>, id?: string) => void;
   onClose: () => void;
+  lang: Lang;
 }) {
+  const t = tr(lang);
+  const isAr = lang === 'ar';
   const [form, setForm] = useState({
     name: parent?.name || '',
     nationalId: parent?.nationalId || '',
-    nationality: parent?.nationality || 'بحريني',
+    nationality: parent?.nationality || (isAr ? 'بحريني' : 'Bahraini'),
     phone: parent?.phone || '',
     whatsappPhone: parent?.whatsappPhone || '',
     email: parent?.email || '',
@@ -276,10 +281,10 @@ function ParentForm({
   };
 
   return (
-    <Modal open onClose={onClose} title={parent ? 'تعديل بيانات ولي الأمر' : 'إضافة ولي أمر جديد'} size="lg">
+    <Modal open onClose={onClose} title={parent ? t.editParent : isAr ? 'إضافة ولي أمر جديد' : 'Add New Parent'} size="lg">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Field label="الاسم بالكامل">
+          <Field label={isAr ? 'الاسم بالكامل' : 'Full name'}>
             <input
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -287,7 +292,7 @@ function ParentForm({
               required
             />
           </Field>
-          <Field label="الرقم الوطني">
+          <Field label={isAr ? 'الرقم الوطني' : 'National ID'}>
             <input
               value={form.nationalId}
               onChange={(e) => setForm({ ...form, nationalId: e.target.value })}
@@ -295,21 +300,21 @@ function ParentForm({
               dir="ltr"
             />
           </Field>
-          <Field label="الجنسية">
+          <Field label={t.nationality}>
             <input
               value={form.nationality}
               onChange={(e) => setForm({ ...form, nationality: e.target.value })}
               className={inputCls}
             />
           </Field>
-          <Field label="المهنة">
+          <Field label={t.occupation}>
             <input
               value={form.occupation}
               onChange={(e) => setForm({ ...form, occupation: e.target.value })}
               className={inputCls}
             />
           </Field>
-          <Field label="رقم الهاتف">
+          <Field label={t.phone}>
             <input
               value={form.phone}
               onChange={(e) => setForm({ ...form, phone: e.target.value })}
@@ -318,7 +323,7 @@ function ParentForm({
               required
             />
           </Field>
-          <Field label="رقم واتساب">
+          <Field label={isAr ? 'رقم واتساب' : 'WhatsApp number'}>
             <input
               value={form.whatsappPhone}
               onChange={(e) => setForm({ ...form, whatsappPhone: e.target.value })}
@@ -326,7 +331,7 @@ function ParentForm({
               dir="ltr"
             />
           </Field>
-          <Field label="البريد الإلكتروني">
+          <Field label={t.email}>
             <input
               type="email"
               value={form.email}
@@ -335,32 +340,32 @@ function ParentForm({
               dir="ltr"
             />
           </Field>
-          <Field label="جهة العمل">
+          <Field label={t.workplace}>
             <input
               value={form.workplace}
               onChange={(e) => setForm({ ...form, workplace: e.target.value })}
               className={inputCls}
             />
           </Field>
-          <Field label="العنوان">
+          <Field label={t.address}>
             <input
               value={form.address}
               onChange={(e) => setForm({ ...form, address: e.target.value })}
               className={inputCls}
             />
           </Field>
-          <Field label="الحالة">
+          <Field label={t.status}>
             <select
               value={form.status}
               onChange={(e) => setForm({ ...form, status: e.target.value as 'active' | 'inactive' })}
               className={inputCls}
             >
-              <option value="active">نشط</option>
-              <option value="inactive">موقوف</option>
+              <option value="active">{t.active}</option>
+              <option value="inactive">{t.inactive}</option>
             </select>
           </Field>
         </div>
-        <Field label="ملاحظات">
+        <Field label={t.notes}>
           <textarea
             value={form.notes}
             onChange={(e) => setForm({ ...form, notes: e.target.value })}
@@ -374,9 +379,9 @@ function ParentForm({
             onClick={onClose}
             className="px-4 py-2 rounded-lg text-sm font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer"
           >
-            إلغاء
+            {t.cancel}
           </button>
-          <SaveButton loading={saving}>حفظ</SaveButton>
+          <SaveButton loading={saving}>{t.save}</SaveButton>
         </div>
       </form>
     </Modal>
@@ -388,12 +393,17 @@ function ParentDetail({
   children,
   teamName,
   subOf,
+  lang,
 }: {
   parent: Parent;
   children: Player[];
   teamName: (id: string) => string;
   subOf: (playerId: string) => Subscription | undefined;
+  lang: Lang;
 }) {
+  const t = tr(lang);
+  const isAr = lang === 'ar';
+  const na = isAr ? 'غير محدد' : 'Not specified';
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-4">
@@ -404,7 +414,7 @@ function ParentDetail({
           <h3 className="text-lg font-black text-slate-900 dark:text-white truncate">{parent.name}</h3>
           <div className="flex items-center gap-2 mt-1">
             <Badge color={parent.status === 'active' ? 'emerald' : 'slate'}>
-              {parent.status === 'active' ? 'نشط' : 'موقوف'}
+              {parent.status === 'active' ? t.active : t.inactive}
             </Badge>
             <span className="text-xs text-slate-400 font-semibold">{parent.occupation}</span>
           </div>
@@ -412,16 +422,16 @@ function ParentDetail({
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <InfoRow label="الرقم الوطني" value={parent.nationalId || 'غير محدد'} ltr />
-        <InfoRow label="الجنسية" value={parent.nationality || 'غير محدد'} />
-        <InfoRow label="رقم الهاتف" value={<a href={`tel:${parent.phone.replace(/[^0-9]/g, '')}`} className="hover:text-emerald-600 transition">{parent.phone}</a>} ltr />
-        <InfoRow label="رقم واتساب" value={parent.whatsappPhone ? <a href={`https://wa.me/${parent.whatsappPhone.replace(/[^0-9]/g, '')}`} target="_blank" rel="noreferrer" className="hover:text-emerald-600 transition">{parent.whatsappPhone}</a> : 'غير محدد'} ltr />
-        <InfoRow label="البريد الإلكتروني" value={parent.email ? <a href={`mailto:${parent.email}`} className="hover:text-emerald-600 transition">{parent.email}</a> : 'غير محدد'} ltr />
-        <InfoRow label="المهنة" value={parent.occupation || 'غير محدد'} />
-        <InfoRow label="جهة العمل" value={parent.workplace || 'غير محدد'} />
-        <InfoRow label="تاريخ الانضمام" value={parent.joinedDate} />
+        <InfoRow label={isAr ? 'الرقم الوطني' : 'National ID'} value={parent.nationalId || na} ltr />
+        <InfoRow label={t.nationality} value={parent.nationality || na} />
+        <InfoRow label={t.phone} value={<a href={`tel:${parent.phone.replace(/[^0-9]/g, '')}`} className="hover:text-emerald-600 transition">{parent.phone}</a>} ltr />
+        <InfoRow label={isAr ? 'رقم واتساب' : 'WhatsApp number'} value={parent.whatsappPhone ? <a href={`https://wa.me/${parent.whatsappPhone.replace(/[^0-9]/g, '')}`} target="_blank" rel="noreferrer" className="hover:text-emerald-600 transition">{parent.whatsappPhone}</a> : na} ltr />
+        <InfoRow label={t.email} value={parent.email ? <a href={`mailto:${parent.email}`} className="hover:text-emerald-600 transition">{parent.email}</a> : na} ltr />
+        <InfoRow label={t.occupation} value={parent.occupation || na} />
+        <InfoRow label={t.workplace} value={parent.workplace || na} />
+        <InfoRow label={t.joinedDate} value={parent.joinedDate} />
         <div className="col-span-2">
-          <InfoRow label="العنوان" value={parent.address || 'غير محدد'} />
+          <InfoRow label={t.address} value={parent.address || na} />
         </div>
       </div>
 
@@ -429,7 +439,7 @@ function ParentDetail({
 
       {parent.notes && (
         <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 text-sm text-slate-600 dark:text-slate-300">
-          <p className="text-xs font-bold text-slate-400 mb-1">ملاحظات</p>
+          <p className="text-xs font-bold text-slate-400 mb-1">{t.notes}</p>
           {parent.notes}
         </div>
       )}
@@ -439,12 +449,12 @@ function ParentDetail({
         <div className="flex items-center gap-2 mb-3">
           <UsersRound className="h-4 w-4 text-emerald-600" />
           <h4 className="text-sm font-black text-slate-900 dark:text-white">
-            الأبناء المسجلون ({children.length})
+            {isAr ? `الأبناء المسجلون (${children.length})` : `Registered children (${children.length})`}
           </h4>
         </div>
         {children.length === 0 ? (
           <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 text-center">
-            <p className="text-xs text-slate-400 font-semibold">لا يوجد أبناء مسجلون لهذا ولي الأمر</p>
+            <p className="text-xs text-slate-400 font-semibold">{isAr ? 'لا يوجد أبناء مسجلون لهذا ولي الأمر' : 'No registered children for this parent'}</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -461,16 +471,16 @@ function ParentDetail({
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate">{kid.name}</p>
                     <p className="text-[11px] text-slate-400 mt-0.5 truncate">
-                      {teamName(kid.teamId)} · {kid.position}
+                      {teamName(kid.teamId)} · {positionLabel(kid.position, lang)}
                     </p>
                   </div>
                   <div className="flex flex-col items-end gap-1 shrink-0">
                     <Badge color={kid.status === 'active' ? 'emerald' : 'slate'}>
-                      {kid.status === 'active' ? 'نشط' : 'موقوف'}
+                      {kid.status === 'active' ? t.active : t.inactive}
                     </Badge>
                     {sub && (
                       <Badge color={sub.status === 'paid' ? 'blue' : 'amber'}>
-                        {sub.status === 'paid' ? 'مدفوع' : 'غير مدفوع'}
+                        {sub.status === 'paid' ? t.paid : t.unpaid}
                       </Badge>
                     )}
                   </div>

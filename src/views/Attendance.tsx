@@ -4,7 +4,7 @@ import {
 } from 'lucide-react';
 import type { Attendance, Player, Team, Lang, Role } from '@/types';
 import { Badge, Modal, ConfirmDialog, PageHeader, EmptyState, StatCard } from '@/components/ui';
-import { tr } from '@/lib/i18n';
+import { tr, positionLabel } from '@/lib/i18n';
 
 interface AttendanceProps {
   players: Player[];
@@ -23,6 +23,7 @@ const inputCls =
 
 export function AttendanceView({ players, teams, attendance, onAttendanceChange, activeRole, lang }: AttendanceProps) {
   const t = tr(lang);
+  const isAr = lang === 'ar';
   const [search, setSearch] = useState('');
   const [teamFilter, setTeamFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
@@ -34,8 +35,8 @@ export function AttendanceView({ players, teams, attendance, onAttendanceChange,
 
   const playerById = (id: string) => players.find((p) => p.id === id);
   const teamById = (id: string) => teams.find((tm) => tm.id === id);
-  const teamName = (id: string) => teamById(id)?.name || 'غير محدد';
-  const playerName = (id: string) => playerById(id)?.name || 'لاعب محذوف';
+  const teamName = (id: string) => teamById(id)?.name || (isAr ? 'غير محدد' : 'Not specified');
+  const playerName = (id: string) => playerById(id)?.name || (isAr ? 'لاعب محذوف' : 'Deleted player');
 
   const filtered = useMemo(() => {
     return attendance
@@ -75,13 +76,13 @@ export function AttendanceView({ players, teams, attendance, onAttendanceChange,
   const statusLabel = (s: Status) => (s === 'present' ? t.present : s === 'absent' ? t.absent : t.excused);
   const statusColor = (s: Status): 'emerald' | 'red' | 'amber' =>
     s === 'present' ? 'emerald' : s === 'absent' ? 'red' : 'amber';
-  const typeLabel = (ty: SessionType) => (ty === 'training' ? 'تدريب' : 'مباراة');
+  const typeLabel = (ty: SessionType) => (ty === 'training' ? t.training : t.match);
 
   const today = new Date().toISOString().substring(0, 10);
 
   return (
     <div className="space-y-5 text-right" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
-      <PageHeader title={t.attendance} subtitle={`${kpis.total} سجل مسجل · نسبة الحضور ${kpis.rate}%`}>
+      <PageHeader title={t.attendance} subtitle={isAr ? `${kpis.total} سجل مسجل · نسبة الحضور ${kpis.rate}%` : `${kpis.total} records · Attendance rate ${kpis.rate}%`}>
         {canEdit && (
           <button
             onClick={() => setShowAdd(true)}
@@ -97,37 +98,37 @@ export function AttendanceView({ players, teams, attendance, onAttendanceChange,
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         <StatCard
           icon={<ClipboardCheck className="h-5 w-5" />}
-          label="إجمالي السجلات"
+          label={t.totalSessions}
           value={kpis.total}
-          sublabel="كل الجلسات"
+          sublabel={isAr ? 'كل الجلسات' : 'All sessions'}
           color="slate"
         />
         <StatCard
           icon={<Check className="h-5 w-5" />}
-          label="حاضر"
+          label={t.present}
           value={kpis.present}
-          sublabel="تدريب ومباريات"
+          sublabel={isAr ? 'تدريب ومباريات' : 'Trainings & matches'}
           color="emerald"
         />
         <StatCard
           icon={<X className="h-5 w-5" />}
-          label="غائب"
+          label={t.absent}
           value={kpis.absent}
-          sublabel="بدون عذر"
+          sublabel={isAr ? 'بدون عذر' : 'Without excuse'}
           color="red"
         />
         <StatCard
           icon={<Clock className="h-5 w-5" />}
-          label="بعذر"
+          label={t.excused}
           value={kpis.excused}
-          sublabel="غياب مبرر"
+          sublabel={isAr ? 'غياب مبرر' : 'Justified absence'}
           color="amber"
         />
         <StatCard
           icon={<TrendingUp className="h-5 w-5" />}
-          label="نسبة الحضور"
+          label={t.attendanceRate}
           value={`${kpis.rate}%`}
-          sublabel="من الإجمالي"
+          sublabel={isAr ? 'من الإجمالي' : 'Of total'}
           color="blue"
         />
       </div>
@@ -140,7 +141,7 @@ export function AttendanceView({ players, teams, attendance, onAttendanceChange,
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="ابحث باسم اللاعب..."
+            placeholder={isAr ? 'ابحث باسم اللاعب...' : 'Search by player name...'}
             className="w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 pr-10 pl-4 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-800 dark:text-white"
           />
         </div>
@@ -151,7 +152,7 @@ export function AttendanceView({ players, teams, attendance, onAttendanceChange,
             onChange={(e) => setTeamFilter(e.target.value)}
             className="appearance-none px-3 py-2.5 pr-10 pl-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-semibold text-slate-700 dark:text-slate-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
           >
-            <option value="all">كل الفرق</option>
+            <option value="all">{isAr ? 'كل الفرق' : 'All teams'}</option>
             {teams.map((tm) => (
               <option key={tm.id} value={tm.id}>{tm.name}</option>
             ))}
@@ -162,9 +163,9 @@ export function AttendanceView({ players, teams, attendance, onAttendanceChange,
           onChange={(e) => setTypeFilter(e.target.value)}
           className="px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-semibold text-slate-700 dark:text-slate-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
         >
-          <option value="all">كل الأنواع</option>
-          <option value="training">تدريب</option>
-          <option value="match">مباراة</option>
+          <option value="all">{isAr ? 'كل الأنواع' : 'All types'}</option>
+          <option value="training">{t.training}</option>
+          <option value="match">{t.match}</option>
         </select>
         <div className="relative">
           <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
@@ -180,7 +181,7 @@ export function AttendanceView({ players, teams, attendance, onAttendanceChange,
             onClick={() => { setTeamFilter('all'); setTypeFilter('all'); setDateFilter(''); setSearch(''); }}
             className="px-3 py-2.5 rounded-xl text-sm font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer"
           >
-            إعادة ضبط
+            {isAr ? 'إعادة ضبط' : 'Reset'}
           </button>
         )}
       </div>
@@ -190,8 +191,8 @@ export function AttendanceView({ players, teams, attendance, onAttendanceChange,
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800">
           <EmptyState
             icon={<ClipboardCheck className="h-8 w-8" />}
-            title="لا توجد سجلات حضور"
-            subtitle="جرّب تعديل الفلاتر أو سجّل حضوراً جديداً"
+            title={isAr ? 'لا توجد سجلات حضور' : 'No attendance records'}
+            subtitle={isAr ? 'جرّب تعديل الفلاتر أو سجّل حضوراً جديداً' : 'Try adjusting filters or record new attendance'}
           />
         </div>
       ) : (
@@ -200,12 +201,12 @@ export function AttendanceView({ players, teams, attendance, onAttendanceChange,
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-100 dark:border-slate-800 text-[11px] font-bold text-slate-500 dark:text-slate-400">
-                  <th className="text-right py-3 px-4">اللاعب</th>
-                  <th className="text-right py-3 px-4">الفريق</th>
-                  <th className="text-right py-3 px-4">التاريخ</th>
-                  <th className="text-right py-3 px-4">النوع</th>
-                  <th className="text-right py-3 px-4">الحالة</th>
-                  <th className="text-right py-3 px-4">ملاحظات</th>
+                  <th className="text-right py-3 px-4">{isAr ? 'اللاعب' : 'Player'}</th>
+                  <th className="text-right py-3 px-4">{t.team}</th>
+                  <th className="text-right py-3 px-4">{t.sessionDate}</th>
+                  <th className="text-right py-3 px-4">{t.sessionType}</th>
+                  <th className="text-right py-3 px-4">{t.status}</th>
+                  <th className="text-right py-3 px-4">{t.notes}</th>
                   {canEdit && <th className="text-center py-3 px-4">{t.actions}</th>}
                 </tr>
               </thead>
@@ -277,6 +278,7 @@ export function AttendanceView({ players, teams, attendance, onAttendanceChange,
           defaultDate={today}
           onSave={handleBatchSave}
           onClose={() => setShowAdd(false)}
+          lang={lang}
         />
       )}
 
@@ -285,9 +287,9 @@ export function AttendanceView({ players, teams, attendance, onAttendanceChange,
         open={!!deleteId}
         onClose={() => setDeleteId(null)}
         onConfirm={handleDelete}
-        title="حذف سجل الحضور"
-        message="هل أنت متأكد من حذف هذا السجل؟ لا يمكن التراجع عن هذا الإجراء."
-        confirmLabel="حذف"
+        title={isAr ? 'حذف سجل الحضور' : 'Delete Attendance Record'}
+        message={isAr ? 'هل أنت متأكد من حذف هذا السجل؟ لا يمكن التراجع عن هذا الإجراء.' : 'Are you sure you want to delete this record? This cannot be undone.'}
+        confirmLabel={t.delete}
       />
     </div>
   );
@@ -301,13 +303,17 @@ function BatchAttendanceForm({
   defaultDate,
   onSave,
   onClose,
+  lang,
 }: {
   players: Player[];
   teams: Team[];
   defaultDate: string;
   onSave: (records: Omit<Attendance, 'id'>[]) => void;
   onClose: () => void;
+  lang: Lang;
 }) {
+  const t = tr(lang);
+  const isAr = lang === 'ar';
   const [teamId, setTeamId] = useState('');
   const [sessionDate, setSessionDate] = useState(defaultDate);
   const [sessionType, setSessionType] = useState<SessionType>('training');
@@ -360,25 +366,25 @@ function BatchAttendanceForm({
   };
 
   return (
-    <Modal open onClose={onClose} title="تسجيل حضور جديد" size="xl">
+    <Modal open onClose={onClose} title={isAr ? 'تسجيل حضور جديد' : 'Record New Attendance'} size="xl">
       <div className="space-y-5">
         {/* Step 1: session config */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
-            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">الفريق</label>
+            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">{t.team}</label>
             <select
               value={teamId}
               onChange={(e) => { setTeamId(e.target.value); setMarks({}); }}
               className={inputCls}
             >
-              <option value="">اختر الفريق...</option>
+              <option value="">{isAr ? 'اختر الفريق...' : 'Select team...'}</option>
               {teams.map((tm) => (
                 <option key={tm.id} value={tm.id}>{tm.name}</option>
               ))}
             </select>
           </div>
           <div>
-            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">تاريخ الجلسة</label>
+            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">{t.sessionDate}</label>
             <input
               type="date"
               value={sessionDate}
@@ -387,14 +393,14 @@ function BatchAttendanceForm({
             />
           </div>
           <div>
-            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">نوع الجلسة</label>
+            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">{t.sessionType}</label>
             <select
               value={sessionType}
               onChange={(e) => setSessionType(e.target.value as SessionType)}
               className={inputCls}
             >
-              <option value="training">تدريب</option>
-              <option value="match">مباراة</option>
+              <option value="training">{t.training}</option>
+              <option value="match">{t.match}</option>
             </select>
           </div>
         </div>
@@ -403,43 +409,43 @@ function BatchAttendanceForm({
         {!teamId ? (
           <div className="rounded-xl border border-dashed border-slate-200 dark:border-slate-700 py-12 text-center">
             <Users className="h-8 w-8 mx-auto text-slate-300 dark:text-slate-600 mb-2" />
-            <p className="text-sm font-bold text-slate-400">اختر فريقاً لعرض اللاعبين</p>
+            <p className="text-sm font-bold text-slate-400">{isAr ? 'اختر فريقاً لعرض اللاعبين' : 'Select a team to view players'}</p>
           </div>
         ) : teamPlayers.length === 0 ? (
           <div className="rounded-xl border border-dashed border-slate-200 dark:border-slate-700 py-12 text-center">
             <Users className="h-8 w-8 mx-auto text-slate-300 dark:text-slate-600 mb-2" />
-            <p className="text-sm font-bold text-slate-400">لا يوجد لاعبون في هذا الفريق</p>
+            <p className="text-sm font-bold text-slate-400">{isAr ? 'لا يوجد لاعبون في هذا الفريق' : 'No players in this team'}</p>
           </div>
         ) : (
           <>
             {/* Quick actions */}
             <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-bold text-slate-500 dark:text-slate-400">تعيين الكل:</span>
+                <span className="text-xs font-bold text-slate-500 dark:text-slate-400">{isAr ? 'تعيين الكل:' : 'Mark all:'}</span>
                 <button
                   onClick={() => markAll('present')}
                   className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/30 hover:bg-emerald-200 dark:hover:bg-emerald-900/50 transition cursor-pointer"
                 >
-                  <Check className="h-3.5 w-3.5" /> حاضر
+                  <Check className="h-3.5 w-3.5" /> {t.present}
                 </button>
                 <button
                   onClick={() => markAll('absent')}
                   className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold text-red-700 dark:text-red-400 bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/50 transition cursor-pointer"
                 >
-                  <X className="h-3.5 w-3.5" /> غائب
+                  <X className="h-3.5 w-3.5" /> {t.absent}
                 </button>
                 <button
                   onClick={() => markAll('excused')}
                   className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 hover:bg-amber-200 dark:hover:bg-amber-900/50 transition cursor-pointer"
                 >
-                  <Clock className="h-3.5 w-3.5" /> بعذر
+                  <Clock className="h-3.5 w-3.5" /> {t.excused}
                 </button>
               </div>
               <div className="flex items-center gap-3 text-[11px] font-bold">
-                <span className="text-emerald-600 dark:text-emerald-400">حاضر {presentCount}</span>
-                <span className="text-red-600 dark:text-red-400">غائب {absentCount}</span>
-                <span className="text-amber-600 dark:text-amber-400">بعذر {excusedCount}</span>
-                <span className="text-slate-400">من {teamPlayers.length}</span>
+                <span className="text-emerald-600 dark:text-emerald-400">{t.present} {presentCount}</span>
+                <span className="text-red-600 dark:text-red-400">{t.absent} {absentCount}</span>
+                <span className="text-amber-600 dark:text-amber-400">{t.excused} {excusedCount}</span>
+                <span className="text-slate-400">{isAr ? 'من' : 'of'} {teamPlayers.length}</span>
               </div>
             </div>
 
@@ -454,7 +460,7 @@ function BatchAttendanceForm({
                       </div>
                       <div className="min-w-0">
                         <p className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate">{p.name}</p>
-                        <p className="text-[11px] text-slate-400">{p.position}</p>
+                        <p className="text-[11px] text-slate-400">{positionLabel(p.position, lang)}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
@@ -466,7 +472,7 @@ function BatchAttendanceForm({
                             : 'bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/50 hover:bg-emerald-50 dark:hover:bg-emerald-900/20'
                         }`}
                       >
-                        <Check className="h-3.5 w-3.5" /> حاضر
+                        <Check className="h-3.5 w-3.5" /> {t.present}
                       </button>
                       <button
                         onClick={() => setStatus(p.id, 'absent')}
@@ -476,7 +482,7 @@ function BatchAttendanceForm({
                             : 'bg-white dark:bg-slate-800 text-red-700 dark:text-red-400 border-red-200 dark:border-red-900/50 hover:bg-red-50 dark:hover:bg-red-900/20'
                         }`}
                       >
-                        <X className="h-3.5 w-3.5" /> غائب
+                        <X className="h-3.5 w-3.5" /> {t.absent}
                       </button>
                       <button
                         onClick={() => setStatus(p.id, 'excused')}
@@ -486,7 +492,7 @@ function BatchAttendanceForm({
                             : 'bg-white dark:bg-slate-800 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-900/50 hover:bg-amber-50 dark:hover:bg-amber-900/20'
                         }`}
                       >
-                        <Clock className="h-3.5 w-3.5" /> بعذر
+                        <Clock className="h-3.5 w-3.5" /> {t.excused}
                       </button>
                     </div>
                   </div>
@@ -496,12 +502,12 @@ function BatchAttendanceForm({
 
             {/* Notes */}
             <div>
-              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">ملاحظات عامة (اختياري)</label>
+              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">{isAr ? 'ملاحظات عامة (اختياري)' : 'General notes (optional)'}</label>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={2}
-                placeholder="ملاحظات تُطبق على كل السجلات في هذه الجلسة..."
+                placeholder={isAr ? 'ملاحظات تُطبق على كل السجلات في هذه الجلسة...' : 'Notes applied to all records in this session...'}
                 className={inputCls}
               />
             </div>
@@ -511,7 +517,7 @@ function BatchAttendanceForm({
         {/* Footer actions */}
         <div className="flex items-center justify-between gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
           <span className="text-xs font-bold text-slate-400">
-            {markedCount > 0 ? `${markedCount} لاعب تم وضع علامة عليه` : 'لم يتم وضع علامة بعد'}
+            {markedCount > 0 ? (isAr ? `${markedCount} لاعب تم وضع علامة عليه` : `${markedCount} players marked`) : (isAr ? 'لم يتم وضع علامة بعد' : 'No marks yet')}
           </span>
           <div className="flex gap-2">
             <button
@@ -519,7 +525,7 @@ function BatchAttendanceForm({
               onClick={onClose}
               className="px-4 py-2 rounded-lg text-sm font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer"
             >
-              إلغاء
+              {t.cancel}
             </button>
             <button
               type="button"
@@ -528,7 +534,7 @@ function BatchAttendanceForm({
               className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
             >
               <Check className="h-4 w-4" />
-              حفظ الكل
+              {isAr ? 'حفظ الكل' : 'Save all'}
             </button>
           </div>
         </div>

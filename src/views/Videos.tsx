@@ -24,6 +24,7 @@ function getYouTubeId(url: string): string | null {
 
 export function Videos({ videos, matches, trainings, players, onVideosChange, activeRole, lang }: VideosProps) {
   const t = tr(lang);
+  const isAr = lang === 'ar';
   const [showAdd, setShowAdd] = useState(false);
   const [editItem, setEditItem] = useState<Video | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -56,15 +57,15 @@ export function Videos({ videos, matches, trainings, players, onVideosChange, ac
   const associatedLabel = (v: Video) => {
     if (v.associatedType === 'match') {
       const m = matches.find((mm) => mm.id === v.associatedId);
-      return m ? `${lang === 'ar' ? 'مباراة' : 'Match'}: ${m.opponent}` : lang === 'ar' ? 'مباراة' : 'Match';
+      return m ? `${t.match}: ${m.opponent}` : t.match;
     }
     const tr1 = trainings.find((tt) => tt.id === v.associatedId);
-    return tr1 ? `${lang === 'ar' ? 'تدريب' : 'Training'}: ${tr1.title}` : lang === 'ar' ? 'تدريب' : 'Training';
+    return tr1 ? `${t.training}: ${tr1.title}` : t.training;
   };
 
   return (
     <div className="space-y-5 text-right" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
-      <PageHeader title={t.videos} subtitle={`${videos.length} ${lang === 'ar' ? 'فيديو تحليلي' : 'analysis videos'}`}>
+      <PageHeader title={t.videos} subtitle={`${videos.length} ${isAr ? 'فيديو تحليلي' : 'analysis videos'}`}>
         {canEdit && (
           <button
             onClick={() => setShowAdd(true)}
@@ -79,8 +80,8 @@ export function Videos({ videos, matches, trainings, players, onVideosChange, ac
       {videos.length === 0 ? (
         <EmptyState
           icon={<Film className="h-8 w-8" />}
-          title={lang === 'ar' ? 'لا توجد فيديوهات تحليلية' : 'No analysis videos'}
-          subtitle={lang === 'ar' ? 'أضف فيديو مباراة أو تدريب لتحليله تكتيكياً مع علامات اللاعبين' : 'Add a match or training video for tactical analysis'}
+          title={isAr ? 'لا توجد فيديوهات تحليلية' : 'No analysis videos'}
+          subtitle={isAr ? 'أضف فيديو مباراة أو تدريب لتحليله تكتيكياً مع علامات اللاعبين' : 'Add a match or training video for tactical analysis'}
         />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -113,7 +114,7 @@ export function Videos({ videos, matches, trainings, players, onVideosChange, ac
                   {v.markers.length > 0 && (
                     <div className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-sm text-white text-[10px] font-bold flex items-center gap-1">
                       <Tag className="h-3 w-3" />
-                      {v.markers.length} {lang === 'ar' ? 'علامة' : 'markers'}
+                      {v.markers.length} {isAr ? 'علامة' : 'markers'}
                     </div>
                   )}
                 </div>
@@ -127,7 +128,7 @@ export function Videos({ videos, matches, trainings, players, onVideosChange, ac
                   )}
                   <div className="flex items-center gap-1.5 mt-2 text-[10px] text-slate-400">
                     <Clock className="h-3 w-3" />
-                    {new Date(v.createdAt).toLocaleDateString(lang === 'ar' ? 'ar-SA' : 'en-US')}
+                    {new Date(v.createdAt).toLocaleDateString(isAr ? 'ar-SA' : 'en-US')}
                   </div>
 
                   {canEdit && (
@@ -136,7 +137,7 @@ export function Videos({ videos, matches, trainings, players, onVideosChange, ac
                         onClick={() => setViewVideo(v)}
                         className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[11px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition cursor-pointer"
                       >
-                        <Tag className="h-3.5 w-3.5" /> {lang === 'ar' ? 'علامات' : 'Markers'}
+                        <Tag className="h-3.5 w-3.5" /> {isAr ? 'علامات' : 'Markers'}
                       </button>
                       <button
                         onClick={() => setEditItem(v)}
@@ -166,6 +167,7 @@ export function Videos({ videos, matches, trainings, players, onVideosChange, ac
           trainings={trainings}
           onSave={handleSave}
           onClose={() => { setShowAdd(false); setEditItem(null); }}
+          lang={lang}
         />
       )}
 
@@ -174,6 +176,7 @@ export function Videos({ videos, matches, trainings, players, onVideosChange, ac
           video={viewVideo}
           players={players}
           canEdit={canEdit}
+          lang={lang}
           onClose={() => setViewVideo(null)}
           onSaveMarkers={(markers) => {
             handleSaveMarkers(viewVideo.id, markers);
@@ -186,8 +189,8 @@ export function Videos({ videos, matches, trainings, players, onVideosChange, ac
         open={!!deleteId}
         onClose={() => setDeleteId(null)}
         onConfirm={handleDelete}
-        title={lang === 'ar' ? 'حذف الفيديو' : 'Delete video'}
-        message={lang === 'ar' ? 'هل أنت متأكد من حذف هذا الفيديو؟ لا يمكن التراجع.' : 'Are you sure? This cannot be undone.'}
+        title={isAr ? 'حذف الفيديو' : 'Delete video'}
+        message={isAr ? 'هل أنت متأكد من حذف هذا الفيديو؟ لا يمكن التراجع.' : 'Are you sure? This cannot be undone.'}
         confirmLabel={t.delete}
       />
     </div>
@@ -202,13 +205,17 @@ function VideoForm({
   trainings,
   onSave,
   onClose,
+  lang,
 }: {
   video: Video | null;
   matches: Match[];
   trainings: Training[];
   onSave: (data: Omit<Video, 'id' | 'createdAt' | 'markers'>, id?: string) => void;
   onClose: () => void;
+  lang: Lang;
 }) {
+  const t = tr(lang);
+  const isAr = lang === 'ar';
   const [form, setForm] = useState({
     title: video?.title || '',
     videoUrl: video?.videoUrl || '',
@@ -234,34 +241,34 @@ function VideoForm({
       : trainings.map((tt) => ({ id: tt.id, label: `${tt.title} — ${tt.sessionDate}` }));
 
   return (
-    <Modal open onClose={onClose} title={video ? 'تعديل الفيديو' : 'إضافة فيديو تحليلي'} size="lg">
+    <Modal open onClose={onClose} title={video ? t.editVideo : isAr ? 'إضافة فيديو تحليلي' : 'Add Analysis Video'} size="lg">
       <form onSubmit={handleSubmit} className="space-y-4">
-        <Field label="عنوان الفيديو">
-          <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="مثال: تحليل تكتيكي لمباراة الهلال" className={inputCls} required />
+        <Field label={t.videoTitle}>
+          <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder={isAr ? 'مثال: تحليل تكتيكي لمباراة الهلال' : 'e.g. Tactical analysis vs Al-Hilal'} className={inputCls} required />
         </Field>
 
-        <Field label="رابط الفيديو (YouTube)">
+        <Field label={isAr ? 'رابط الفيديو (YouTube)' : 'Video URL (YouTube)'}>
           <input value={form.videoUrl} onChange={(e) => setForm({ ...form, videoUrl: e.target.value })} placeholder="https://www.youtube.com/watch?v=..." className={inputCls} required dir="ltr" />
         </Field>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Field label="النوع">
+          <Field label={t.associatedType}>
             <select
               value={form.associatedType}
               onChange={(e) => setForm({ ...form, associatedType: e.target.value as 'match' | 'training', associatedId: '' })}
               className={inputCls}
             >
-              <option value="match">مباراة</option>
-              <option value="training">تدريب</option>
+              <option value="match">{t.match}</option>
+              <option value="training">{t.training}</option>
             </select>
           </Field>
-          <Field label="المرتبط بـ">
+          <Field label={isAr ? 'المرتبط بـ' : 'Associated with'}>
             <select
               value={form.associatedId}
               onChange={(e) => setForm({ ...form, associatedId: e.target.value })}
               className={inputCls}
             >
-              <option value="">— اختر —</option>
+              <option value="">— {isAr ? 'اختر' : 'Select'} —</option>
               {associatedOptions.map((o) => (
                 <option key={o.id} value={o.id}>{o.label}</option>
               ))}
@@ -269,11 +276,11 @@ function VideoForm({
           </Field>
         </div>
 
-        <Field label="ملاحظات">
+        <Field label={t.notes}>
           <textarea
             value={form.notes}
             onChange={(e) => setForm({ ...form, notes: e.target.value })}
-            placeholder="ملاحظات تكتيكية أو تحليلية..."
+            placeholder={isAr ? 'ملاحظات تكتيكية أو تحليلية...' : 'Tactical or analytical notes...'}
             rows={3}
             className={inputCls}
           />
@@ -281,9 +288,9 @@ function VideoForm({
 
         <div className="flex gap-2 justify-end pt-2">
           <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer">
-            إلغاء
+            {t.cancel}
           </button>
-          <SaveButton loading={saving}>حفظ</SaveButton>
+          <SaveButton loading={saving}>{t.save}</SaveButton>
         </div>
       </form>
     </Modal>
@@ -296,15 +303,19 @@ function VideoPlayerModal({
   video,
   players,
   canEdit,
+  lang,
   onClose,
   onSaveMarkers,
 }: {
   video: Video;
   players: Player[];
   canEdit: boolean;
+  lang: Lang;
   onClose: () => void;
   onSaveMarkers: (markers: VideoMarker[]) => void;
 }) {
+  const t = tr(lang);
+  const isAr = lang === 'ar';
   const [markers, setMarkers] = useState<VideoMarker[]>(video.markers);
   const [showMarkerForm, setShowMarkerForm] = useState(false);
   const [editMarker, setEditMarker] = useState<VideoMarker | null>(null);
@@ -341,7 +352,7 @@ function VideoPlayerModal({
         ) : (
           <div className="aspect-video rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
             <a href={video.videoUrl} target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-emerald-600 hover:underline flex items-center gap-2">
-              <Play className="h-4 w-4" /> فتح الفيديو في نافذة جديدة
+              <Play className="h-4 w-4" /> {isAr ? 'فتح الفيديو في نافذة جديدة' : 'Open video in new tab'}
             </a>
           </div>
         )}
@@ -350,7 +361,7 @@ function VideoPlayerModal({
           <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
             <div className="flex items-center gap-1.5 mb-1">
               <FileText className="h-4 w-4 text-slate-400" />
-              <span className="text-[11px] font-bold text-slate-400 uppercase">ملاحظات</span>
+              <span className="text-[11px] font-bold text-slate-400 uppercase">{t.notes}</span>
             </div>
             <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">{video.notes}</p>
           </div>
@@ -361,14 +372,14 @@ function VideoPlayerModal({
           <div className="flex items-center justify-between mb-3">
             <h4 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
               <Tag className="h-4 w-4 text-emerald-500" />
-              {markers.length} علامة تكتيكية
+              {markers.length} {isAr ? 'علامة تكتيكية' : 'tactical markers'}
             </h4>
             {canEdit && !showMarkerForm && (
               <button
                 onClick={() => setShowMarkerForm(true)}
                 className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 text-xs font-bold hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition cursor-pointer"
               >
-                <Plus className="h-3.5 w-3.5" /> إضافة علامة
+                <Plus className="h-3.5 w-3.5" /> {isAr ? 'إضافة علامة' : 'Add marker'}
               </button>
             )}
           </div>
@@ -379,12 +390,13 @@ function VideoPlayerModal({
               players={players}
               onSave={handleSaveMarker}
               onClose={() => { setShowMarkerForm(false); setEditMarker(null); }}
+              lang={lang}
             />
           )}
 
           {markers.length === 0 && !showMarkerForm ? (
             <div className="text-center py-6 text-xs text-slate-400 font-semibold">
-              لا توجد علامات بعد. أضف علامة لتحديد لحظة مهمة مع اللاعبين المعنيين.
+              {isAr ? 'لا توجد علامات بعد. أضف علامة لتحديد لحظة مهمة مع اللاعبين المعنيين.' : 'No markers yet. Add a marker to highlight a key moment with relevant players.'}
             </div>
           ) : (
             <div className="space-y-2">
@@ -432,7 +444,7 @@ function VideoPlayerModal({
         {canEdit && (
           <div className="flex gap-2 justify-end pt-2 border-t border-slate-100 dark:border-slate-800">
             <button onClick={() => { onSaveMarkers(markers); onClose(); }} className="px-4 py-2 rounded-lg text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-500 transition cursor-pointer">
-              حفظ العلامات
+              {isAr ? 'حفظ العلامات' : 'Save markers'}
             </button>
           </div>
         )}
@@ -448,12 +460,16 @@ function MarkerForm({
   players,
   onSave,
   onClose,
+  lang,
 }: {
   marker: VideoMarker | null;
   players: Player[];
   onSave: (data: Omit<VideoMarker, 'id'>, id?: string) => void;
   onClose: () => void;
+  lang: Lang;
 }) {
+  const t = tr(lang);
+  const isAr = lang === 'ar';
   const [form, setForm] = useState({
     timestamp: marker?.timestamp || '',
     title: marker?.title || '',
@@ -479,17 +495,17 @@ function MarkerForm({
   return (
     <form onSubmit={handleSubmit} className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 space-y-3 mb-3">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <Field label="الوقت (MM:SS)">
+        <Field label={isAr ? 'الوقت (MM:SS)' : 'Time (MM:SS)'}>
           <input value={form.timestamp} onChange={(e) => setForm({ ...form, timestamp: e.target.value })} placeholder="02:15" className={inputCls} required dir="ltr" />
         </Field>
-        <Field label="العنوان">
-          <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="الهدف الأول" className={inputCls} required />
+        <Field label={t.title}>
+          <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder={isAr ? 'الهدف الأول' : 'First goal'} className={inputCls} required />
         </Field>
       </div>
-      <Field label="ملاحظات">
-        <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="وصف اللحظة..." rows={2} className={inputCls} />
+      <Field label={t.notes}>
+        <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder={isAr ? 'وصف اللحظة...' : 'Describe the moment...'} rows={2} className={inputCls} />
       </Field>
-      <Field label="وسم اللاعبين">
+      <Field label={isAr ? 'وسم اللاعبين' : 'Tag players'}>
         <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
           {players.map((p) => {
             const checked = form.taggedPlayerIds.includes(p.id);
@@ -512,10 +528,10 @@ function MarkerForm({
       </Field>
       <div className="flex gap-2 justify-end">
         <button type="button" onClick={onClose} className="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer">
-          إلغاء
+          {t.cancel}
         </button>
         <button type="submit" className="px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 transition cursor-pointer">
-          حفظ
+          {t.save}
         </button>
       </div>
     </form>

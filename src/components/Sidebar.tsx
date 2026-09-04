@@ -30,18 +30,23 @@ interface NavItem {
   allowedRoles: Role[];
 }
 
-const ROLE_OPTIONS: { value: Role; label: string }[] = [
-  { value: 'manager', label: 'مدير النظام' },
-  { value: 'accountant', label: 'المحاسب المالي' },
-  { value: 'coach', label: 'الكابتن / المدرب' },
-  { value: 'receptionist', label: 'موظف الاستقبال' },
-];
+function getRoleOptions(lang: Lang): { value: Role; label: string }[] {
+  const t = tr(lang);
+  return [
+    { value: 'manager', label: t.manager },
+    { value: 'accountant', label: t.accountant },
+    { value: 'coach', label: t.coach },
+    { value: 'receptionist', label: t.receptionist },
+  ];
+}
 
 export function Sidebar({
   currentTab, setCurrentTab, activeRole, lang, setLang,
   darkMode, setDarkMode, currentUser, onLogout, onResetDb, mobileOpen, setMobileOpen,
 }: SidebarProps) {
   const t = tr(lang);
+  const isAr = lang === 'ar';
+  const ROLE_OPTIONS = getRoleOptions(lang);
 
   const navItems: NavItem[] = [
     { id: 'dashboard', label: t.dashboard, icon: LayoutDashboard, allowedRoles: ['manager', 'accountant', 'coach', 'receptionist'] },
@@ -56,7 +61,7 @@ export function Sidebar({
     { id: 'tournaments', label: t.tournaments, icon: Medal, allowedRoles: ['manager', 'coach', 'receptionist'] },
     { id: 'videos', label: t.videos, icon: Film, allowedRoles: ['manager', 'coach'] },
     { id: 'reports', label: t.reports, icon: BarChart3, allowedRoles: ['manager', 'accountant', 'coach', 'receptionist'] },
-    { id: 'audit-logs', label: lang === 'ar' ? 'سجل التدقيق' : 'Audit Log', icon: ScrollText, allowedRoles: ['manager'] },
+    { id: 'audit-logs', label: t.auditLogs, icon: ScrollText, allowedRoles: ['manager'] },
 
     { id: 'messages', label: t.messages, icon: Send, allowedRoles: ['manager', 'coach', 'receptionist', 'accountant'] },
     { id: 'ai-center', label: t.aiCenter, icon: Sparkles, allowedRoles: ['manager', 'accountant', 'coach', 'receptionist'] },
@@ -90,7 +95,7 @@ export function Sidebar({
             <div className="relative group shrink-0">
               <div className="absolute -inset-0.5 bg-gradient-to-tr from-emerald-500 to-amber-500 rounded-full blur opacity-40 group-hover:opacity-75 transition duration-1000" />
               <div className="relative w-13 h-13 rounded-full overflow-hidden bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg ring-2 ring-emerald-400/30">
-                <img src="/copilot_image_1776165482483-300x300.png" alt="شعار الأكاديمية" className="h-10 w-10 object-contain" />
+                <img src="/copilot_image_1776165482483-300x300.png" alt={isAr ? 'شعار الأكاديمية' : 'Academy logo'} className="h-10 w-10 object-contain" />
               </div>
             </div>
             <div className="min-w-0 flex-1">
@@ -146,7 +151,7 @@ export function Sidebar({
               className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-bold bg-slate-800/50 hover:bg-slate-700/50 text-slate-300 transition cursor-pointer"
             >
               {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-              {darkMode ? 'فاتح' : 'داكن'}
+              {darkMode ? (isAr ? 'فاتح' : 'Light') : (isAr ? 'داكن' : 'Dark')}
             </button>
             <button
               onClick={() => setLang(lang === 'ar' ? 'en' : 'ar')}

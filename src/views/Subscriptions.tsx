@@ -7,7 +7,7 @@ import type { Subscription, Player, Parent, Transaction, Staff, Settings, Lang, 
 import { Badge, Modal, ConfirmDialog, PageHeader, EmptyState, StatCard, FormField, FormError, SaveButton, inputCls } from '@/components/ui';
 import { RemindersPanel } from '@/components/RemindersPanel';
 import { reminderStats, getSubscriptionReminders } from '@/lib/reminders';
-import { tr } from '@/lib/i18n';
+import { tr, planLabel, categoryLabel, paymentMethodLabel } from '@/lib/i18n';
 
 interface SubscriptionsProps {
   subscriptions: Subscription[];
@@ -45,20 +45,6 @@ const PLAN_COLORS: Record<Subscription['planType'], 'blue' | 'amber' | 'emerald'
   yearly: 'emerald',
 };
 
-const PLAN_LABELS: Record<Subscription['planType'], string> = {
-  monthly: 'شهري',
-  quarterly: 'ربع سنوي',
-  yearly: 'سنوي',
-};
-
-const CATEGORY_LABELS: Record<string, string> = {
-  subscription: 'اشتراك',
-  salary: 'رواتب',
-  equipment: 'معدات',
-  rent: 'إيجار',
-  other: 'أخرى',
-};
-
 const CATEGORY_COLORS: Record<string, 'emerald' | 'blue' | 'amber' | 'slate'> = {
   subscription: 'emerald',
   salary: 'blue',
@@ -66,18 +52,6 @@ const CATEGORY_COLORS: Record<string, 'emerald' | 'blue' | 'amber' | 'slate'> = 
   rent: 'slate',
   other: 'slate',
 };
-
-const PAYMENT_METHOD_LABELS: Record<string, string> = {
-  cash: 'نقدي',
-  card: 'بطاقة',
-  transfer: 'تحويل بنكي',
-};
-
-const STATUS_FILTERS: Array<{ value: string; label: string }> = [
-  { value: 'all', label: 'الكل' },
-  { value: 'paid', label: 'مدفوع' },
-  { value: 'unpaid', label: 'غير مدفوع' },
-];
 
 const todayISO = () => new Date().toISOString().substring(0, 10);
 
@@ -106,6 +80,7 @@ export function Subscriptions({
 }: SubscriptionsProps) {
   const planAmounts = getPlanAmounts(settings);
   const t = tr(lang);
+  const isAr = lang === 'ar';
   const [activeTab, setActiveTab] = useState<'subscriptions' | 'transactions' | 'reminders'>('subscriptions');
   const [search, setSearch] = useState('');
   const deferredSearch = useDeferredValue(search);
@@ -118,7 +93,13 @@ export function Subscriptions({
   const [markingPaidId, setMarkingPaidId] = useState<string | null>(null);
 
   const canManage = activeRole === 'manager' || activeRole === 'accountant' || activeRole === 'receptionist';
-  const recorderName = staff.find((s) => s.role === activeRole)?.name || 'النظام';
+  const recorderName = staff.find((s) => s.role === activeRole)?.name || (isAr ? 'النظام' : 'System');
+
+  const STATUS_FILTERS = useMemo(() => [
+    { value: 'all', label: t.all },
+    { value: 'paid', label: t.paid },
+    { value: 'unpaid', label: t.unpaid },
+  ], [t]);
 
   /* ---- KPIs ---- */
   const totalRevenue = useMemo(
@@ -156,6 +137,7 @@ export function Subscriptions({
   /* ---- Handlers ---- */
   const handleMarkPaid = async (sub: Subscription) => {
     if (markingPaidId) return;
+    if (sub.status === 'paid') return;
     setMarkingPaidId(sub.id);
     try {
       const player = playerOf(sub.playerId);
@@ -170,7 +152,9 @@ export function Subscriptions({
           category: 'subscription',
           amount: sub.amount,
           transactionDate: today,
-          description: `سداد اشتراك ${player?.name || 'لاعب'} — ${PLAN_LABELS[sub.planType]}`,
+          description: isAr
+            ? `سداد اشتراك ${player?.name || 'لاعب'} — ${planLabel(sub.planType, lang)}`
+            : `Subscription payment - ${player?.name || 'Player'} — ${planLabel(sub.planType, lang)}`,
           recordedBy: recorderName,
         },
         ...transactions,
@@ -205,13 +189,15 @@ export function Subscriptions({
     setDeleteTransId(null);
   };
 
-  const addLabel = activeTab === 'subscriptions' ? 'إضافة اشتراك' : 'إضافة معاملة';
+  const addLabel = activeTab === 'subscriptions' ? t.addSubscription : t.addTransaction;
 
   return (
-    <div className="space-y-5" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+    <div className="space-y-5" dir={isAr ? 'rtl' : 'ltr'}>
       <PageHeader
         title={t.subscriptions}
-        subtitle={`${subscriptions.length} اشتراك · ${transactions.length} معاملة مالية`}
+        subtitle={isAr
+          ? `${subscriptions.length} اشتراك · ${transactions.length} معاملة مالية`
+          : `${subscriptions.length} subscriptions · ${transactions.length} transactions`}
       >
         {canManage && (
           <button
@@ -228,31 +214,31 @@ export function Subscriptions({
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <StatCard
           icon={<DollarSign className="h-5 w-5" />}
-          label="إجمالي الإيرادات"
+          label={t.totalRevenue}
           value={`${totalRevenue.toLocaleString()} ${t.currency}`}
           color="emerald"
-          sublabel="مدخلات مالية"
+          sublabel={t.financialInput}
         />
         <StatCard
           icon={<Receipt className="h-5 w-5" />}
-          label="إجمالي المصروفات"
+          label={t.totalExpenses}
           value={`${totalExpenses.toLocaleString()} ${t.currency}`}
           color="red"
-          sublabel="مصروفات تشغيلية"
+          sublabel={t.operatingExpenses}
         />
         <StatCard
           icon={<Wallet className="h-5 w-5" />}
-          label="صافي الربح"
+          label={t.netProfit}
           value={`${netProfit >= 0 ? '+' : '−'}${Math.abs(netProfit).toLocaleString()} ${t.currency}`}
           color={netProfitColor}
-          sublabel={netProfit >= 0 ? 'ربح صافٍ' : 'خسارة'}
+          sublabel={netProfit >= 0 ? t.netProfitPositive : t.netProfitNegative}
         />
         <StatCard
           icon={<CheckCircle className="h-5 w-5" />}
-          label="اشتراكات مدفوعة"
+          label={t.paidSubscriptions}
           value={paidCount}
           color="blue"
-          sublabel={`من أصل ${subscriptions.length}`}
+          sublabel={`${t.ofTotal} ${subscriptions.length}`}
         />
       </div>
 
@@ -267,7 +253,7 @@ export function Subscriptions({
           }`}
         >
           <Wallet className="h-4 w-4" />
-          الاشتراكات
+          {t.subscriptionsTab}
           <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
             {subscriptions.length}
           </span>
@@ -281,7 +267,7 @@ export function Subscriptions({
           }`}
         >
           <Receipt className="h-4 w-4" />
-          المعاملات المالية
+          {t.transactionsTab}
           <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
             {transactions.length}
           </span>
@@ -292,11 +278,10 @@ export function Subscriptions({
             activeTab === 'reminders'
               ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm'
               : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
-          }`
-        }
+          }`}
         >
           <Bell className="h-4 w-4" />
-          التذكيرات والتحليلات
+          {t.remindersTab}
         </button>
       </div>
 
@@ -311,7 +296,7 @@ export function Subscriptions({
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="ابحث باسم اللاعب..."
+                placeholder={t.searchPlayer}
                 className="w-full bg-white dark:bg-slate-900 text-sm py-2.5 pr-10 pl-4 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-800 dark:text-white"
               />
             </div>
@@ -336,8 +321,8 @@ export function Subscriptions({
           {filteredSubs.length === 0 ? (
             <EmptyState
               icon={<Wallet className="h-8 w-8" />}
-              title="لا توجد اشتراكات مطابقة"
-              subtitle="جرّب تعديل البحث أو الفلاتر، أو أضف اشتراكاً جديداً"
+              title={t.noMatchingSubs}
+              subtitle={t.noMatchingSubsHint}
             />
           ) : (
             <div className="space-y-2.5">
@@ -353,21 +338,21 @@ export function Subscriptions({
                       {/* Player */}
                       <div className="flex items-center gap-2.5 flex-1 min-w-40">
                         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-100 to-emerald-50 dark:from-emerald-900/30 dark:to-emerald-900/10 flex items-center justify-center text-sm font-black text-emerald-600 dark:text-emerald-400 shrink-0">
-                          {(player?.name || '؟').charAt(0)}
+                          {(player?.name || '?').charAt(0)}
                         </div>
                         <div className="min-w-0">
                           <p className="text-sm font-black text-slate-900 dark:text-white truncate">
-                            {player?.name || 'لاعب غير معروف'}
+                            {player?.name || t.unknownPlayer}
                           </p>
                           <div className="flex items-center gap-1.5 mt-0.5">
-                            <Badge color={PLAN_COLORS[sub.planType]}>{PLAN_LABELS[sub.planType]}</Badge>
+                            <Badge color={PLAN_COLORS[sub.planType]}>{planLabel(sub.planType, lang)}</Badge>
                           </div>
                         </div>
                       </div>
 
                       {/* Amount */}
                       <div className="min-w-28">
-                        <p className="text-[11px] font-bold text-slate-400 mb-0.5 lg:hidden">المبلغ</p>
+                        <p className="text-[11px] font-bold text-slate-400 mb-0.5 lg:hidden">{t.amount}</p>
                         <p className="text-sm font-black text-slate-900 dark:text-white">
                           {sub.amount.toLocaleString()}{' '}
                           <span className="text-xs font-bold text-slate-400">{t.currency}</span>
@@ -404,7 +389,7 @@ export function Subscriptions({
 
                       {/* Payment method */}
                       <div className="hidden lg:block min-w-24 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                        {sub.paymentMethod ? PAYMENT_METHOD_LABELS[sub.paymentMethod] || sub.paymentMethod : '—'}
+                        {sub.paymentMethod ? paymentMethodLabel(sub.paymentMethod, lang) : '—'}
                       </div>
 
                       {/* Actions */}
@@ -420,7 +405,7 @@ export function Subscriptions({
                             ) : (
                               <CheckCircle className="h-3.5 w-3.5" />
                             )}{' '}
-                            {markingPaidId === sub.id ? 'جاري...' : 'تأكيد الدفع'}
+                            {markingPaidId === sub.id ? t.processing : t.confirmPayment}
                           </button>
                         )}
                         {canManage && (
@@ -428,14 +413,14 @@ export function Subscriptions({
                             <button
                               onClick={() => setEditSub(sub)}
                               className="flex items-center justify-center p-1.5 rounded-lg text-blue-600 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition cursor-pointer"
-                              title="تعديل"
+                              title={t.edit}
                             >
                               <Edit2 className="h-3.5 w-3.5" />
                             </button>
                             <button
                               onClick={() => setDeleteSubId(sub.id)}
                               className="flex items-center justify-center p-1.5 rounded-lg text-red-600 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 transition cursor-pointer"
-                              title="حذف"
+                              title={t.delete}
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </button>
@@ -456,7 +441,7 @@ export function Subscriptions({
                         <span dir="ltr">{sub.endDate}</span>
                       </div>
                       <span className="ms-auto font-semibold">
-                        {sub.paymentMethod ? PAYMENT_METHOD_LABELS[sub.paymentMethod] || sub.paymentMethod : ''}
+                        {sub.paymentMethod ? paymentMethodLabel(sub.paymentMethod, lang) : ''}
                       </span>
                     </div>
                   </div>
@@ -473,8 +458,8 @@ export function Subscriptions({
           {sortedTransactions.length === 0 ? (
             <EmptyState
               icon={<Receipt className="h-8 w-8" />}
-              title="لا توجد معاملات مالية"
-              subtitle="أضف معاملة جديدة لتسجيل الإيرادات والمصروفات"
+              title={t.noTransactions}
+              subtitle={t.noTransactionsHint}
             />
           ) : (
             <div className="space-y-2.5">
@@ -502,7 +487,7 @@ export function Subscriptions({
                         <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{tx.description}</p>
                         <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                           <Badge color={CATEGORY_COLORS[tx.category] || 'slate'}>
-                            {CATEGORY_LABELS[tx.category] || tx.category}
+                            {categoryLabel(tx.category, lang)}
                           </Badge>
                           <span className="text-[11px] text-slate-400 flex items-center gap-1">
                             <Calendar className="h-3 w-3" />
@@ -530,7 +515,7 @@ export function Subscriptions({
                         <button
                           onClick={() => setDeleteTransId(tx.id)}
                           className="flex items-center justify-center p-1.5 rounded-lg text-red-600 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 transition cursor-pointer shrink-0"
-                          title="حذف"
+                          title={t.delete}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
@@ -546,7 +531,7 @@ export function Subscriptions({
 
       {/* ---------------- Reminders & Analytics Tab ---------------- */}
       {activeTab === 'reminders' && (
-        <RemindersAnalyticsTab subscriptions={subscriptions} players={players} parents={parents} />
+        <RemindersAnalyticsTab subscriptions={subscriptions} players={players} parents={parents} lang={lang} />
       )}
 
       {/* ---------------- Modals ---------------- */}
@@ -555,6 +540,7 @@ export function Subscriptions({
           subscription={editSub}
           players={players}
           planAmounts={planAmounts}
+          lang={lang}
           onSave={handleSaveSub}
           onClose={() => {
             setShowAddSub(false);
@@ -567,6 +553,8 @@ export function Subscriptions({
         <TransactionForm
           staff={staff}
           activeRole={activeRole}
+          lang={lang}
+          recorderName={recorderName}
           onSave={handleSaveTrans}
           onClose={() => setShowAddTrans(false)}
         />
@@ -577,17 +565,17 @@ export function Subscriptions({
         open={!!deleteSubId}
         onClose={() => setDeleteSubId(null)}
         onConfirm={handleDeleteSub}
-        title="حذف الاشتراك"
-        message="هل أنت متأكد من حذف هذا الاشتراك؟ لا يمكن التراجع عن هذا الإجراء."
-        confirmLabel="حذف"
+        title={t.deleteSubscription}
+        message={t.deleteSubscriptionConfirm}
+        confirmLabel={t.delete}
       />
       <ConfirmDialog
         open={!!deleteTransId}
         onClose={() => setDeleteTransId(null)}
         onConfirm={handleDeleteTrans}
-        title="حذف المعاملة المالية"
-        message="هل أنت متأكد من حذف هذه المعاملة؟ لا يمكن التراجع عن هذا الإجراء."
-        confirmLabel="حذف"
+        title={t.deleteTransaction}
+        message={t.deleteTransactionConfirm}
+        confirmLabel={t.delete}
       />
     </div>
   );
@@ -599,15 +587,19 @@ function SubscriptionForm({
   subscription,
   players,
   planAmounts,
+  lang,
   onSave,
   onClose,
 }: {
   subscription: Subscription | null;
   players: Player[];
   planAmounts: Record<Subscription['planType'], number>;
+  lang: Lang;
   onSave: (data: Omit<Subscription, 'id'>, id?: string) => void;
   onClose: () => void;
 }) {
+  const t = tr(lang);
+  const isAr = lang === 'ar';
   const today = todayISO();
   const [form, setForm] = useState({
     playerId: subscription?.playerId || '',
@@ -641,11 +633,11 @@ function SubscriptionForm({
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     const e2: Record<string, string> = {};
-    if (!form.playerId) e2.playerId = 'يرجى اختيار لاعب';
-    if (!form.amount || form.amount <= 0) e2.amount = 'المبلغ يجب أن يكون أكبر من صفر';
-    if (!form.startDate) e2.startDate = 'تاريخ البداية مطلوب';
-    if (!form.endDate) e2.endDate = 'تاريخ النهاية مطلوب';
-    if (form.startDate && form.endDate && form.startDate > form.endDate) e2.endDate = 'تاريخ النهاية يجب أن يكون بعد البداية';
+    if (!form.playerId) e2.playerId = t.selectPlayerError;
+    if (!form.amount || form.amount <= 0) e2.amount = t.amountError;
+    if (!form.startDate) e2.startDate = t.startDateRequired;
+    if (!form.endDate) e2.endDate = t.endDateRequired;
+    if (form.startDate && form.endDate && form.startDate > form.endDate) e2.endDate = t.endDateAfterStart;
 
     setErrors(e2);
     if (Object.keys(e2).length > 0) return;
@@ -674,20 +666,20 @@ function SubscriptionForm({
   const activePlayers = players.filter((p) => p.status === 'active');
 
   return (
-    <Modal open onClose={onClose} title={subscription ? 'تعديل بيانات الاشتراك' : 'إضافة اشتراك جديد'} size="lg">
+    <Modal open onClose={onClose} title={subscription ? t.editSubscription : t.addNewSubscription} size="lg">
       <form onSubmit={handleSubmit} className="space-y-4">
         {Object.keys(errors).length > 0 && (
-          <FormError message="يرجى تصحيح الحقول المظللة بالأحمر" />
+          <FormError message={t.fixFields} />
         )}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <FormField label="اللاعب" error={errors.playerId}>
+          <FormField label={t.player} error={errors.playerId}>
             <select
               value={form.playerId}
               onChange={(e) => { set('playerId', e.target.value); setErrors((p) => ({ ...p, playerId: '' })); }}
               className={`${inputCls} ${errors.playerId ? 'border-red-400 ring-1 ring-red-400' : ''}`}
               required
             >
-              <option value="">— اختر اللاعب —</option>
+              <option value="">{t.selectPlayer}</option>
               {activePlayers.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
@@ -698,25 +690,25 @@ function SubscriptionForm({
                 (() => {
                   const p = players.find((pl) => pl.id === subscription.playerId);
                   return p ? (
-                    <option value={p.id}>{p.name} (غير نشط)</option>
+                    <option value={p.id}>{p.name} ({t.notActive})</option>
                   ) : null;
                 })()}
             </select>
           </FormField>
 
-          <FormField label="نوع الباقة">
+          <FormField label={t.planType}>
             <select
               value={form.planType}
               onChange={(e) => handlePlanChange(e.target.value as Subscription['planType'])}
               className={inputCls}
             >
-              <option value="monthly">شهري — 25</option>
-              <option value="quarterly">ربع سنوي 75</option>
-              <option value="yearly">سنوي — 300</option>
+              <option value="monthly">{planLabel('monthly', lang)} — {planAmounts.monthly}</option>
+              <option value="quarterly">{planLabel('quarterly', lang)} — {planAmounts.quarterly}</option>
+              <option value="yearly">{planLabel('yearly', lang)} — {planAmounts.yearly}</option>
             </select>
           </FormField>
 
-          <FormField label="المبلغ" error={errors.amount}>
+          <FormField label={t.amount} error={errors.amount}>
             <input
               type="number"
               min={0}
@@ -726,19 +718,19 @@ function SubscriptionForm({
             />
           </FormField>
 
-          <FormField label="طريقة الدفع">
+          <FormField label={t.paymentMethod}>
             <select
               value={form.paymentMethod}
               onChange={(e) => set('paymentMethod', e.target.value)}
               className={inputCls}
             >
-              <option value="cash">نقدي</option>
-              <option value="card">بطاقة</option>
-              <option value="transfer">تحويل بنكي</option>
+              <option value="cash">{t.cash}</option>
+              <option value="card">{t.card}</option>
+              <option value="transfer">{t.transfer}</option>
             </select>
           </FormField>
 
-          <FormField label="تاريخ البداية" error={errors.startDate}>
+          <FormField label={t.startDate} error={errors.startDate}>
             <input
               type="date"
               value={form.startDate}
@@ -747,7 +739,7 @@ function SubscriptionForm({
             />
           </FormField>
 
-          <FormField label="تاريخ النهاية" error={errors.endDate}>
+          <FormField label={t.endDate} error={errors.endDate}>
             <input
               type="date"
               value={form.endDate}
@@ -756,14 +748,14 @@ function SubscriptionForm({
             />
           </FormField>
 
-          <FormField label="حالة الدفع">
+          <FormField label={t.paymentStatus}>
             <select
               value={form.status}
               onChange={(e) => set('status', e.target.value as Subscription['status'])}
               className={inputCls}
             >
-              <option value="unpaid">غير مدفوع</option>
-              <option value="paid">مدفوع</option>
+              <option value="unpaid">{t.unpaid}</option>
+              <option value="paid">{t.paid}</option>
             </select>
           </FormField>
         </div>
@@ -771,7 +763,7 @@ function SubscriptionForm({
         {/* Auto-fill hint */}
         <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-50/60 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/20 text-[11px] text-emerald-700 dark:text-emerald-400 font-semibold">
           <DollarSign className="h-4 w-4 shrink-0" />
-          يتم تعبئة المبلغ وتاريخ النهاية تلقائياً حسب نوع الباقة، ويمكنك تعديلها يدوياً.
+          {t.autoFillHint}
         </div>
 
         <div className="flex gap-2 justify-end pt-1">
@@ -780,9 +772,9 @@ function SubscriptionForm({
             onClick={onClose}
             className="px-4 py-2 rounded-lg text-sm font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer"
           >
-            إلغاء
+            {t.cancel}
           </button>
-          <SaveButton loading={saving}>حفظ</SaveButton>
+          <SaveButton loading={saving}>{t.save}</SaveButton>
         </div>
       </form>
     </Modal>
@@ -794,16 +786,21 @@ function SubscriptionForm({
 function TransactionForm({
   staff,
   activeRole,
+  lang,
+  recorderName,
   onSave,
   onClose,
 }: {
   staff: Staff[];
   activeRole: Role;
+  lang: Lang;
+  recorderName: string;
   onSave: (data: Omit<Transaction, 'id'>) => void;
   onClose: () => void;
 }) {
+  const t = tr(lang);
   const today = todayISO();
-  const defaultRecorder = staff.find((s) => s.role === activeRole)?.name || '';
+  const defaultRecorder = staff.find((s) => s.role === activeRole)?.name || recorderName;
 
   const [form, setForm] = useState({
     type: 'revenue' as Transaction['type'],
@@ -819,8 +816,8 @@ function TransactionForm({
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     const e2: Record<string, string> = {};
-    if (!form.description.trim()) e2.description = 'الوصف مطلوب';
-    if (!form.amount || form.amount <= 0) e2.amount = 'المبلغ يجب أن يكون أكبر من صفر';
+    if (!form.description.trim()) e2.description = t.descriptionRequired;
+    if (!form.amount || form.amount <= 0) e2.amount = t.amountError;
     setErrors(e2);
     if (Object.keys(e2).length > 0) return;
 
@@ -841,38 +838,38 @@ function TransactionForm({
     setForm((f) => ({ ...f, [key]: value }));
 
   return (
-    <Modal open onClose={onClose} title="إضافة معاملة مالية" size="lg">
+    <Modal open onClose={onClose} title={t.addTransactionTitle} size="lg">
       <form onSubmit={handleSubmit} className="space-y-4">
         {Object.keys(errors).length > 0 && (
-          <FormError message="يرجى تصحيح الحقول المظللة بالأحمر" />
+          <FormError message={t.fixFields} />
         )}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <FormField label="نوع المعاملة">
+          <FormField label={t.transactionType}>
             <select
               value={form.type}
               onChange={(e) => set('type', e.target.value as Transaction['type'])}
               className={inputCls}
             >
-              <option value="revenue">إيراد</option>
-              <option value="expense">مصروف</option>
+              <option value="revenue">{t.revenue}</option>
+              <option value="expense">{t.expense}</option>
             </select>
           </FormField>
 
-          <FormField label="التصنيف">
+          <FormField label={t.category}>
             <select
               value={form.category}
               onChange={(e) => set('category', e.target.value)}
               className={inputCls}
             >
-              <option value="subscription">اشتراك</option>
-              <option value="salary">رواتب</option>
-              <option value="equipment">معدات</option>
-              <option value="rent">إيجار</option>
-              <option value="other">أخرى</option>
+              <option value="subscription">{t.catSubscription}</option>
+              <option value="salary">{t.catSalary}</option>
+              <option value="equipment">{t.catEquipment}</option>
+              <option value="rent">{t.catRent}</option>
+              <option value="other">{t.catOther}</option>
             </select>
           </FormField>
 
-          <FormField label="المبلغ" error={errors.amount}>
+          <FormField label={t.amount} error={errors.amount}>
             <input
               type="number"
               min={0}
@@ -884,7 +881,7 @@ function TransactionForm({
             />
           </FormField>
 
-          <FormField label="تاريخ المعاملة">
+          <FormField label={t.transactionDate}>
             <input
               type="date"
               value={form.transactionDate}
@@ -894,25 +891,25 @@ function TransactionForm({
           </FormField>
 
           <div className="col-span-2">
-            <FormField label="الوصف" error={errors.description}>
+            <FormField label={t.description} error={errors.description}>
               <input
                 type="text"
                 value={form.description}
                 onChange={(e) => { set('description', e.target.value); setErrors((p) => ({ ...p, description: '' })); }}
                 className={`${inputCls} ${errors.description ? 'border-red-400 ring-1 ring-red-400' : ''}`}
-                placeholder="مثال: اشتراك شهري - لاعب"
+                placeholder={t.descriptionPlaceholder}
                 required
               />
             </FormField>
           </div>
 
-          <FormField label="مسجّلة بواسطة">
+          <FormField label={t.recordedBy}>
             <select
               value={form.recordedBy}
               onChange={(e) => set('recordedBy', e.target.value)}
               className={inputCls}
             >
-              <option value="">— اختر الموظف —</option>
+              <option value="">{t.selectStaff}</option>
               {staff.map((s) => (
                 <option key={s.id} value={s.name}>
                   {s.name}
@@ -928,9 +925,9 @@ function TransactionForm({
             onClick={onClose}
             className="px-4 py-2 rounded-lg text-sm font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer"
           >
-            إلغاء
+            {t.cancel}
           </button>
-          <SaveButton loading={saving}>حفظ</SaveButton>
+          <SaveButton loading={saving}>{t.save}</SaveButton>
         </div>
       </form>
     </Modal>
@@ -943,11 +940,15 @@ function RemindersAnalyticsTab({
   subscriptions,
   players,
   parents,
+  lang,
 }: {
   subscriptions: Subscription[];
   players: Player[];
   parents: Parent[];
+  lang: Lang;
 }) {
+  const t = tr(lang);
+  const isAr = lang === 'ar';
   const stats = reminderStats(subscriptions, players, parents);
   const reminders = getSubscriptionReminders(subscriptions, players, parents);
 
@@ -974,41 +975,41 @@ function RemindersAnalyticsTab({
   const methodEntries = Object.entries(methodCounts).sort((a, b) => b[1] - a[1]);
 
   return (
-    <div className="space-y-5" dir="rtl">
+    <div className="space-y-5" dir={isAr ? 'rtl' : 'ltr'}>
       {/* KPI row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <StatCard
           icon={<AlertCircle className="h-5 w-5" />}
-          label="اشتراكات متأخرة"
+          label={t.overdueSubs}
           value={stats.overdue}
           color="red"
-          sublabel="تحتاج متابعة عاجلة"
+          sublabel={t.overdueSubsHint}
         />
         <StatCard
           icon={<Clock className="h-5 w-5" />}
-          label="قيد الانتهاء"
+          label={t.expiringSubs}
           value={stats.expiring}
           color="amber"
-          sublabel="تنتهي قريباً"
+          sublabel={t.expiringSubsHint}
         />
         <StatCard
           icon={<DollarSign className="h-5 w-5" />}
-          label="إجمالي المستحقات"
-          value={`${stats.totalUnpaidAmount.toLocaleString()} د.ب`}
+          label={t.totalDue}
+          value={`${stats.totalUnpaidAmount.toLocaleString()} ${t.currency}`}
           color="emerald"
-          sublabel="مبالغ غير محصّلة"
+          sublabel={t.totalDueHint}
         />
         <StatCard
           icon={<TrendingUp className="h-5 w-5" />}
-          label="نسبة التحصيل"
+          label={t.collectionRate}
           value={`${collectionRate}%`}
           color="blue"
-          sublabel={`${paidSubs} من ${totalSubs}`}
+          sublabel={`${paidSubs} / ${totalSubs}`}
         />
       </div>
 
       {/* Reminders panel (full) */}
-      <RemindersPanel reminders={reminders} />
+      <RemindersPanel reminders={reminders} lang={lang} />
 
       {/* Analytics section */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm">
@@ -1016,26 +1017,26 @@ function RemindersAnalyticsTab({
           <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 flex items-center justify-center">
             <TrendingUp className="h-4 w-4" />
           </div>
-          <h3 className="text-sm font-black text-slate-900 dark:text-white">تحليلات الاشتراكات</h3>
+          <h3 className="text-sm font-black text-slate-900 dark:text-white">{t.subscriptionAnalytics}</h3>
         </div>
 
         {/* Bar chart: paid vs unpaid per plan type */}
         <div className="space-y-4 mb-6">
           <p className="text-xs font-bold text-slate-500 dark:text-slate-400">
-            المدفوع مقابل غير المدفوع حسب نوع الباقة
+            {t.paidVsUnpaidByPlan}
           </p>
           {chartData.map((d) => (
             <div key={d.plan}>
               <div className="flex items-center justify-between mb-1.5">
-                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{PLAN_LABELS[d.plan]}</span>
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{planLabel(d.plan, lang)}</span>
                 <span className="text-[11px] text-slate-400 font-semibold">
-                  {d.paid} مدفوع · {d.unpaid} غير مدفوع
+                  {d.paid} {t.paid} · {d.unpaid} {t.unpaid}
                 </span>
               </div>
               <div className="space-y-1.5">
                 {/* Paid bar */}
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-bold text-emerald-600 w-14 shrink-0">مدفوع</span>
+                  <span className="text-[10px] font-bold text-emerald-600 w-14 shrink-0">{t.paid}</span>
                   <div className="flex-1 bg-slate-100 dark:bg-slate-800 rounded-full h-3 overflow-hidden">
                     <div
                       className="h-full bg-emerald-500 rounded-full transition-all"
@@ -1048,7 +1049,7 @@ function RemindersAnalyticsTab({
                 </div>
                 {/* Unpaid bar */}
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-bold text-red-600 w-14 shrink-0">غير مدفوع</span>
+                  <span className="text-[10px] font-bold text-red-600 w-14 shrink-0">{t.unpaid}</span>
                   <div className="flex-1 bg-slate-100 dark:bg-slate-800 rounded-full h-3 overflow-hidden">
                     <div
                       className="h-full bg-red-500 rounded-full transition-all"
@@ -1066,14 +1067,14 @@ function RemindersAnalyticsTab({
 
         {/* Payment patterns */}
         <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
-          <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-3">أنماط الدفع</p>
+          <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-3">{t.paymentPatterns}</p>
           <div className="flex items-center gap-2 flex-wrap">
             {methodEntries.map(([method, count]) => (
               <div
                 key={method}
                 className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700"
               >
-                <Badge color="blue">{PAYMENT_METHOD_LABELS[method] || method}</Badge>
+                <Badge color="blue">{paymentMethodLabel(method, lang)}</Badge>
                 <span className="text-xs font-black text-slate-700 dark:text-slate-200">{count}</span>
               </div>
             ))}

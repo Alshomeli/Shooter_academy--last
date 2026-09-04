@@ -19,26 +19,27 @@ const inputCls =
 
 export function SettingsView({ settings, onSettingsChange, activeRole, lang }: SettingsProps) {
   const t = tr(lang);
+  const isAr = lang === 'ar';
   const [form, setForm] = useState<Settings>(settings);
   const [saved, setSaved] = useState(false);
 
   /* --------------------------- Access control --------------------------- */
   if (activeRole !== 'manager') {
     return (
-      <div className="space-y-5" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+      <div className="space-y-5" dir={isAr ? 'rtl' : 'ltr'}>
         <PageHeader
           title={t.settings}
-          subtitle="تهيئة الإعدادات العامة للأكاديمية والرسوم المعتمدة"
+          subtitle={isAr ? 'تهيئة الإعدادات العامة للأكاديمية والرسوم المعتمدة' : 'Configure general academy settings and approved fees'}
         />
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-10 shadow-sm text-center">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-red-100 dark:bg-red-900/30 text-red-500 mb-4">
             <Info className="h-8 w-8" />
           </div>
           <h3 className="text-base font-black text-slate-900 dark:text-white mb-1.5">
-            صلاحية غير كافية
+            {t.insufficientPermissions}
           </h3>
           <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto leading-relaxed">
-            هذه الصفحة متاحة فقط لمدير النظام. يرجى التواصل مع الإدارة للوصول إلى إعدادات الأكاديمية.
+            {isAr ? 'هذه الصفحة متاحة فقط لمدير النظام. يرجى التواصل مع الإدارة للوصول إلى إعدادات الأكاديمية.' : 'This page is only available to the system manager. Please contact administration to access academy settings.'}
           </p>
         </div>
       </div>
@@ -58,10 +59,10 @@ export function SettingsView({ settings, onSettingsChange, activeRole, lang }: S
 
   /* ------------------------------- Render ------------------------------- */
   return (
-    <div className="space-y-5" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+    <div className="space-y-5" dir={isAr ? 'rtl' : 'ltr'}>
       <PageHeader
         title={t.settings}
-        subtitle="تهيئة الإعدادات العامة للأكاديمية والرسوم المعتمدة"
+        subtitle={isAr ? 'تهيئة الإعدادات العامة للأكاديمية والرسوم المعتمدة' : 'Configure general academy settings and approved fees'}
       />
 
       {/* Form card */}
@@ -77,10 +78,9 @@ export function SettingsView({ settings, onSettingsChange, activeRole, lang }: S
           <div className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
             <p className="font-black text-slate-700 dark:text-slate-200 mb-0.5 flex items-center gap-1.5">
               <SettingsIcon className="h-3.5 w-3.5" />
-              ملاحظات حول الإعدادات
+              {isAr ? 'ملاحظات حول الإعدادات' : 'Notes about settings'}
             </p>
-            يتم تطبيق هذه الإعدادات على كافة أنحاء النظام بما في ذلك الفواتير، التقارير،
-            وقوائم اللاعبين. تأكد من صحة البيانات قبل الحفظ.
+            {isAr ? 'يتم تطبيق هذه الإعدادات على كافة أنحاء النظام بما في ذلك الفواتير، التقارير، وقوائم اللاعبين. تأكد من صحة البيانات قبل الحفظ.' : 'These settings apply across the entire system including invoices, reports, and player lists. Verify data before saving.'}
           </div>
         </div>
 
@@ -88,8 +88,8 @@ export function SettingsView({ settings, onSettingsChange, activeRole, lang }: S
         <SectionHeader
           icon={<Building2 className="h-5 w-5" />}
           color="emerald"
-          title="هوية الأكاديمية"
-          subtitle="الاسم والشعار وبيانات التواصل"
+          title={isAr ? 'هوية الأكاديمية' : 'Academy Identity'}
+          subtitle={isAr ? 'الاسم والشعار وبيانات التواصل' : 'Name, logo and contact info'}
         />
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
@@ -97,7 +97,7 @@ export function SettingsView({ settings, onSettingsChange, activeRole, lang }: S
           <div className="md:col-span-2 flex items-end gap-3">
             <div className="shrink-0">
               <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
-                الشعار
+                {isAr ? 'الشعار' : 'Logo'}
               </label>
               <div className="w-14 h-11 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-2xl">
                 {form.logoUrl || '⚽'}
@@ -105,19 +105,19 @@ export function SettingsView({ settings, onSettingsChange, activeRole, lang }: S
             </div>
             <div className="flex-1">
               <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
-                {t.name} الأكاديمية
+                {isAr ? 'اسم الأكاديمية' : 'Academy name'}
               </label>
               <input
                 value={form.name}
                 onChange={(e) => set('name', e.target.value)}
                 className={inputCls}
-                placeholder="أكاديمية ..."
+                placeholder={isAr ? 'أكاديمية ...' : 'Academy...'}
                 required
               />
             </div>
             <div className="w-28 shrink-0">
               <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
-                رمز الشعار
+                {isAr ? 'رمز الشعار' : 'Logo emoji'}
               </label>
               <input
                 value={form.logoUrl}
@@ -151,12 +151,12 @@ export function SettingsView({ settings, onSettingsChange, activeRole, lang }: S
           </Field>
 
           <div className="md:col-span-2">
-            <Field icon={<MapPin className="h-3.5 w-3.5" />} label="العنوان">
+            <Field icon={<MapPin className="h-3.5 w-3.5" />} label={t.address}>
               <input
                 value={form.address}
                 onChange={(e) => set('address', e.target.value)}
                 className={inputCls}
-                placeholder="المملكة، المدينة، الشارع"
+                placeholder={isAr ? 'المملكة، المدينة، الشارع' : 'Country, city, street'}
               />
             </Field>
           </div>
@@ -166,8 +166,8 @@ export function SettingsView({ settings, onSettingsChange, activeRole, lang }: S
         <SectionHeader
           icon={<DollarSign className="h-5 w-5" />}
           color="amber"
-          title="رسوم الاشتراك"
-          subtitle="القيم الافتراضية المعتمدة للخطط"
+          title={isAr ? 'رسوم الاشتراك' : 'Subscription fees'}
+          subtitle={isAr ? 'القيم الافتراضية المعتمدة للخطط' : 'Default approved plan values'}
         />
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
@@ -193,7 +193,7 @@ export function SettingsView({ settings, onSettingsChange, activeRole, lang }: S
 
         <p className="flex items-center gap-1.5 text-[11px] text-slate-400 mb-7">
           <Calendar className="h-3.5 w-3.5" />
-          تُحتسب هذه الرسوم لكل لاعب وفق الفترة الزمنية المحددة للخطة.
+          {isAr ? 'تُحتسب هذه الرسوم لكل لاعب وفق الفترة الزمنية المحددة للخطة.' : 'These fees are charged per player according to the plan period.'}
         </p>
 
         {/* ---------------------------- Actions ---------------------------- */}
@@ -218,7 +218,7 @@ export function SettingsView({ settings, onSettingsChange, activeRole, lang }: S
           <span className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center">
             <Save className="h-3.5 w-3.5" />
           </span>
-          <span className="text-sm font-bold">تم حفظ الإعدادات بنجاح</span>
+          <span className="text-sm font-bold">{t.settingsSaved}</span>
         </div>
       )}
     </div>

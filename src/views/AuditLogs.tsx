@@ -78,7 +78,7 @@ export function AuditLogs({ auditLogs, loginLogs, activeRole, lang }: AuditLogsP
       <div className="text-center py-20" dir={isAr ? 'rtl' : 'ltr'}>
         <Shield className="h-12 w-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
         <p className="text-sm font-bold text-slate-500 dark:text-slate-400">
-          {isAr ? 'هذه الصفحة متاحة فقط لمدير النظام' : 'This page is only available to the system manager'}
+          {isAr ? t.managerOnly : 'This page is only available to the system manager'}
         </p>
       </div>
     );
@@ -96,14 +96,14 @@ export function AuditLogs({ auditLogs, loginLogs, activeRole, lang }: AuditLogsP
   };
 
   const tabs: { id: TabId; label: string; icon: typeof FileText }[] = [
-    { id: 'activity', label: isAr ? 'سجل النشاطات' : 'Activity Log', icon: FileText },
-    { id: 'logins', label: isAr ? 'سجل تسجيل الدخول' : 'Login Log', icon: LogIn },
+    { id: 'activity', label: t.activityLog, icon: FileText },
+    { id: 'logins', label: t.loginLog, icon: LogIn },
   ];
 
   return (
     <div className="space-y-5" dir={isAr ? 'rtl' : 'ltr'}>
       <PageHeader
-        title={isAr ? 'سجل التدقيق والمراقبة' : 'Audit & Monitoring Log'}
+        title={t.auditLogs}
         subtitle={`${filtered.length} ${isAr ? 'سجل' : 'records'}`}
       >
         <button
@@ -111,7 +111,7 @@ export function AuditLogs({ auditLogs, loginLogs, activeRole, lang }: AuditLogsP
           className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm font-bold transition cursor-pointer"
         >
           <Download className="h-4 w-4" />
-          {isAr ? 'تصدير CSV' : 'Export CSV'}
+          {isAr ? 'تصدير CSV' : t.exportCsv}
         </button>
       </PageHeader>
 
@@ -144,7 +144,7 @@ export function AuditLogs({ auditLogs, loginLogs, activeRole, lang }: AuditLogsP
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder={isAr ? 'بحث في السجلات...' : 'Search logs...'}
+            placeholder={t.searchLogs}
             className="w-full bg-white dark:bg-slate-900 text-sm py-2.5 pr-10 pl-3 rtl:pr-10 rtl:pl-3 ltr:pl-10 ltr:pr-3 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-800 dark:text-white"
           />
         </div>
@@ -177,19 +177,19 @@ export function AuditLogs({ auditLogs, loginLogs, activeRole, lang }: AuditLogsP
               <thead>
                 <tr className="bg-slate-50 dark:bg-slate-800/50">
                   <th className="text-right px-4 py-3 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    {isAr ? 'الوقت' : 'Time'}
+                    {t.timestamp}
                   </th>
                   <th className="text-right px-4 py-3 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    {isAr ? 'المستخدم' : 'User'}
+                    {t.userName}
                   </th>
                   <th className="text-right px-4 py-3 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    {isAr ? 'الدور' : 'Role'}
+                    {t.userRole}
                   </th>
                   <th className="text-right px-4 py-3 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    {isAr ? 'الإجراء' : 'Action'}
+                    {t.action}
                   </th>
                   <th className="text-right px-4 py-3 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    {isAr ? 'التفاصيل' : 'Details'}
+                    {t.details}
                   </th>
                 </tr>
               </thead>

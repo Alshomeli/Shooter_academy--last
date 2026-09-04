@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import type { Player, Team, Lang, Role } from '@/types';
 import { Badge, Modal, ConfirmDialog, PageHeader, EmptyState, FormField, FormError, SaveButton, inputCls } from '@/components/ui';
-import { tr } from '@/lib/i18n';
+import { tr, positionLabel } from '@/lib/i18n';
 import { ContactLinks } from '@/components/ContactLinks';
 import { DocumentUpload } from '@/components/DocumentUpload';
 import { fetchAllPlayerFiles } from '@/lib/uploads';
@@ -31,6 +31,7 @@ const POSITION_COLORS: Record<string, 'red' | 'blue' | 'emerald' | 'amber'> = {
 
 export function Players({ players, teams, onPlayersChange, activeRole, lang }: PlayersProps) {
   const t = tr(lang);
+  const isAr = lang === 'ar';
   const [search, setSearch] = useState('');
   const deferredSearch = useDeferredValue(search);
   const [teamFilter, setTeamFilter] = useState('all');
@@ -72,7 +73,7 @@ export function Players({ players, teams, onPlayersChange, activeRole, lang }: P
     });
   }, [players, deferredSearch, teamFilter, statusFilter]);
 
-  const teamName = (id: string) => teams.find((t) => t.id === id)?.name || 'غير محدد';
+  const teamName = (id: string) => teams.find((t) => t.id === id)?.name || (isAr ? 'غير محدد' : 'Not specified');
 
   const handleSave = (data: Omit<Player, 'id'>, id?: string) => {
     if (id) {
@@ -91,7 +92,7 @@ export function Players({ players, teams, onPlayersChange, activeRole, lang }: P
 
   return (
     <div className="space-y-5 text-right" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
-      <PageHeader title={t.players} subtitle={`${players.length} لاعب مسجل في الأكاديمية`}>
+      <PageHeader title={t.players} subtitle={isAr ? `${players.length} لاعب مسجل في الأكاديمية` : `${players.length} players registered`}>
         {canEdit && (
           <button
             onClick={() => setShowAdd(true)}
@@ -111,24 +112,24 @@ export function Players({ players, teams, onPlayersChange, activeRole, lang }: P
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="ابحث باسم اللاعب أو ولي الأمر..."
+            placeholder={isAr ? 'ابحث باسم اللاعب أو ولي الأمر...' : 'Search by player or parent name...'}
             className="w-full bg-white dark:bg-slate-900 text-sm py-2.5 pr-10 pl-4 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-800 dark:text-white"
           />
         </div>
         <select value={teamFilter} onChange={(e) => setTeamFilter(e.target.value)} className="px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-semibold text-slate-700 dark:text-slate-200 cursor-pointer">
-          <option value="all">كل الفرق</option>
+          <option value="all">{isAr ? 'كل الفرق' : 'All teams'}</option>
           {teams.map((tm) => <option key={tm.id} value={tm.id}>{tm.name}</option>)}
         </select>
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-semibold text-slate-700 dark:text-slate-200 cursor-pointer">
-          <option value="all">كل الحالات</option>
-          <option value="active">نشط</option>
-          <option value="inactive">موقوف</option>
+          <option value="all">{isAr ? 'كل الحالات' : 'All statuses'}</option>
+          <option value="active">{t.active}</option>
+          <option value="inactive">{t.inactive}</option>
         </select>
       </div>
 
       {/* Players grid */}
       {filtered.length === 0 ? (
-        <EmptyState icon={<Users className="h-8 w-8" />} title="لا يوجد لاعبون مطابقون" subtitle="جرّب تعديل الفلاتر أو أضف لاعباً جديداً" />
+        <EmptyState icon={<Users className="h-8 w-8" />} title={isAr ? 'لا يوجد لاعبون مطابقون' : 'No matching players'} subtitle={isAr ? 'جرّب تعديل الفلاتر أو أضف لاعباً جديداً' : 'Try adjusting filters or add a new player'} />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filtered.map((p) => (
@@ -163,7 +164,7 @@ export function Players({ players, teams, onPlayersChange, activeRole, lang }: P
               </div>
 
               <div className="flex items-center gap-2 mb-3">
-                <Badge color={POSITION_COLORS[p.position] || 'slate'}>{p.position}</Badge>
+                <Badge color={POSITION_COLORS[p.position] || 'slate'}>{positionLabel(p.position, lang)}</Badge>
                 <span className="text-[11px] text-slate-400 font-semibold">{p.birthDate}</span>
               </div>
 
@@ -181,12 +182,12 @@ export function Players({ players, teams, onPlayersChange, activeRole, lang }: P
               <div className="flex items-center gap-1 mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
                 <ContactLinks phone={p.parentPhone} email={p.parentEmail} small />
                 <button onClick={() => setViewPlayer(p)} className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[11px] font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer">
-                  <Eye className="h-3.5 w-3.5" /> عرض
+                  <Eye className="h-3.5 w-3.5" /> {isAr ? 'عرض' : 'View'}
                 </button>
                 {canEdit && (
                   <>
                     <button onClick={() => setEditPlayer(p)} className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[11px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition cursor-pointer">
-                      <Edit2 className="h-3.5 w-3.5" /> تعديل
+                      <Edit2 className="h-3.5 w-3.5" /> {t.edit}
                     </button>
                     <button onClick={() => setDeleteId(p.id)} className="flex items-center justify-center gap-1 py-1.5 px-2.5 rounded-lg text-[11px] font-bold text-red-600 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 transition cursor-pointer">
                       <Trash2 className="h-3.5 w-3.5" />
@@ -208,13 +209,14 @@ export function Players({ players, teams, onPlayersChange, activeRole, lang }: P
           activeRole={activeRole}
           onSave={handleSave}
           onClose={() => { setShowAdd(false); setEditPlayer(null); }}
+          lang={lang}
         />
       )}
 
       {/* View modal */}
       {viewPlayer && (
-        <Modal open onClose={() => setViewPlayer(null)} title="ملف اللاعب" size="lg">
-          <PlayerDetail player={viewPlayer} team={teams.find((t) => t.id === viewPlayer.teamId)} />
+        <Modal open onClose={() => setViewPlayer(null)} title={isAr ? 'ملف اللاعب' : 'Player Profile'} size="lg">
+          <PlayerDetail player={viewPlayer} team={teams.find((t) => t.id === viewPlayer.teamId)} lang={lang} />
         </Modal>
       )}
 
@@ -223,22 +225,25 @@ export function Players({ players, teams, onPlayersChange, activeRole, lang }: P
         open={!!deleteId}
         onClose={() => setDeleteId(null)}
         onConfirm={handleDelete}
-        title="حذف اللاعب"
-        message="هل أنت متأكد من حذف هذا اللاعب؟ لا يمكن التراجع عن هذا الإجراء."
-        confirmLabel="حذف"
+        title={t.deletePlayer}
+        message={t.deletePlayerConfirm}
+        confirmLabel={t.delete}
       />
     </div>
   );
 }
 
-function PlayerForm({ player, teams, players, activeRole, onSave, onClose }: {
+function PlayerForm({ player, teams, players, activeRole, onSave, onClose, lang }: {
   player: Player | null;
   teams: Team[];
   players: Player[];
   activeRole: Role;
   onSave: (data: Omit<Player, 'id'>, id?: string) => void;
   onClose: () => void;
+  lang: Lang;
 }) {
+  const t = tr(lang);
+  const isAr = lang === 'ar';
   const canEditSensitive = activeRole === 'manager';
   const [form, setForm] = useState({
     name: player?.name || '',
@@ -261,11 +266,11 @@ function PlayerForm({ player, teams, players, activeRole, onSave, onClose }: {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     const e2: Record<string, string> = {};
-    const nameCheck = validateRequired(form.name, 'الاسم');
+    const nameCheck = validateRequired(form.name, t.name);
     if (!nameCheck.valid) e2.name = nameCheck.message!;
-    const teamCheck = validateRequired(form.teamId, 'الفريق');
+    const teamCheck = validateRequired(form.teamId, t.team);
     if (!teamCheck.valid) e2.teamId = teamCheck.message!;
-    const jerseyCheck = validateNumber(form.jerseyNumber, 1, 99, 'رقم القميص');
+    const jerseyCheck = validateNumber(form.jerseyNumber, 1, 99, t.jerseyNumber);
     if (!jerseyCheck.valid) e2.jerseyNumber = jerseyCheck.message!;
     else {
       const uniqueCheck = validateJerseyUnique(form.jerseyNumber, players, player?.id);
@@ -286,67 +291,69 @@ function PlayerForm({ player, teams, players, activeRole, onSave, onClose }: {
   };
 
   return (
-    <Modal open onClose={onClose} title={player ? 'تعديل بيانات اللاعب' : 'إضافة لاعب جديد'} size="lg">
+    <Modal open onClose={onClose} title={player ? t.editPlayerTitle : t.addPlayerTitle} size="lg">
       <form onSubmit={handleSubmit} className="space-y-4">
         {Object.keys(errors).length > 0 && (
-          <FormError message="يرجى تصحيح الحقول المظللة بالأحمر" />
+          <FormError message={t.fixFields} />
         )}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <FormField label="الاسم بالكامل" error={errors.name}>
+          <FormField label={isAr ? 'الاسم بالكامل' : 'Full name'} error={errors.name}>
             <input value={form.name} onChange={(e) => { setForm({ ...form, name: e.target.value }); setErrors((p) => ({ ...p, name: '' })); }} className={`${inputCls} ${errors.name ? 'border-red-400 ring-1 ring-red-400' : ''}`} required />
           </FormField>
-          <FormField label="تاريخ الميلاد">
+          <FormField label={t.birthDate}>
             <input type="date" value={form.birthDate} onChange={(e) => setForm({ ...form, birthDate: e.target.value })} className={inputCls} />
           </FormField>
-          <FormField label="رقم القميص" error={errors.jerseyNumber}>
+          <FormField label={t.jerseyNumber} error={errors.jerseyNumber}>
             <input type="number" min={1} max={99} value={form.jerseyNumber} onChange={(e) => { setForm({ ...form, jerseyNumber: parseInt(e.target.value) || 1 }); setErrors((p) => ({ ...p, jerseyNumber: '' })); }} className={`${inputCls} ${errors.jerseyNumber ? 'border-red-400 ring-1 ring-red-400' : ''}`} />
           </FormField>
-          <FormField label="المركز الفني">
+          <FormField label={t.position}>
             <select value={form.position} onChange={(e) => setForm({ ...form, position: e.target.value })} className={inputCls}>
-              {POSITIONS.map((p) => <option key={p} value={p}>{p}</option>)}
+              {POSITIONS.map((p) => <option key={p} value={p}>{positionLabel(p, lang)}</option>)}
             </select>
           </FormField>
-          <FormField label="فئة الفريق" error={errors.teamId}>
+          <FormField label={isAr ? 'فئة الفريق' : 'Team'} error={errors.teamId}>
             <select value={form.teamId} onChange={(e) => { setForm({ ...form, teamId: e.target.value }); setErrors((p) => ({ ...p, teamId: '' })); }} className={`${inputCls} ${errors.teamId ? 'border-red-400 ring-1 ring-red-400' : ''}`} required disabled={!canEditSensitive}>
               {teams.map((tm) => <option key={tm.id} value={tm.id}>{tm.name}</option>)}
             </select>
-            {!canEditSensitive && <p className="text-[10px] text-amber-500 mt-1">يُتاح تعديل الفريق للمدير فقط</p>}
+            {!canEditSensitive && <p className="text-[10px] text-amber-500 mt-1">{isAr ? 'يُتاح تعديل الفريق للمدير فقط' : 'Team editing is restricted to managers'}</p>}
           </FormField>
-          <FormField label="فصيلة الدم">
+          <FormField label={t.bloodType}>
             <select value={form.bloodType} onChange={(e) => setForm({ ...form, bloodType: e.target.value })} className={inputCls}>
               {BLOOD_TYPES.map((b) => <option key={b} value={b}>{b}</option>)}
             </select>
           </FormField>
-          <FormField label="اسم ولي الأمر">
+          <FormField label={t.parentName}>
             <input value={form.parentName} onChange={(e) => setForm({ ...form, parentName: e.target.value })} className={inputCls} />
           </FormField>
-          <FormField label="هاتف ولي الأمر" error={errors.parentPhone}>
+          <FormField label={t.parentPhone} error={errors.parentPhone}>
             <input value={form.parentPhone} onChange={(e) => { setForm({ ...form, parentPhone: e.target.value }); setErrors((p) => ({ ...p, parentPhone: '' })); }} className={`${inputCls} ${errors.parentPhone ? 'border-red-400 ring-1 ring-red-400' : ''}`} dir="ltr" />
           </FormField>
-          <FormField label="بريد ولي الأمر" error={errors.parentEmail}>
+          <FormField label={isAr ? 'بريد ولي الأمر' : 'Parent email'} error={errors.parentEmail}>
             <input type="email" value={form.parentEmail} onChange={(e) => { setForm({ ...form, parentEmail: e.target.value }); setErrors((p) => ({ ...p, parentEmail: '' })); }} className={`${inputCls} ${errors.parentEmail ? 'border-red-400 ring-1 ring-red-400' : ''}`} dir="ltr" disabled={!canEditSensitive} />
-            {!canEditSensitive && <p className="text-[10px] text-amber-500 mt-1">يُتاح تعديل البريد للمدير فقط</p>}
+            {!canEditSensitive && <p className="text-[10px] text-amber-500 mt-1">{isAr ? 'يُتاح تعديل البريد للمدير فقط' : 'Email editing is restricted to managers'}</p>}
           </FormField>
-          <FormField label="الحالة">
+          <FormField label={t.status}>
             <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as 'active' | 'inactive' })} className={inputCls}>
-              <option value="active">نشط</option>
-              <option value="inactive">موقوف</option>
+              <option value="active">{t.active}</option>
+              <option value="inactive">{t.inactive}</option>
             </select>
           </FormField>
         </div>
-        <FormField label="ملاحظات">
+        <FormField label={t.notes}>
           <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} className={inputCls} />
         </FormField>
         <div className="flex gap-2 justify-end pt-2">
-          <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer">إلغاء</button>
-          <SaveButton loading={saving}>حفظ</SaveButton>
+          <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer">{t.cancel}</button>
+          <SaveButton loading={saving}>{t.save}</SaveButton>
         </div>
       </form>
     </Modal>
   );
 }
 
-function PlayerDetail({ player, team }: { player: Player; team?: Team }) {
+function PlayerDetail({ player, team, lang }: { player: Player; team?: Team; lang: Lang }) {
+  const t = tr(lang);
+  const isAr = lang === 'ar';
   return (
     <div className="space-y-5">
       <div className="flex items-center gap-4">
@@ -355,23 +362,23 @@ function PlayerDetail({ player, team }: { player: Player; team?: Team }) {
         </div>
         <div>
           <h3 className="text-lg font-black text-slate-900 dark:text-white">{player.name}</h3>
-          <p className="text-sm text-slate-400">{team?.name || 'غير محدد'}</p>
+          <p className="text-sm text-slate-400">{team?.name || (isAr ? 'غير محدد' : 'Not specified')}</p>
         </div>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <InfoRow label="المركز" value={player.position} />
-        <InfoRow label="تاريخ الميلاد" value={player.birthDate} />
-        <InfoRow label="فصيلة الدم" value={player.bloodType} />
-        <InfoRow label="رقم القميص" value={`#${player.jerseyNumber}`} />
-        <InfoRow label="ولي الأمر" value={player.parentName} />
-        <InfoRow label="هاتف ولي الأمر" value={player.parentPhone} ltr />
-        <InfoRow label="بريد ولي الأمر" value={player.parentEmail} ltr />
-        <InfoRow label="تاريخ الانضمام" value={player.joinedDate} />
+        <InfoRow label={t.position} value={positionLabel(player.position, lang)} />
+        <InfoRow label={t.birthDate} value={player.birthDate} />
+        <InfoRow label={t.bloodType} value={player.bloodType} />
+        <InfoRow label={t.jerseyNumber} value={`#${player.jerseyNumber}`} />
+        <InfoRow label={isAr ? 'ولي الأمر' : 'Parent'} value={player.parentName} />
+        <InfoRow label={t.parentPhone} value={player.parentPhone} ltr />
+        <InfoRow label={isAr ? 'بريد ولي الأمر' : 'Parent email'} value={player.parentEmail} ltr />
+        <InfoRow label={isAr ? 'تاريخ الانضمام' : 'Joined date'} value={player.joinedDate} />
       </div>
       <ContactLinks phone={player.parentPhone} email={player.parentEmail} />
       {player.notes && (
         <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 text-sm text-slate-600 dark:text-slate-300">
-          <p className="text-xs font-bold text-slate-400 mb-1">ملاحظات</p>
+          <p className="text-xs font-bold text-slate-400 mb-1">{t.notes}</p>
           {player.notes}
         </div>
       )}
@@ -380,14 +387,14 @@ function PlayerDetail({ player, team }: { player: Player; team?: Team }) {
       <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
         <div className="flex items-center gap-2 mb-3">
           <FileText className="h-4 w-4 text-blue-500" />
-          <h4 className="text-sm font-black text-slate-900 dark:text-white">مستندات اللاعب</h4>
+          <h4 className="text-sm font-black text-slate-900 dark:text-white">{isAr ? 'مستندات اللاعب' : 'Player documents'}</h4>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="p-4 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20">
-            <DocumentUpload playerId={player.id} category="photo" label="صور اللاعب" compact />
+            <DocumentUpload playerId={player.id} category="photo" label={isAr ? 'صور اللاعب' : 'Player photos'} compact />
           </div>
           <div className="p-4 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20">
-            <DocumentUpload playerId={player.id} category="document" label="مستندات PDF / PNG" />
+            <DocumentUpload playerId={player.id} category="document" label={isAr ? 'مستندات PDF / PNG' : 'PDF / PNG documents'} />
           </div>
         </div>
       </div>

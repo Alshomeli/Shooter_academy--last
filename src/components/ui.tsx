@@ -145,10 +145,10 @@ interface ConfirmDialogProps {
   cancelLabel?: string;
 }
 
-export function ConfirmDialog({ open, onClose, onConfirm, title, message, confirmLabel = 'تأكيد', cancelLabel = 'إلغاء' }: ConfirmDialogProps) {
+export function ConfirmDialog({ open, onClose, onConfirm, title, message, confirmLabel = 'Confirm', cancelLabel = 'Cancel' }: ConfirmDialogProps) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4" dir="rtl">
+    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm animate-fadeIn" onClick={onClose} />
       <div className="relative w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 animate-fadeIn">
         <h3 className="text-base font-black text-slate-900 dark:text-white mb-2">{title}</h3>
@@ -208,7 +208,7 @@ export function SaveButton({ loading, children, disabled }: SaveButtonProps) {
       className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 disabled:cursor-not-allowed transition cursor-pointer"
     >
       {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-      {loading ? 'جاري الحفظ...' : children}
+      {loading ? 'Saving...' : children}
     </button>
   );
 }

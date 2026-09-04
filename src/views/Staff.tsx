@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import type { Staff, Team, Player, Lang, Role } from '@/types';
 import { Badge, Modal, ConfirmDialog, PageHeader, EmptyState, SaveButton } from '@/components/ui';
-import { tr } from '@/lib/i18n';
+import { tr, roleLabel } from '@/lib/i18n';
 import { ContactLinks } from '@/components/ContactLinks';
 
 interface StaffProps {
@@ -17,14 +17,6 @@ interface StaffProps {
   lang: Lang;
 }
 
-const ROLE_LABELS: Record<Role, string> = {
-  manager: 'مدير النظام',
-  accountant: 'المحاسب المالي',
-  coach: 'الكابتن / المدرب',
-  receptionist: 'موظف الاستقبال',
-  parent: 'ولي الأمر',
-};
-
 const ROLE_COLORS: Record<string, 'emerald' | 'blue' | 'amber' | 'slate'> = {
   manager: 'emerald',
   accountant: 'blue',
@@ -32,16 +24,16 @@ const ROLE_COLORS: Record<string, 'emerald' | 'blue' | 'amber' | 'slate'> = {
   receptionist: 'slate',
 };
 
-const ROLE_FILTERS: Array<{ value: string; label: string }> = [
-  { value: 'all', label: 'كل الأدوار' },
-  { value: 'manager', label: 'مدير النظام' },
-  { value: 'accountant', label: 'المحاسب المالي' },
-  { value: 'coach', label: 'الكابتن / المدرب' },
-  { value: 'receptionist', label: 'موظف الاستقبال' },
-];
-
 export function StaffView({ staff, teams, players, onStaffChange, activeRole, lang }: StaffProps) {
   const t = tr(lang);
+  const isAr = lang === 'ar';
+  const ROLE_FILTERS: Array<{ value: string; label: string }> = [
+    { value: 'all', label: isAr ? 'كل الأدوار' : 'All roles' },
+    { value: 'manager', label: t.manager },
+    { value: 'accountant', label: t.accountant },
+    { value: 'coach', label: t.coach },
+    { value: 'receptionist', label: t.receptionist },
+  ];
   const [search, setSearch] = useState('');
   const deferredSearch = useDeferredValue(search);
   const [roleFilter, setRoleFilter] = useState('all');
@@ -93,7 +85,7 @@ export function StaffView({ staff, teams, players, onStaffChange, activeRole, la
 
   return (
     <div className="space-y-5" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
-      <PageHeader title={t.staff} subtitle={`${staff.length} موظف ومدرب مسجل في الأكاديمية`}>
+      <PageHeader title={t.staff} subtitle={isAr ? `${staff.length} موظف ومدرب مسجل في الأكاديمية` : `${staff.length} staff & coaches registered`}>
         {canManage && (
           <button
             onClick={() => setShowAdd(true)}
@@ -113,7 +105,7 @@ export function StaffView({ staff, teams, players, onStaffChange, activeRole, la
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="ابحث بالاسم أو البريد أو التخصص..."
+            placeholder={isAr ? 'ابحث بالاسم أو البريد أو التخصص...' : 'Search by name, email or specialization...'}
             className="w-full bg-white dark:bg-slate-900 text-sm py-2.5 pr-10 pl-4 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-800 dark:text-white"
           />
         </div>
@@ -138,8 +130,8 @@ export function StaffView({ staff, teams, players, onStaffChange, activeRole, la
       {filtered.length === 0 ? (
         <EmptyState
           icon={<Dumbbell className="h-8 w-8" />}
-          title="لا يوجد موظفون مطابقون"
-          subtitle="جرّب تعديل الفلاتر أو أضف موظفاً جديداً"
+          title={isAr ? 'لا يوجد موظفون مطابقون' : 'No matching staff'}
+          subtitle={isAr ? 'جرّب تعديل الفلاتر أو أضف موظفاً جديداً' : 'Try adjusting filters or add a new staff member'}
         />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -162,13 +154,13 @@ export function StaffView({ staff, teams, players, onStaffChange, activeRole, la
                     </div>
                   </div>
                   <Badge color={s.status === 'active' ? 'emerald' : s.status === 'pending' ? 'amber' : 'slate'}>
-                    {s.status === 'active' ? t.active : s.status === 'pending' ? 'قيد الانتظار' : t.inactive}
+                    {s.status === 'active' ? t.active : s.status === 'pending' ? t.pending : t.inactive}
                   </Badge>
                 </div>
 
                 {/* Role badge */}
                 <div className="flex items-center gap-2 mb-3">
-                  <Badge color={ROLE_COLORS[s.role] || 'slate'}>{ROLE_LABELS[s.role]}</Badge>
+                  <Badge color={ROLE_COLORS[s.role] || 'slate'}>{roleLabel(s.role, lang)}</Badge>
                   {canSeeSalary && (
                     <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
                       {s.salary.toLocaleString()} {t.currency}
@@ -211,7 +203,7 @@ export function StaffView({ staff, teams, players, onStaffChange, activeRole, la
                     {typeof s.experienceYears === 'number' && (
                       <div className="flex items-center gap-1.5 text-[11px] text-slate-600 dark:text-slate-300">
                         <Briefcase className="h-3.5 w-3.5 text-amber-500 shrink-0" />
-                        <span>{s.experienceYears} سنوات خبرة</span>
+                        <span>{s.experienceYears} {isAr ? 'سنوات خبرة' : 'years exp'}</span>
                       </div>
                     )}
                   </div>
@@ -236,7 +228,7 @@ export function StaffView({ staff, teams, players, onStaffChange, activeRole, la
                     onClick={() => setViewMember(s)}
                     className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[11px] font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer"
                   >
-                    <Eye className="h-3.5 w-3.5" /> عرض
+                    <Eye className="h-3.5 w-3.5" /> {isAr ? 'عرض' : 'View'}
                   </button>
                   {canManage && (
                     <>
@@ -244,7 +236,7 @@ export function StaffView({ staff, teams, players, onStaffChange, activeRole, la
                         onClick={() => setEditMember(s)}
                         className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[11px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition cursor-pointer"
                       >
-                        <Edit2 className="h-3.5 w-3.5" /> تعديل
+                        <Edit2 className="h-3.5 w-3.5" /> {t.edit}
                       </button>
                       <button
                         onClick={() => setDeleteId(s.id)}
@@ -270,12 +262,13 @@ export function StaffView({ staff, teams, players, onStaffChange, activeRole, la
             setShowAdd(false);
             setEditMember(null);
           }}
+          lang={lang}
         />
       )}
 
       {/* View modal */}
       {viewMember && (
-        <Modal open onClose={() => setViewMember(null)} title="ملف الموظف" size="lg">
+        <Modal open onClose={() => setViewMember(null)} title={isAr ? 'ملف الموظف' : 'Staff Profile'} size="lg">
           <StaffDetail
             member={viewMember}
             teams={coachTeams(viewMember.id)}
@@ -291,9 +284,9 @@ export function StaffView({ staff, teams, players, onStaffChange, activeRole, la
         open={!!deleteId}
         onClose={() => setDeleteId(null)}
         onConfirm={handleDelete}
-        title="حذف الموظف"
-        message="هل أنت متأكد من حذف هذا الموظف؟ لا يمكن التراجع عن هذا الإجراء."
-        confirmLabel="حذف"
+        title={t.deleteStaff}
+        message={t.deleteStaffConfirm}
+        confirmLabel={t.delete}
       />
     </div>
   );
@@ -305,11 +298,15 @@ function StaffForm({
   member,
   onSave,
   onClose,
+  lang,
 }: {
   member: Staff | null;
   onSave: (data: Omit<Staff, 'id'>, id?: string) => void;
   onClose: () => void;
+  lang: Lang;
 }) {
+  const t = tr(lang);
+  const isAr = lang === 'ar';
   const [form, setForm] = useState({
     name: member?.name || '',
     email: member?.email || '',
@@ -368,27 +365,27 @@ function StaffForm({
     setForm((f) => ({ ...f, [key]: value }));
 
   return (
-    <Modal open onClose={onClose} title={member ? 'تعديل بيانات الموظف' : 'إضافة موظف جديد'} size="lg">
+    <Modal open onClose={onClose} title={member ? t.editStaff : isAr ? 'إضافة موظف جديد' : 'Add New Staff'} size="lg">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Field label="الاسم بالكامل">
+          <Field label={isAr ? 'الاسم بالكامل' : 'Full name'}>
             <input value={form.name} onChange={(e) => set('name', e.target.value)} className={inputCls} required />
           </Field>
-          <Field label="البريد الإلكتروني">
+          <Field label={t.email}>
             <input type="email" value={form.email} onChange={(e) => set('email', e.target.value)} className={inputCls} dir="ltr" required />
           </Field>
-          <Field label="رقم الهاتف">
+          <Field label={t.phone}>
             <input value={form.phone} onChange={(e) => set('phone', e.target.value)} className={inputCls} dir="ltr" />
           </Field>
-          <Field label="الدور الوظيفي">
+          <Field label={t.role}>
             <select value={form.role} onChange={(e) => set('role', e.target.value as Role)} className={inputCls}>
-              <option value="manager">مدير النظام</option>
-              <option value="accountant">المحاسب المالي</option>
-              <option value="coach">الكابتن / المدرب</option>
-              <option value="receptionist">موظف الاستقبال</option>
+              <option value="manager">{t.manager}</option>
+              <option value="accountant">{t.accountant}</option>
+              <option value="coach">{t.coach}</option>
+              <option value="receptionist">{t.receptionist}</option>
             </select>
           </Field>
-          <Field label="الراتب الشهري">
+          <Field label={isAr ? 'الراتب الشهري' : 'Monthly salary'}>
             <input
               type="number"
               min={0}
@@ -397,23 +394,23 @@ function StaffForm({
               className={inputCls}
             />
           </Field>
-          <Field label="التخصص / القسم">
+          <Field label={t.specialization}>
             <input value={form.specialization} onChange={(e) => set('specialization', e.target.value)} className={inputCls} />
           </Field>
-          <Field label="الحالة">
+          <Field label={t.status}>
             <select value={form.status} onChange={(e) => set('status', e.target.value as Staff['status'])} className={inputCls}>
-              <option value="active">نشط</option>
-              <option value="inactive">موقوف</option>
-              <option value="pending">قيد الانتظار</option>
+              <option value="active">{t.active}</option>
+              <option value="inactive">{t.inactive}</option>
+              <option value="pending">{t.pending}</option>
             </select>
           </Field>
-          <Field label="تاريخ الانضمام">
+          <Field label={t.joinedDate}>
             <input type="date" value={form.joinedDate} onChange={(e) => set('joinedDate', e.target.value)} className={inputCls} />
           </Field>
-          <Field label="الرمز التعبيري (Avatar)">
+          <Field label={isAr ? 'الرمز التعبيري (Avatar)' : 'Avatar emoji'}>
             <input value={form.avatarUrl} onChange={(e) => set('avatarUrl', e.target.value)} className={inputCls} maxLength={4} />
           </Field>
-          <Field label="الرقم الوطني">
+          <Field label={isAr ? 'الرقم الوطني' : 'National ID'}>
             <input value={form.nationalId} onChange={(e) => set('nationalId', e.target.value)} className={inputCls} dir="ltr" />
           </Field>
         </div>
@@ -421,7 +418,7 @@ function StaffForm({
         {/* Coach-specific fields */}
         {isCoach && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-3 rounded-xl bg-amber-50/60 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/20">
-            <Field label="سنوات الخبرة">
+            <Field label={isAr ? 'سنوات الخبرة' : 'Years of experience'}>
               <input
                 type="number"
                 min={0}
@@ -430,7 +427,7 @@ function StaffForm({
                 className={inputCls}
               />
             </Field>
-            <Field label="التقييم (0 - 5)">
+            <Field label={isAr ? 'التقييم (0 - 5)' : 'Rating (0 - 5)'}>
               <input
                 type="number"
                 min={0}
@@ -441,16 +438,16 @@ function StaffForm({
                 className={inputCls}
               />
             </Field>
-            <Field label="الأسلوب التكتيكي">
+            <Field label={isAr ? 'الأسلوب التكتيكي' : 'Tactical style'}>
               <input value={form.tacticalStyle} onChange={(e) => set('tacticalStyle', e.target.value)} className={inputCls} />
             </Field>
-            <Field label="التراخيص والشهادات (افصل بفاصلة ،)">
+            <Field label={isAr ? 'التراخيص والشهادات (افصل بفاصلة ،)' : 'Licenses & certificates (comma separated)'}>
               <input value={form.licenses} onChange={(e) => set('licenses', e.target.value)} className={inputCls} />
             </Field>
           </div>
         )}
 
-        <Field label="ملاحظات">
+        <Field label={t.notes}>
           <textarea value={form.notes} onChange={(e) => set('notes', e.target.value)} rows={2} className={inputCls} />
         </Field>
 
@@ -460,9 +457,9 @@ function StaffForm({
             onClick={onClose}
             className="px-4 py-2 rounded-lg text-sm font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer"
           >
-            إلغاء
+            {t.cancel}
           </button>
-          <SaveButton loading={saving}>حفظ</SaveButton>
+          <SaveButton loading={saving}>{t.save}</SaveButton>
         </div>
       </form>
     </Modal>
@@ -485,6 +482,7 @@ function StaffDetail({
   lang: Lang;
 }) {
   const t = tr(lang);
+  const isAr = lang === 'ar';
   const isCoach = member.role === 'coach';
 
   return (
@@ -497,9 +495,9 @@ function StaffDetail({
         <div className="min-w-0">
           <h3 className="text-lg font-black text-slate-900 dark:text-white truncate">{member.name}</h3>
           <div className="flex items-center gap-2 mt-1 flex-wrap">
-            <Badge color={ROLE_COLORS[member.role] || 'slate'}>{ROLE_LABELS[member.role]}</Badge>
+            <Badge color={ROLE_COLORS[member.role] || 'slate'}>{roleLabel(member.role, lang)}</Badge>
             <Badge color={member.status === 'active' ? 'emerald' : member.status === 'pending' ? 'amber' : 'slate'}>
-              {member.status === 'active' ? t.active : member.status === 'pending' ? 'قيد الانتظار' : t.inactive}
+              {member.status === 'active' ? t.active : member.status === 'pending' ? t.pending : t.inactive}
             </Badge>
           </div>
           {member.specialization && (
@@ -511,7 +509,7 @@ function StaffDetail({
       {/* Coach rating block */}
       {isCoach && typeof member.rating === 'number' && (
         <div className="p-3 rounded-xl bg-amber-50/60 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/20">
-          <p className="text-[11px] font-bold text-amber-600 dark:text-amber-400 mb-1.5">التقييم العام</p>
+          <p className="text-[11px] font-bold text-amber-600 dark:text-amber-400 mb-1.5">{isAr ? 'التقييم العام' : 'Overall rating'}</p>
           <div className="flex items-center gap-0.5">
             {[1, 2, 3, 4, 5].map((i) => (
               <Star
@@ -530,12 +528,12 @@ function StaffDetail({
 
       {/* General info */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <InfoRow label="البريد الإلكتروني" value={member.email} ltr />
-        <InfoRow label="رقم الهاتف" value={member.phone} ltr />
-        <InfoRow label="تاريخ الانضمام" value={member.joinedDate} />
-        {member.nationalId && <InfoRow label="الرقم الوطني" value={member.nationalId} ltr />}
-        {canSeeSalary && <InfoRow label="الراتب الشهري" value={`${member.salary.toLocaleString()} ${t.currency}`} />}
-        <InfoRow label="التخصص" value={member.specialization || '—'} />
+        <InfoRow label={t.email} value={member.email} ltr />
+        <InfoRow label={t.phone} value={member.phone} ltr />
+        <InfoRow label={t.joinedDate} value={member.joinedDate} />
+        {member.nationalId && <InfoRow label={isAr ? 'الرقم الوطني' : 'National ID'} value={member.nationalId} ltr />}
+        {canSeeSalary && <InfoRow label={isAr ? 'الراتب الشهري' : 'Monthly salary'} value={`${member.salary.toLocaleString()} ${t.currency}`} />}
+        <InfoRow label={t.specialization} value={member.specialization || '—'} />
       </div>
 
       <ContactLinks phone={member.phone} email={member.email} />
@@ -544,11 +542,11 @@ function StaffDetail({
       {isCoach && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {typeof member.experienceYears === 'number' && (
-            <InfoRow label="سنوات الخبرة" value={`${member.experienceYears} سنة`} />
+            <InfoRow label={isAr ? 'سنوات الخبرة' : 'Years of experience'} value={`${member.experienceYears} ${isAr ? 'سنة' : 'years'}`} />
           )}
-          {member.tacticalStyle && <InfoRow label="الأسلوب التكتيكي" value={member.tacticalStyle} />}
-          {teams.length > 0 && <InfoRow label="الفرق المُدرّبة" value={teams.join('، ')} />}
-          <InfoRow label="عدد اللاعبين" value={`${playerCount} لاعب`} />
+          {member.tacticalStyle && <InfoRow label={isAr ? 'الأسلوب التكتيكي' : 'Tactical style'} value={member.tacticalStyle} />}
+          {teams.length > 0 && <InfoRow label={isAr ? 'الفرق المُدرّبة' : 'Teams coached'} value={teams.join(isAr ? '، ' : ', ')} />}
+          <InfoRow label={isAr ? 'عدد اللاعبين' : 'Player count'} value={`${playerCount} ${isAr ? 'لاعب' : 'players'}`} />
         </div>
       )}
 
@@ -556,7 +554,7 @@ function StaffDetail({
       {member.licenses && member.licenses.length > 0 && (
         <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50">
           <p className="text-[11px] font-bold text-slate-400 mb-2 flex items-center gap-1.5">
-            <Award className="h-3.5 w-3.5" /> التراخيص والشهادات
+            <Award className="h-3.5 w-3.5" /> {isAr ? 'التراخيص والشهادات' : 'Licenses & certificates'}
           </p>
           <div className="flex flex-wrap gap-2">
             {member.licenses.map((lic, i) => (
@@ -575,7 +573,7 @@ function StaffDetail({
       {member.notes && (
         <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 text-sm text-slate-600 dark:text-slate-300">
           <p className="text-xs font-bold text-slate-400 mb-1 flex items-center gap-1.5">
-            <Calendar className="h-3.5 w-3.5" /> ملاحظات
+            <Calendar className="h-3.5 w-3.5" /> {t.notes}
           </p>
           {member.notes}
         </div>

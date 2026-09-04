@@ -18,6 +18,7 @@ const inputCls =
 
 export function Tournaments({ tournaments, onTournamentsChange, activeRole, lang }: TournamentsProps) {
   const t = tr(lang);
+  const isAr = lang === 'ar';
   const [showAdd, setShowAdd] = useState(false);
   const [editItem, setEditItem] = useState<Tournament | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -44,7 +45,7 @@ export function Tournaments({ tournaments, onTournamentsChange, activeRole, lang
 
   return (
     <div className="space-y-5 text-right" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
-      <PageHeader title={t.tournaments} subtitle={`${tournaments.length} ${lang === 'ar' ? 'بطولة مسجلة' : 'tournaments'}`}>
+      <PageHeader title={t.tournaments} subtitle={`${tournaments.length} ${isAr ? 'بطولة مسجلة' : 'tournaments'}`}>
         {canEdit && (
           <button
             onClick={() => setShowAdd(true)}
@@ -59,8 +60,8 @@ export function Tournaments({ tournaments, onTournamentsChange, activeRole, lang
       {tournaments.length === 0 ? (
         <EmptyState
           icon={<Trophy className="h-8 w-8" />}
-          title={lang === 'ar' ? 'لا توجد بطولات مسجلة' : 'No tournaments registered'}
-          subtitle={lang === 'ar' ? 'ابدأ بإضافة بطولة جديدة لمتابعة المشاركات' : 'Add a new tournament to track participation'}
+          title={isAr ? 'لا توجد بطولات مسجلة' : 'No tournaments registered'}
+          subtitle={isAr ? 'ابدأ بإضافة بطولة جديدة لمتابعة المشاركات' : 'Add a new tournament to track participation'}
         />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -81,10 +82,10 @@ export function Tournaments({ tournaments, onTournamentsChange, activeRole, lang
                       <p className="text-sm font-black text-slate-900 dark:text-white truncate">{tn.name}</p>
                       <Badge color={isActive ? 'emerald' : isUpcoming ? 'blue' : 'gray'}>
                         {isActive
-                          ? lang === 'ar' ? 'جارية الآن' : 'Active'
+                          ? isAr ? t.ongoing : 'Active'
                           : isUpcoming
-                            ? lang === 'ar' ? 'قادمة' : 'Upcoming'
-                            : lang === 'ar' ? 'منتهية' : 'Finished'}
+                            ? isAr ? t.upcoming : 'Upcoming'
+                            : isAr ? t.completed : 'Finished'}
                       </Badge>
                     </div>
                   </div>
@@ -97,7 +98,7 @@ export function Tournaments({ tournaments, onTournamentsChange, activeRole, lang
                   </div>
                   <div className="flex items-center gap-2">
                     <Medal className="h-4 w-4 shrink-0 text-amber-500" />
-                    <span className="font-semibold">{lang === 'ar' ? 'الموسم' : 'Season'}: {tn.season}</span>
+                    <span className="font-semibold">{isAr ? 'الموسم' : 'Season'}: {tn.season}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4 shrink-0 text-amber-500" />
@@ -108,7 +109,7 @@ export function Tournaments({ tournaments, onTournamentsChange, activeRole, lang
                   <div className="flex items-center gap-2">
                     <Users className="h-4 w-4 shrink-0 text-amber-500" />
                     <span className="font-semibold">
-                      {tn.teamsCount} {lang === 'ar' ? 'فريق مشارك' : 'teams'}
+                      {tn.teamsCount} {isAr ? 'فريق مشارك' : 'teams'}
                     </span>
                   </div>
                 </div>
@@ -140,6 +141,7 @@ export function Tournaments({ tournaments, onTournamentsChange, activeRole, lang
           tournament={editItem}
           onSave={handleSave}
           onClose={() => { setShowAdd(false); setEditItem(null); }}
+          lang={lang}
         />
       )}
 
@@ -147,8 +149,8 @@ export function Tournaments({ tournaments, onTournamentsChange, activeRole, lang
         open={!!deleteId}
         onClose={() => setDeleteId(null)}
         onConfirm={handleDelete}
-        title={lang === 'ar' ? 'حذف البطولة' : 'Delete tournament'}
-        message={lang === 'ar' ? 'هل أنت متأكد من حذف هذه البطولة؟ لا يمكن التراجع.' : 'Are you sure? This cannot be undone.'}
+        title={isAr ? 'حذف البطولة' : 'Delete tournament'}
+        message={isAr ? 'هل أنت متأكد من حذف هذه البطولة؟ لا يمكن التراجع.' : 'Are you sure? This cannot be undone.'}
         confirmLabel={t.delete}
       />
     </div>
@@ -159,11 +161,15 @@ function TournamentForm({
   tournament,
   onSave,
   onClose,
+  lang,
 }: {
   tournament: Tournament | null;
   onSave: (data: Omit<Tournament, 'id'>, id?: string) => void;
   onClose: () => void;
+  lang: Lang;
 }) {
+  const t = tr(lang);
+  const isAr = lang === 'ar';
   const [form, setForm] = useState({
     name: tournament?.name || '',
     organizer: tournament?.organizer || '',
@@ -186,30 +192,30 @@ function TournamentForm({
   };
 
   return (
-    <Modal open onClose={onClose} title={tournament ? 'تعديل البطولة' : 'إضافة بطولة جديدة'} size="lg">
+    <Modal open onClose={onClose} title={tournament ? t.editTournament : isAr ? 'إضافة بطولة جديدة' : 'Add New Tournament'} size="lg">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Field label="اسم البطولة">
-            <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="مثال: كأس الرياض للبراعم" className={inputCls} required />
+          <Field label={isAr ? 'اسم البطولة' : 'Tournament name'}>
+            <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder={isAr ? 'مثال: كأس الرياض للبراعم' : 'e.g. Riyadh Youth Cup'} className={inputCls} required />
           </Field>
-          <Field label="الجهة المنظمة">
-            <input value={form.organizer} onChange={(e) => setForm({ ...form, organizer: e.target.value })} placeholder="مثال: الاتحاد السعودي" className={inputCls} required />
+          <Field label={t.organizer}>
+            <input value={form.organizer} onChange={(e) => setForm({ ...form, organizer: e.target.value })} placeholder={isAr ? 'مثال: الاتحاد السعودي' : 'e.g. Saudi Federation'} className={inputCls} required />
           </Field>
-          <Field label="الموسم">
+          <Field label={t.season}>
             <input value={form.season} onChange={(e) => setForm({ ...form, season: e.target.value })} placeholder="2026" className={inputCls} required />
           </Field>
-          <Field label="عدد الفرق">
+          <Field label={t.teamsCount}>
             <input type="number" min={0} value={form.teamsCount} onChange={(e) => setForm({ ...form, teamsCount: parseInt(e.target.value) || 0 })} className={inputCls} />
           </Field>
-          <Field label="تاريخ البداية">
+          <Field label={t.startDate}>
             <input type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} className={inputCls} required dir="ltr" />
           </Field>
-          <Field label="تاريخ النهاية">
+          <Field label={t.endDate}>
             <input type="date" value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })} className={inputCls} required dir="ltr" />
           </Field>
         </div>
 
-        <Field label="شعار البطولة">
+        <Field label={isAr ? 'شعار البطولة' : 'Tournament logo'}>
           <div className="flex flex-wrap gap-2">
             {EMOJI_OPTIONS.map((emoji) => (
               <button
@@ -230,9 +236,9 @@ function TournamentForm({
 
         <div className="flex gap-2 justify-end pt-2">
           <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer">
-            إلغاء
+            {t.cancel}
           </button>
-          <SaveButton loading={saving}>حفظ</SaveButton>
+          <SaveButton loading={saving}>{t.save}</SaveButton>
         </div>
       </form>
     </Modal>
