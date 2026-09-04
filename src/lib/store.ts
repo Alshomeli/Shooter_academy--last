@@ -58,6 +58,7 @@ async function fetchAll<T>(table: string, mapper: (r: Record<string, unknown>) =
 const TABLE_PUBLIC_COLUMNS: Record<string, string> = {
   staff: 'id,name,email,phone,role,specialization,status,joined_date,avatar_url,licenses,experience_years,rating,tactical_style,notes,user_id,created_at',
   parents: 'id,name,nationality,phone,whatsapp_phone,email,address,occupation,workplace,avatar_url,status,notes,joined_date,created_at',
+  players: 'id,name,birth_date,blood_type,jersey_number,position,team_id,parent_name,parent_phone,parent_email,parent_id,status,joined_date,created_at',
 };
 
 async function upsertRow<T>(table: string, row: Record<string, unknown>, mapper: (r: Record<string, unknown>) => T): Promise<T> {
@@ -101,6 +102,21 @@ async function fetchParentRows(): Promise<Parent[]> {
   });
 }
 
+async function fetchPlayerRows(): Promise<Player[]> {
+  const { data, error } = await supabase.from('players').select(TABLE_PUBLIC_COLUMNS.players);
+  if (error) throw error;
+  const rows = (data || []) as Record<string, unknown>[];
+  const { data: privateRows } = await supabase.rpc('get_player_private');
+  const byId = new Map<string, { notes?: string | null }>();
+  for (const p of (privateRows || []) as { id: string; notes: string | null }[]) {
+    byId.set(p.id, { notes: p.notes });
+  }
+  return rows.map((r) => {
+    const priv = byId.get(String(r.id));
+    return (mapPlayer as never as (x: Record<string, unknown>) => Player)({ ...r, notes: priv?.notes ?? '' });
+  });
+}
+
 async function deleteRow(table: string, id: string): Promise<void> {
   const { error } = await supabase.from(table).delete().eq('id', id);
   if (error) throw error;
@@ -139,7 +155,7 @@ export const db = {
   async saveTeam(t: Team): Promise<Team> { return upsertRow('teams', teamToRow(t) as unknown as Record<string, unknown>, mapTeam as never); },
   async deleteTeam(id: string): Promise<void> { return deleteRow('teams', id); },
 
-  async getPlayers(): Promise<Player[]> { return fetchAll('players', mapPlayer as never); },
+  async getPlayers(): Promise<Player[]> { return fetchPlayerRows(); },
   async savePlayer(p: Player): Promise<Player> { return upsertRow('players', playerToRow(p) as unknown as Record<string, unknown>, mapPlayer as never); },
   async deletePlayer(id: string): Promise<void> { return deleteRow('players', id); },
 
