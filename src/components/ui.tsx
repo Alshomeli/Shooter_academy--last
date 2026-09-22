@@ -4,12 +4,13 @@ import { X, Loader2, AlertCircle } from 'lucide-react';
 interface ModalProps {
   open: boolean;
   onClose: () => void;
+  closeDisabled?: boolean;
   title: string;
   children: ReactNode;
   size?: 'sm' | 'md' | 'lg' | 'xl';
 }
 
-export function Modal({ open, onClose, title, children, size = 'md' }: ModalProps) {
+export function Modal({ open, onClose, closeDisabled = false, title, children, size = 'md' }: ModalProps) {
   if (!open) return null;
 
   const sizes = {
@@ -21,13 +22,15 @@ export function Modal({ open, onClose, title, children, size = 'md' }: ModalProp
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm animate-fadeIn" onClick={onClose} />
+      <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm animate-fadeIn" onClick={closeDisabled ? undefined : onClose} />
       <div className={`relative w-full ${sizes[size]} max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 animate-fadeIn`}>
         <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-t-2xl">
           <h3 className="text-base font-black text-slate-900 dark:text-white">{title}</h3>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer text-slate-500"
+            disabled={closeDisabled}
+            aria-label="Close / إغلاق"
+            className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer text-slate-500 disabled:opacity-40 disabled:cursor-wait"
           >
             <X className="h-5 w-5" />
           </button>

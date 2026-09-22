@@ -16,6 +16,7 @@ export function ParentPortal({ user, players, subscriptions, attendance, lang, s
   const [apps, setApps] = useState<RegistrationApplication[]>([]);
   const [error, setError] = useState('');
   const [ready, setReady] = useState(false);
+  const [registrationBusy, setRegistrationBusy] = useState(false);
   const [editor, setEditor] = useState<RegistrationApplication | 'new' | null>(openRegistration ? 'new' : null);
   const load = useCallback(async () => {
     try { setApps(await fetchMyApplications()); setError(''); setReady(true); }
@@ -45,8 +46,9 @@ export function ParentPortal({ user, players, subscriptions, attendance, lang, s
       <h2 className="text-lg font-bold">{text('طلبات التسجيل', 'Registration applications')}</h2>
       {!ready && !error && <p role="status">{text('جارٍ التحميل…', 'Loading…')}</p>}
       {apps.map(app => <article key={app.id} className="bg-white dark:bg-slate-900 rounded-xl border dark:border-slate-700 p-4 space-y-2"><div className="flex justify-between gap-3"><p className="font-bold">{app.children.map(c => c.fullName).join('، ')}</p><Badge>{statusLabel(app.status)}</Badge></div>{app.reviewNotes && <p className="text-sm text-amber-700">{app.reviewNotes}</p>}{['draft', 'needs_info'].includes(app.status) && <button className="text-emerald-700 font-bold text-sm" onClick={() => setEditor(app)}>{text('استكمال الطلب', 'Continue application')}</button>}</article>)}
-      <Modal open={editor !== null} onClose={() => setEditor(null)} title={text('تسجيل الأبناء', 'Children registration')} size="xl">
-        {editor && <Registration key={editor === 'new' ? 'new' : editor.id} initial={editor === 'new' ? undefined : editor} lang={lang} onSaved={refresh} onExit={() => setEditor(null)} />}
+      <Modal open={editor !== null} closeDisabled={registrationBusy} onClose={() => { if (!registrationBusy) setEditor(null); }} title={text('تسجيل الأبناء', 'Children registration')} size="xl">
+        {registrationBusy && <p role="status" className="mb-3 text-sm text-slate-500">{text('انتظر اكتمال الحفظ أو رفع الملفات قبل إغلاق الطلب.', 'Wait for saving or uploads to finish before closing the application.')}</p>}
+        {editor && <Registration key={editor === 'new' ? 'new' : editor.id} initial={editor === 'new' ? undefined : editor} lang={lang} onSaved={refresh} onBusyChange={setRegistrationBusy} onExit={() => { if (!registrationBusy) setEditor(null); }} />}
       </Modal>
     </div>
   </main>;

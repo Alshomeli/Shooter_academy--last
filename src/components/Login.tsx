@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { AlertCircle, Loader2, LogIn } from 'lucide-react';
 import { db, signIn, signUp, setRegistering } from '@/lib/store';
 import { supabase } from '@/lib/supabase';
@@ -16,9 +16,25 @@ export function Login({ onLogin, lang, setLang, recovery = false, registrationEn
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  useEffect(() => {
+    if (recovery) { setScreen('reset'); setError(''); setMessage(''); setPassword(''); setConfirm(''); }
+  }, [recovery]);
   const ar = lang === 'ar';
   const text = (a: string, e: string) => ar ? a : e;
   const changeScreen = (next: Screen) => { setScreen(next); setError(''); setMessage(''); setPassword(''); setConfirm(''); };
+  const googleLogin = async () => {
+    if (busy) return;
+    setBusy(true); setError(''); setMessage('');
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: window.location.origin },
+      });
+      if (error) throw error;
+    } catch {
+      setError(text('تعذر الدخول عبر Google. حاول مجددًا أو استخدم البريد الإلكتروني.', 'Unable to sign in with Google. Try again or use your email.'));
+    } finally { setBusy(false); }
+  };
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     if (busy) return;
@@ -83,6 +99,7 @@ export function Login({ onLogin, lang, setLang, recovery = false, registrationEn
           <button className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-lg" type="submit">{busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <LogIn className="h-5 w-5" />}{titles[screen]}</button>
         </fieldset>
       </form>
+      {(screen === 'login' || screen === 'register') && <button type="button" disabled={busy} onClick={() => void googleLogin()} className="mt-4 w-full rounded-lg border border-slate-300 dark:border-slate-600 px-4 py-3 text-sm font-bold hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50">{text('المتابعة باستخدام Google', 'Continue with Google')}</button>}
       <div className="mt-5 flex flex-wrap gap-4 text-sm text-emerald-700 font-bold">
         {screen === 'login' ? <><button disabled={busy} onClick={() => changeScreen('register')}>{text('تسجيل ولي أمر وأبنائه', 'Register parent and children')}</button><button disabled={busy} onClick={() => changeScreen('forgot')}>{text('نسيت كلمة المرور؟', 'Forgot password?')}</button></> : screen !== 'reset' && <button disabled={busy} onClick={() => changeScreen('login')}>{text('العودة للدخول', 'Back to sign in')}</button>}
       </div>

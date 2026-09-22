@@ -23,6 +23,7 @@ interface Props {
   initial?: RegistrationApplication;
   onSaved?: () => Promise<void>;
   onExit?: () => void;
+  onBusyChange?: (busy: boolean) => void;
 }
 type Step = 0 | 1 | 2 | 3 | 4 | 5;
 const STEP_ICONS = [ClipboardList, User, Users, Camera, FileCheck, CheckCircle2];
@@ -42,7 +43,7 @@ interface ExtraDoc {
   uploading: boolean; uploaded: boolean; error?: string;
 }
 
-export function Registration({ lang, initial, onSaved, onExit }: Props) {
+export function Registration({ lang, initial, onSaved, onExit, onBusyChange }: Props) {
   const t = tr(lang);
   const isAr = lang === 'ar';
   const [step, setStep] = useState<Step>(0);
@@ -74,6 +75,8 @@ export function Registration({ lang, initial, onSaved, onExit }: Props) {
   const uploads = useRef(new Map<string, PendingUpload>());
   const uploadLocks = useRef(new Set<string>());
   const previews = useRef(new Set<string>());
+  const displayLang = useRef(lang);
+  displayLang.current = lang;
 
   useEffect(() => {
     const urls = previews.current;
@@ -116,11 +119,11 @@ export function Registration({ lang, initial, onSaved, onExit }: Props) {
           setExistingApp(apps.find(a => a.status !== 'rejected' && a.status !== 'approved') || null);
           setParent(p => ({ ...p, email: user.email! }));
         }
-      } catch (e) { if (!cancelled) setLoadError(errorMessage(e, lang === 'ar')); }
+      } catch (e) { if (!cancelled) setLoadError(errorMessage(e, displayLang.current === 'ar')); }
       finally { if (!cancelled) setLoading(false); }
     })();
     return () => { cancelled = true; };
-  }, [resumeApp, reload, lang]);
+  }, [resumeApp, reload]);
 
   const stepLabels = [t.regStepType, t.regStepParent, t.regStepChildren, t.regStepDocuments, t.regStepReview, t.regStepSuccess];
   const validateParent = (): Record<string, string> => {
@@ -145,6 +148,11 @@ export function Registration({ lang, initial, onSaved, onExit }: Props) {
   const photosReady = children.length > 0 && children.every(c => childPhotos[c._key]?.uploaded);
   const filesReady = photosReady && extraDocs.every(d => d.uploaded);
   const filesBusy = Object.values(childPhotos).some(p => p.compressing || p.uploading) || extraDocs.some(d => d.uploading);
+  const operationInProgress = draftCreating || submitting || filesBusy;
+  useEffect(() => {
+    onBusyChange?.(operationInProgress);
+    return () => { onBusyChange?.(false); };
+  }, [onBusyChange, operationInProgress]);
   const canGoNext = () => {
     if (step === 0) return !!regType;
     if (step === 1) return Object.keys(validateParent()).length === 0;
