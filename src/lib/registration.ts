@@ -128,7 +128,7 @@ export async function fetchMyApplications(): Promise<RegistrationApplication[]> 
   const { data, error } = await supabase
     .from('registration_applications')
     .select('*, registration_children(*), registration_documents(*)')
-    .eq('parent_user_id', user.id)
+    .eq('applicant_user_id', user.id)
     .order('created_at', { ascending: false });
   if (error) throw error;
   return (data || []).map(mapApplication);
@@ -171,7 +171,7 @@ function mapApplication(row: Record<string, unknown>): RegistrationApplication {
     nationalId: c.national_id ? String(c.national_id) : undefined,
     birthDate: String(c.birth_date || ''),
     bloodType: c.blood_type ? String(c.blood_type) : undefined,
-    notes: c.notes ? String(c.notes) : undefined,
+    notes: c.parent_notes ? String(c.parent_notes) : undefined,
     playerId: c.player_id ? String(c.player_id) : undefined,
   }));
 
@@ -190,7 +190,7 @@ function mapApplication(row: Record<string, unknown>): RegistrationApplication {
     id: String(row.id),
     registrationType: String(row.registration_type) as RegistrationApplication['registrationType'],
     status: String(row.status) as RegistrationStatus,
-    parentName: String(row.parent_name || ''),
+    parentName: String(row.parent_full_name || ''),
     parentNationalId: row.parent_national_id ? String(row.parent_national_id) : undefined,
     parentPhone: String(row.parent_phone || ''),
     parentEmail: String(row.parent_email || ''),
