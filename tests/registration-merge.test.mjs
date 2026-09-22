@@ -8,9 +8,10 @@ test('registration schema fields preserve parent name, child notes, type and res
   const app = mapApplication({
     id: 'application', registration_type: 'initial_onboarding', status: 'needs_info',
     parent_full_name: 'Test parent', parent_email: 'parent@example.invalid',
-    registration_children: [{ id: 'child', client_key: 'stable-key', full_name: 'Test child', parent_notes: 'Needs glasses', birth_date: '2015-01-01' }],
+    registration_children: [{ id: 'child', client_key: 'stable-key', approved_player_id: 'approved-child', full_name: 'Test child', parent_notes: 'Needs glasses', birth_date: '2015-01-01' }],
     registration_documents: [{ id: 'doc', child_id: 'child', file_category: 'photo', storage_path: 'applications/application/child/photo.webp', mime_type: 'image/webp', file_size: 100 }],
   });
+  assert.equal(app.children[0].playerId, 'approved-child');
   assert.equal(app.parentName, 'Test parent');
   assert.equal(app.registrationType, 'initial_onboarding');
   assert.equal(app.children[0].notes, 'Needs glasses');

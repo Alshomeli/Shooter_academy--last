@@ -41,7 +41,7 @@ before(async () => {
   await db.exec(await read('supabase/migrations/20260922095412_add_registration_type_to_applications.sql'));
   // Existing workflow guard and document-promotion trigger; Storage HTTP/RLS is a separate live test.
   await db.exec((await read('supabase/migrations/20260922092138_tighten_registration_approval_and_promote_documents.sql')).split('create policy')[0]);
-  await db.exec(await read('supabase/migrations/20260922110000_repair_application_integration.sql'));
+  await db.exec(await read('supabase/migrations/20260922142529_repair_application_integration.sql'));
   await db.exec(`create trigger trg_guard_player_sensitive_columns before update on public.players for each row execute function internal.guard_player_sensitive_columns();
     create trigger trg_validate_subscription_state before insert or update on public.subscriptions for each row execute function internal.validate_subscription_state();
     create trigger trg_notify_managers_new_registration after insert or update of status on public.registration_applications for each row execute function internal.notify_managers_new_registration();

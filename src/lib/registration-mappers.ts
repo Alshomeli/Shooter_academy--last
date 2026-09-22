@@ -9,7 +9,7 @@ export function mapApplication(row: Record<string, unknown>): RegistrationApplic
     birthDate: String(c.birth_date || ''),
     bloodType: c.blood_type ? String(c.blood_type) : undefined,
     notes: c.parent_notes ? String(c.parent_notes) : undefined,
-    playerId: c.player_id ? String(c.player_id) : undefined,
+    playerId: c.approved_player_id ? String(c.approved_player_id) : undefined,
   }));
 
   const documents = (row.registration_documents as Record<string, unknown>[] || []).map((d) => ({
