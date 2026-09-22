@@ -8,35 +8,35 @@ const POSITIONS = ['مهاجم', 'خط وسط', 'مدافع', 'خط وسط', 'م
 const BLOOD_TYPES = ['O+', 'A+', 'B+', 'AB+', 'O-', 'A-'];
 
 const rawPlayers: { name: string; cpr: string; paid: boolean; teamId: string }[] = [
-  { name: 'خالد جاسم يعقوب', cpr: '140412832', paid: false, teamId: 'team-1' },
-  { name: 'صقر محمد جمال', cpr: '140114629', paid: true, teamId: 'team-1' },
-  { name: 'عبدالرحمن خليفة الكعبي', cpr: '141102047', paid: true, teamId: 'team-1' },
-  { name: 'عمرو أبوالقاسم عبدالرحيم', cpr: '140616624', paid: false, teamId: 'team-1' },
-  { name: 'عبدالله أسامة بوقيس', cpr: '140403906', paid: true, teamId: 'team-1' },
-  { name: 'بدر عبدالله سالم', cpr: '141005025', paid: false, teamId: 'team-1' },
-  { name: 'محمد عبدالله العوضي', cpr: '140714952', paid: false, teamId: 'team-1' },
-  { name: 'كرار إبراهيم علي', cpr: '140310800', paid: true, teamId: 'team-1' },
-  { name: 'حمد محمد صالح', cpr: '140300740', paid: true, teamId: 'team-1' },
-  { name: 'حسين علي راشد', cpr: '150313292', paid: false, teamId: 'team-2' },
-  { name: 'محمد بدر محمد', cpr: '150312539', paid: true, teamId: 'team-2' },
-  { name: 'عبدالله محمد المالود', cpr: '151010293', paid: true, teamId: 'team-2' },
-  { name: 'عبدالله قاسم عسكر', cpr: '150802072', paid: true, teamId: 'team-2' },
-  { name: 'راشد حسن بوقيس', cpr: '151057575', paid: true, teamId: 'team-2' },
-  { name: 'خالد وليد احمد', cpr: '150519281', paid: true, teamId: 'team-2' },
-  { name: 'يوسف احمد زويد', cpr: '150300964', paid: true, teamId: 'team-2' },
-  { name: 'يوسف احمد عيسى', cpr: '150405723', paid: true, teamId: 'team-2' },
-  { name: 'سلطان سالم عبدالله', cpr: '151001634', paid: true, teamId: 'team-2' },
-  { name: 'خالد محمد جمال', cpr: '151214700', paid: true, teamId: 'team-2' },
-  { name: 'تركي علي بوقيس', cpr: '170916502', paid: true, teamId: 'team-3' },
-  { name: 'فهد عبدالرحمن مبارك', cpr: '161129471', paid: false, teamId: 'team-3' },
-  { name: 'يوسف محمد احمد', cpr: '170420302', paid: true, teamId: 'team-3' },
-  { name: 'عبدالله رشيد عبدالله', cpr: '160404967', paid: true, teamId: 'team-3' },
-  { name: 'عمر مختار احمد', cpr: '160504783', paid: true, teamId: 'team-3' },
-  { name: 'حسين عبدالسميع مفتاح', cpr: '160106427', paid: true, teamId: 'team-3' },
-  { name: 'فيصل عبدالله العوضي', cpr: '171216989', paid: false, teamId: 'team-3' },
-  { name: 'يوسف محمد الهاجري', cpr: '160112753', paid: true, teamId: 'team-3' },
-  { name: 'محمد حسن بوقيس', cpr: '180810081', paid: true, teamId: 'team-3' },
-  { name: 'فيصل علي عبدالرقيب', cpr: '170210987', paid: true, teamId: 'team-3' },
+  { name: 'لاعب تجريبي 01', cpr: '140101001', paid: false, teamId: 'team-1' },
+  { name: 'لاعب تجريبي 02', cpr: '140201002', paid: true, teamId: 'team-1' },
+  { name: 'لاعب تجريبي 03', cpr: '140301003', paid: true, teamId: 'team-1' },
+  { name: 'لاعب تجريبي 04', cpr: '140401004', paid: false, teamId: 'team-1' },
+  { name: 'لاعب تجريبي 05', cpr: '140501005', paid: true, teamId: 'team-1' },
+  { name: 'لاعب تجريبي 06', cpr: '140601006', paid: false, teamId: 'team-1' },
+  { name: 'لاعب تجريبي 07', cpr: '140701007', paid: false, teamId: 'team-1' },
+  { name: 'لاعب تجريبي 08', cpr: '140801008', paid: true, teamId: 'team-1' },
+  { name: 'لاعب تجريبي 09', cpr: '140901009', paid: true, teamId: 'team-1' },
+  { name: 'لاعب تجريبي 10', cpr: '150101010', paid: false, teamId: 'team-2' },
+  { name: 'لاعب تجريبي 11', cpr: '150201011', paid: true, teamId: 'team-2' },
+  { name: 'لاعب تجريبي 12', cpr: '150301012', paid: true, teamId: 'team-2' },
+  { name: 'لاعب تجريبي 13', cpr: '150401013', paid: true, teamId: 'team-2' },
+  { name: 'لاعب تجريبي 14', cpr: '150501014', paid: true, teamId: 'team-2' },
+  { name: 'لاعب تجريبي 15', cpr: '150601015', paid: true, teamId: 'team-2' },
+  { name: 'لاعب تجريبي 16', cpr: '150701016', paid: true, teamId: 'team-2' },
+  { name: 'لاعب تجريبي 17', cpr: '150801017', paid: true, teamId: 'team-2' },
+  { name: 'لاعب تجريبي 18', cpr: '150901018', paid: true, teamId: 'team-2' },
+  { name: 'لاعب تجريبي 19', cpr: '151001019', paid: true, teamId: 'team-2' },
+  { name: 'لاعب تجريبي 20', cpr: '170101020', paid: true, teamId: 'team-3' },
+  { name: 'لاعب تجريبي 21', cpr: '160201021', paid: false, teamId: 'team-3' },
+  { name: 'لاعب تجريبي 22', cpr: '170301022', paid: true, teamId: 'team-3' },
+  { name: 'لاعب تجريبي 23', cpr: '160401023', paid: true, teamId: 'team-3' },
+  { name: 'لاعب تجريبي 24', cpr: '160501024', paid: true, teamId: 'team-3' },
+  { name: 'لاعب تجريبي 25', cpr: '160601025', paid: true, teamId: 'team-3' },
+  { name: 'لاعب تجريبي 26', cpr: '170701026', paid: false, teamId: 'team-3' },
+  { name: 'لاعب تجريبي 27', cpr: '160801027', paid: true, teamId: 'team-3' },
+  { name: 'لاعب تجريبي 28', cpr: '180901028', paid: true, teamId: 'team-3' },
+  { name: 'لاعب تجريبي 29', cpr: '170101029', paid: true, teamId: 'team-3' },
 ];
 
 function cprToBirthDate(cpr: string): string {
@@ -56,12 +56,12 @@ function parentNameFromPlayer(name: string): string {
 }
 
 export const SEED_STAFF: Staff[] = [
-  { id: 'staff-shomili', name: 'الأستاذ محمد الشميلي', email: 'mohameedalshomili@gmail.com', phone: '39001122', role: 'manager', salary: 15000, specialization: 'الرئيس التنفيذي والمالك العام للأكاديمية - كامل الصلاحيات الفائقة', status: 'active', joinedDate: '2026-07-21', avatarUrl: '👑', nationalId: '1029384756', licenses: ['رخصة الإدارة التنفيذية الرياضية العليا'], experienceYears: 15, rating: 5, notes: 'المالك العام للأكاديمية والمشرف الأعلى على كامل الصلاحيات والأنظمة الأمنية والمالية.' },
-  { id: 'staff-1', name: 'الكابتن أحمد الحربي', email: 'ahmed@shooter.com', phone: '0551122334', role: 'manager', salary: 12000, specialization: 'إدارة وتطوير برامج تدريب الناشئين والشباب', status: 'active', joinedDate: '2025-01-10', avatarUrl: '🧔', nationalId: '1098234762', licenses: ['رخصة PRO الآسيوية', 'ماجستير الإدارة الرياضية'], experienceYears: 15, rating: 5, tacticalStyle: 'الضغط العالي والاستحواذ (4-3-3)', notes: 'المدير العام والمسؤول الفني الأول عن تخطيط برامج الفئات السنية بالأكاديمية.' },
-  { id: 'staff-2', name: 'الأستاذ خالد السديري', email: 'khaled@shooter.com', phone: '0552233445', role: 'accountant', salary: 8000, specialization: 'المحاسبة والتدقيق المالي وإدارة الفواتير', status: 'active', joinedDate: '2025-02-15', avatarUrl: '👨‍💼', nationalId: '1082736452', notes: 'مسؤول الميزانية، الإيرادات والمصروفات وتسجيل فواتير أولياء الأمور والرواتب.' },
-  { id: 'staff-3', name: 'الكابتن محمد يوسف', email: 'mohamed@shooter.com', phone: '0553344556', role: 'coach', salary: 7500, specialization: 'تدريب حراس المرمى والتكتيك الدفاعي للمرمى', status: 'active', joinedDate: '2025-03-01', avatarUrl: '🧤', nationalId: '1027384912', licenses: ['رخصة A الآسيوية للتدريب', 'شهادة FIFA لحراسة المرمى'], experienceYears: 10, rating: 4.8, tacticalStyle: 'بناء اللعب من الخلف والتمركز الدفاعي', notes: 'مدرب حراس المرمى المعتمد للفئات السنية U15 وU12.' },
-  { id: 'staff-4', name: 'الكابتن طارق العتيبي', email: 'tareq@shooter.com', phone: '0554455667', role: 'coach', salary: 7000, specialization: 'تدريب اللياقة البدنية، السرعات والتوجيه الحركي للناشئين', status: 'active', joinedDate: '2025-04-12', avatarUrl: '🏃‍♂️', nationalId: '1038472910', licenses: ['رخصة B الآسيوية للتدريب', 'شهادة اللياقة البدنية والسرعات الحركية'], experienceYears: 8, rating: 4.7, tacticalStyle: 'كرة القدم الشاملة والتحولات السريعة (4-2-3-1)', notes: 'المشرف البدني ومدير الحصص التدريبية التكتيكية للسرعات.' },
-  { id: 'staff-5', name: 'سارة الدوسري', email: 'sara@shooter.com', phone: '0555566778', role: 'receptionist', salary: 4500, specialization: 'خدمة العملاء والتواصل الفعال مع أولياء الأمور وتسجيل الحضور الميداني', status: 'active', joinedDate: '2025-05-01', avatarUrl: '👩‍💼', nationalId: '1092837465', notes: 'المسؤولة عن استقبال أولياء الأمور وتسجيل الطلبات الميدانية وتتبع حضور اللاعبين.' },
+  { id: 'staff-shomili', name: 'مدير تجريبي رئيسي', email: 'admin@demo-academy.test', phone: '39000001', role: 'manager', salary: 15000, specialization: 'الرئيس التنفيذي والمالك العام للأكاديمية - كامل الصلاحيات الفائقة', status: 'active', joinedDate: '2026-07-21', avatarUrl: '👑', nationalId: '000000001', licenses: ['رخصة الإدارة التنفيذية الرياضية العليا'], experienceYears: 15, rating: 5, notes: 'المالك العام للأكاديمية والمشرف الأعلى على كامل الصلاحيات والأنظمة الأمنية والمالية.' },
+  { id: 'staff-1', name: 'مدرب تجريبي أول', email: 'manager@demo-academy.test', phone: '39000002', role: 'manager', salary: 12000, specialization: 'إدارة وتطوير برامج تدريب الناشئين والشباب', status: 'active', joinedDate: '2025-01-10', avatarUrl: '🧔', nationalId: '000000002', licenses: ['رخصة PRO الآسيوية', 'ماجستير الإدارة الرياضية'], experienceYears: 15, rating: 5, tacticalStyle: 'الضغط العالي والاستحواذ (4-3-3)', notes: 'المدير العام والمسؤول الفني الأول عن تخطيط برامج الفئات السنية بالأكاديمية.' },
+  { id: 'staff-2', name: 'محاسب تجريبي', email: 'accountant@demo-academy.test', phone: '39000003', role: 'accountant', salary: 8000, specialization: 'المحاسبة والتدقيق المالي وإدارة الفواتير', status: 'active', joinedDate: '2025-02-15', avatarUrl: '👨‍💼', nationalId: '000000003', notes: 'مسؤول الميزانية، الإيرادات والمصروفات وتسجيل فواتير أولياء الأمور والرواتب.' },
+  { id: 'staff-3', name: 'مدرب تجريبي ثاني', email: 'coach1@demo-academy.test', phone: '39000004', role: 'coach', salary: 7500, specialization: 'تدريب حراس المرمى والتكتيك الدفاعي للمرمى', status: 'active', joinedDate: '2025-03-01', avatarUrl: '🧤', nationalId: '000000004', licenses: ['رخصة A الآسيوية للتدريب', 'شهادة FIFA لحراسة المرمى'], experienceYears: 10, rating: 4.8, tacticalStyle: 'بناء اللعب من الخلف والتمركز الدفاعي', notes: 'مدرب حراس المرمى المعتمد للفئات السنية U15 وU12.' },
+  { id: 'staff-4', name: 'مدرب تجريبي ثالث', email: 'coach2@demo-academy.test', phone: '39000005', role: 'coach', salary: 7000, specialization: 'تدريب اللياقة البدنية، السرعات والتوجيه الحركي للناشئين', status: 'active', joinedDate: '2025-04-12', avatarUrl: '🏃‍♂️', nationalId: '000000005', licenses: ['رخصة B الآسيوية للتدريب', 'شهادة اللياقة البدنية والسرعات الحركية'], experienceYears: 8, rating: 4.7, tacticalStyle: 'كرة القدم الشاملة والتحولات السريعة (4-2-3-1)', notes: 'المشرف البدني ومدير الحصص التدريبية التكتيكية للسرعات.' },
+  { id: 'staff-5', name: 'موظفة استقبال تجريبية', email: 'reception@demo-academy.test', phone: '39000006', role: 'receptionist', salary: 4500, specialization: 'خدمة العملاء والتواصل الفعال مع أولياء الأمور وتسجيل الحضور الميداني', status: 'active', joinedDate: '2025-05-01', avatarUrl: '👩‍💼', nationalId: '000000006', notes: 'المسؤولة عن استقبال أولياء الأمور وتسجيل الطلبات الميدانية وتتبع حضور اللاعبين.' },
 ];
 
 export const SEED_TEAMS: Team[] = [
@@ -131,7 +131,7 @@ export const SEED_ATTENDANCE: Attendance[] = [
 ];
 
 export const SEED_MATCHES: Match[] = [
-  { id: 'match-1', teamId: 'team-1', opponent: 'أكاديمية الهلال للبراعم', matchDate: '2026-07-15T18:00:00', location: 'ملعب الهلال الرديف، الرياض', result: 'win', academyScore: 3, opponentScore: 1, scorers: 'يزيد الحربي (2 هدف)، سلمان السديري (صنع حارس!)', notes: 'مباراة حماسية تكتيكية ممتازة للفريق واستحواذ بنسبة 60%' },
+  { id: 'match-1', teamId: 'team-1', opponent: 'أكاديمية الهلال للبراعم', matchDate: '2026-07-15T18:00:00', location: 'ملعب الهلال الرديف، الرياض', result: 'win', academyScore: 3, opponentScore: 1, scorers: 'لاعب 01 (2 هدف)، لاعب 03 (صنع حارس!)', notes: 'مباراة حماسية تكتيكية ممتازة للفريق واستحواذ بنسبة 60%' },
   { id: 'match-2', teamId: 'team-2', opponent: 'أكاديمية المواهب الوطنية', matchDate: '2026-07-22T17:00:00', location: 'ملعب أكاديمية شوتر الرئيسي', result: 'scheduled', academyScore: 0, opponentScore: 0, notes: 'الاستعداد التكتيكي على الكرات الثابتة وبناء اللعب من الخلف' },
   { id: 'match-3', teamId: 'team-3', opponent: 'أكاديمية مهد الرياضية', matchDate: '2026-07-29T16:30:00', location: 'ملعب الصالة المغلقة لمعهد إعداد القادة', result: 'scheduled', academyScore: 0, opponentScore: 0 },
 ];
@@ -142,13 +142,13 @@ export const SEED_TRAINING: Training[] = [
 ];
 
 export const SEED_TRANSACTIONS: Transaction[] = [
-  { id: 't-1', type: 'revenue', category: 'subscription', amount: 320, transactionDate: '2026-01-01', description: 'اشتراك سنوي للاعب صقر محمد جمال', recordedBy: 'خالد السديري' },
-  { id: 't-2', type: 'revenue', category: 'subscription', amount: 90, transactionDate: '2026-06-01', description: 'اشتراك ربع سنوي للاعب عبدالرحمن خليفة الكعبي', recordedBy: 'خالد السديري' },
-  { id: 't-3', type: 'revenue', category: 'subscription', amount: 35, transactionDate: '2026-07-01', description: 'اشتراك شهري للاعب عبدالله أسامة بوقيس', recordedBy: 'خالد السديري' },
-  { id: 't-4', type: 'expense', category: 'salary', amount: 7500, transactionDate: '2026-07-01', description: 'راتب شهر يونيو - الكابتن محمد يوسف', recordedBy: 'خالد السديري' },
-  { id: 't-5', type: 'expense', category: 'salary', amount: 7000, transactionDate: '2026-07-01', description: 'راتب شهر يونيو - الكابتن طارق العتيبي', recordedBy: 'خالد السديري' },
-  { id: 't-6', type: 'expense', category: 'equipment', amount: 2450, transactionDate: '2026-07-05', description: 'شراء كرات قدم مقاس 4 و5 تكتيكية وأقماع وحواجز تدريب', recordedBy: 'أحمد الحربي' },
-  { id: 't-7', type: 'expense', category: 'rent', amount: 5000, transactionDate: '2026-07-01', description: 'إيجار الملاعب الشهري للأكاديمية', recordedBy: 'أحمد الحربي' },
+  { id: 't-1', type: 'revenue', category: 'subscription', amount: 320, transactionDate: '2026-01-01', description: 'اشتراك سنوي للاعب تجريبي 02', recordedBy: 'محاسب تجريبي' },
+  { id: 't-2', type: 'revenue', category: 'subscription', amount: 90, transactionDate: '2026-06-01', description: 'اشتراك ربع سنوي للاعب تجريبي 03', recordedBy: 'محاسب تجريبي' },
+  { id: 't-3', type: 'revenue', category: 'subscription', amount: 35, transactionDate: '2026-07-01', description: 'اشتراك شهري للاعب تجريبي 05', recordedBy: 'محاسب تجريبي' },
+  { id: 't-4', type: 'expense', category: 'salary', amount: 7500, transactionDate: '2026-07-01', description: 'راتب شهر يونيو - مدرب تجريبي ثاني', recordedBy: 'محاسب تجريبي' },
+  { id: 't-5', type: 'expense', category: 'salary', amount: 7000, transactionDate: '2026-07-01', description: 'راتب شهر يونيو - مدرب تجريبي ثالث', recordedBy: 'محاسب تجريبي' },
+  { id: 't-6', type: 'expense', category: 'equipment', amount: 2450, transactionDate: '2026-07-05', description: 'شراء كرات قدم مقاس 4 و5 تكتيكية وأقماع وحواجز تدريب', recordedBy: 'مدرب تجريبي أول' },
+  { id: 't-7', type: 'expense', category: 'rent', amount: 5000, transactionDate: '2026-07-01', description: 'إيجار الملاعب الشهري للأكاديمية', recordedBy: 'مدرب تجريبي أول' },
 ];
 
 export const SEED_TOURNAMENTS: Tournament[] = [
@@ -166,7 +166,7 @@ export const SEED_VIDEOS: Video[] = [
     notes: 'ملاحظة تحركات اللاعبين في الثلث الأخير، ودقة التمريرات البينية وسرعة الارتداد من الدفاع للهجوم.',
     createdAt: '2026-07-16T12:00:00',
     markers: [
-      { id: 'mark-1', timestamp: '02:15', title: 'الهدف الأول - يزيد الحربي', notes: 'تمريرة بينية ممتازة من نواف القحطاني، وتحرك يزيد لكسر التسلل والإنهاء بلمسة واحدة زاحفة على يمين الحارس.', taggedPlayerIds: ['player-1', 'player-3'] },
+      { id: 'mark-1', timestamp: '02:15', title: 'الهدف الأول - لاعب 01', notes: 'تمريرة بينية ممتازة وتحرك لكسر التسلل والإنهاء بلمسة واحدة زاحفة على يمين الحارس.', taggedPlayerIds: ['player-1', 'player-3'] },
       { id: 'mark-2', timestamp: '05:40', title: 'خطأ تمركز في الدفاع وتغطية بطيئة', notes: 'التباعد بين قلبي الدفاع سمح للخصم بالدخول في عمق منطقة الجزاء والتسديد المريح.', taggedPlayerIds: ['player-4'] },
     ],
   },
@@ -186,6 +186,6 @@ export const SEED_SETTINGS: Settings = {
 };
 
 export const SEED_AUDIT_LOGS: AuditLog[] = [
-  { id: 'log-1', action: 'إنشاء حصة تدريبية', timestamp: '2026-07-20T10:30:00', userRole: 'manager', userName: 'أحمد الحربي', details: 'تم جدولة تدريب جديد لفريق النخبة الأزرق تحت 15 سنة ليوم 2026-07-21' },
-  { id: 'log-2', action: 'تحديث نتيجة مباراة', timestamp: '2026-07-20T11:45:00', userRole: 'coach', userName: 'الكابتن محمد يوسف', details: 'تم تدوين نتيجة مباراة الهلال الرديف 3-1 لصالح الأكاديمية' },
+  { id: 'log-1', action: 'إنشاء حصة تدريبية', timestamp: '2026-07-20T10:30:00', userRole: 'manager', userName: 'مدرب تجريبي أول', details: 'تم جدولة تدريب جديد لفريق النخبة الأزرق تحت 15 سنة ليوم 2026-07-21' },
+  { id: 'log-2', action: 'تحديث نتيجة مباراة', timestamp: '2026-07-20T11:45:00', userRole: 'coach', userName: 'مدرب تجريبي ثاني', details: 'تم تدوين نتيجة مباراة الهلال الرديف 3-1 لصالح الأكاديمية' },
 ];
