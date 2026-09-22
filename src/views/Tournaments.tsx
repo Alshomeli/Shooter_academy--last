@@ -25,18 +25,18 @@ export function Tournaments({ tournaments, onTournamentsChange, activeRole, lang
 
   const canEdit = activeRole === 'manager' || activeRole === 'coach';
 
-  const handleSave = (data: Omit<Tournament, 'id'>, id?: string) => {
+  const handleSave = async (data: Omit<Tournament, 'id'>, id?: string) => {
     if (id) {
-      onTournamentsChange(tournaments.map((tn) => (tn.id === id ? { ...data, id } : tn)));
+      await onTournamentsChange(tournaments.map((tn) => (tn.id === id ? { ...data, id } : tn)));
     } else {
-      onTournamentsChange([...tournaments, { ...data, id: `tour-${Date.now()}` }]);
+      await onTournamentsChange([...tournaments, { ...data, id: `tour-${Date.now()}` }]);
     }
     setShowAdd(false);
     setEditItem(null);
   };
 
-  const handleDelete = () => {
-    if (deleteId) onTournamentsChange(tournaments.filter((tn) => tn.id !== deleteId));
+  const handleDelete = async () => {
+    if (deleteId) await onTournamentsChange(tournaments.filter((tn) => tn.id !== deleteId));
     setDeleteId(null);
   };
 
@@ -171,6 +171,7 @@ function TournamentForm({
   const t = tr(lang);
   const isAr = lang === 'ar';
   const [form, setForm] = useState({
+    version: tournament?.version,
     name: tournament?.name || '',
     organizer: tournament?.organizer || '',
     season: tournament?.season || String(new Date().getFullYear()),
@@ -181,19 +182,24 @@ function TournamentForm({
   });
 
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!form.name || !form.organizer) return;
-    setSaving(true);
-    await new Promise((r) => setTimeout(r, 400));
-    onSave(form, tournament?.id);
-    setSaving(false);
+    if (saving) return;
+    setSaving(true); setSaveError('');
+    try {
+    await onSave(form, tournament?.id);
+
+    } catch { setSaveError(lang === 'ar' ? 'تعذر حفظ التغيير. راجع الرسالة وحاول مجددًا.' : 'Could not save this change. Review the error and retry.'); }
+    finally { setSaving(false); }
   };
 
   return (
     <Modal open onClose={onClose} title={tournament ? t.editTournament : isAr ? 'إضافة بطولة جديدة' : 'Add New Tournament'} size="lg">
       <form onSubmit={handleSubmit} className="space-y-4">
+        {saveError && <p role="alert" className="text-sm text-red-600">{saveError}</p>}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label={isAr ? 'اسم البطولة' : 'Tournament name'}>
             <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder={isAr ? 'مثال: كأس الرياض للبراعم' : 'e.g. Riyadh Youth Cup'} className={inputCls} required />

@@ -1,3 +1,6 @@
+import { getLifecycleStatus, type LifecycleStatus } from '@/lib/report-dates';
+import { calcEndDate } from '@/lib/subscription-dates';
+import { errorMessage } from '@/lib/registration';
 import { useState, useMemo, useDeferredValue, type FormEvent } from 'react';
 import {
   Wallet, Plus, Search, CheckCircle, Clock, TrendingUp, TrendingDown,
@@ -16,7 +19,8 @@ interface SubscriptionsProps {
   parents: Parent[];
   staff: Staff[];
   settings: Settings | null;
-  onSubscriptionsChange: (s: Subscription[]) => void;
+  onPayment: (sub: Subscription, method: string) => Promise<void>;
+  onSubscriptionsChange: (s: Subscription[]) => Promise<void>;
   onTransactionsChange: (t: Transaction[]) => void;
   activeRole: Role;
   lang: Lang;
@@ -27,25 +31,25 @@ interface SubscriptionsProps {
 const DEFAULT_PLAN_AMOUNTS: Record<Subscription['planType'], number> = {
   monthly: 35,
   quarterly: 90,
-  semi_annual: 170,
-  yearly: 320,
+  annual: 320,
+  semi_annual: 180,
 };
 
 function getPlanAmounts(settings: Settings | null): Record<Subscription['planType'], number> {
   if (!settings) return DEFAULT_PLAN_AMOUNTS;
   return {
-    monthly: settings.subscriptionFeeMonthly || DEFAULT_PLAN_AMOUNTS.monthly,
-    quarterly: settings.subscriptionFeeQuarterly || DEFAULT_PLAN_AMOUNTS.quarterly,
-    semi_annual: settings.subscriptionFeeSemiAnnual || DEFAULT_PLAN_AMOUNTS.semi_annual,
-    yearly: settings.subscriptionFeeYearly || DEFAULT_PLAN_AMOUNTS.yearly,
+    monthly: settings.subscriptionFeeMonthly ?? DEFAULT_PLAN_AMOUNTS.monthly,
+    quarterly: settings.subscriptionFeeQuarterly ?? DEFAULT_PLAN_AMOUNTS.quarterly,
+    annual: settings.subscriptionFeeYearly ?? DEFAULT_PLAN_AMOUNTS.annual,
+    semi_annual: settings.subscriptionFeeSemiAnnual ?? DEFAULT_PLAN_AMOUNTS.semi_annual,
   };
 }
 
-const PLAN_COLORS: Record<Subscription['planType'], 'blue' | 'amber' | 'emerald' | 'cyan'> = {
+const PLAN_COLORS: Record<Subscription['planType'], 'blue' | 'amber' | 'emerald'> = {
   monthly: 'blue',
   quarterly: 'amber',
-  semi_annual: 'cyan',
-  yearly: 'emerald',
+  annual: 'emerald',
+  semi_annual: 'blue',
 };
 
 const CATEGORY_COLORS: Record<string, 'emerald' | 'blue' | 'amber' | 'slate'> = {
@@ -58,20 +62,6 @@ const CATEGORY_COLORS: Record<string, 'emerald' | 'blue' | 'amber' | 'slate'> = 
 
 const todayISO = () => new Date().toISOString().substring(0, 10);
 
-type LifecycleStatus = 'active' | 'expiring' | 'expired' | 'future';
-
-function getLifecycleStatus(sub: Subscription): LifecycleStatus {
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
-  const start = new Date(sub.startDate);
-  const end = new Date(sub.endDate);
-  if (start > now) return 'future';
-  if (end < now) return 'expired';
-  const daysLeft = Math.ceil((end.getTime() - now.getTime()) / 86_400_000);
-  if (daysLeft <= 7) return 'expiring';
-  return 'active';
-}
-
 const LIFECYCLE_BADGE: Record<LifecycleStatus, { color: 'emerald' | 'amber' | 'red' | 'blue'; key: 'subActive' | 'subExpiring' | 'subExpired' | 'subFuture' }> = {
   active:   { color: 'emerald', key: 'subActive' },
   expiring: { color: 'amber',   key: 'subExpiring' },
@@ -79,15 +69,6 @@ const LIFECYCLE_BADGE: Record<LifecycleStatus, { color: 'emerald' | 'amber' | 'r
   future:   { color: 'blue',    key: 'subFuture' },
 };
 
-function calcEndDate(startDate: string, planType: Subscription['planType']): string {
-  const d = new Date(startDate);
-  if (isNaN(d.getTime())) return startDate;
-  if (planType === 'monthly') d.setMonth(d.getMonth() + 1);
-  else if (planType === 'quarterly') d.setMonth(d.getMonth() + 3);
-  else if (planType === 'semi_annual') d.setMonth(d.getMonth() + 6);
-  else if (planType === 'yearly') d.setFullYear(d.getFullYear() + 1);
-  return d.toISOString().substring(0, 10);
-}
 
 /* ----------------------------- Main ----------------------------- */
 
@@ -100,6 +81,7 @@ export function Subscriptions({
   settings,
   onSubscriptionsChange,
   onTransactionsChange,
+  onPayment,
   activeRole,
   lang,
 }: SubscriptionsProps) {
@@ -117,6 +99,11 @@ export function Subscriptions({
   const [deleteTransId, setDeleteTransId] = useState<string | null>(null);
   const [markingPaidId, setMarkingPaidId] = useState<string | null>(null);
 
+  const [paymentTarget, setPaymentTarget] = useState<Subscription | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [paymentError, setPaymentError] = useState('');
+  const canPay = activeRole === 'manager' || activeRole === 'accountant';
+  const isManager = activeRole === 'manager';
   const canManage = activeRole === 'manager' || activeRole === 'accountant' || activeRole === 'receptionist';
   const recorderName = staff.find((s) => s.role === activeRole)?.name || (isAr ? 'النظام' : 'System');
 
@@ -160,57 +147,36 @@ export function Subscriptions({
   const playerOf = (id: string) => players.find((p) => p.id === id);
 
   /* ---- Handlers ---- */
-  const handleMarkPaid = async (sub: Subscription) => {
-    if (markingPaidId) return;
-    if (sub.status === 'paid') return;
-    setMarkingPaidId(sub.id);
-    try {
-      const player = playerOf(sub.playerId);
-      const today = todayISO();
-      onSubscriptionsChange(
-        subscriptions.map((s) => (s.id === sub.id ? { ...s, status: 'paid', paidAt: today } : s)),
-      );
-      onTransactionsChange([
-        {
-          id: `txn-${Date.now()}`,
-          type: 'revenue',
-          category: 'subscription',
-          amount: sub.amount,
-          transactionDate: today,
-          description: isAr
-            ? `سداد اشتراك ${player?.name || 'لاعب'} — ${planLabel(sub.planType, lang)}`
-            : `Subscription payment - ${player?.name || 'Player'} — ${planLabel(sub.planType, lang)}`,
-          recordedBy: recorderName,
-        },
-        ...transactions,
-      ]);
-    } finally {
-      setMarkingPaidId(null);
-    }
+  const handleMarkPaid = async () => {
+    if (!paymentTarget || markingPaidId) return;
+    setMarkingPaidId(paymentTarget.id); setPaymentError('');
+    try { await onPayment(paymentTarget, paymentMethod); setPaymentTarget(null); }
+    catch (error) { setPaymentError(errorMessage(error, isAr)); }
+    finally { setMarkingPaidId(null); }
   };
 
-  const handleSaveSub = (data: Omit<Subscription, 'id'>, id?: string) => {
+  const handleSaveSub = async (data: Omit<Subscription, 'id'>, id?: string) => {
     if (id) {
-      onSubscriptionsChange(subscriptions.map((s) => (s.id === id ? { ...data, id } : s)));
+      await onSubscriptionsChange(subscriptions.map((s) => (s.id === id ? { ...data, id } : s)));
     } else {
-      onSubscriptionsChange([...subscriptions, { ...data, id: `sub-${Date.now()}` }]);
+      await onSubscriptionsChange([...subscriptions, { ...data, id: `sub-${Date.now()}` }]);
     }
     setShowAddSub(false);
     setEditSub(null);
   };
 
-  const handleDeleteSub = () => {
-    if (deleteSubId) onSubscriptionsChange(subscriptions.filter((s) => s.id !== deleteSubId));
+  const handleDeleteSub = async () => {
+    if (deleteSubId) await onSubscriptionsChange(subscriptions.filter((s) => s.id !== deleteSubId));
     setDeleteSubId(null);
   };
 
-  const handleSaveTrans = (data: Omit<Transaction, 'id'>) => {
-    onTransactionsChange([{ ...data, id: `txn-${Date.now()}` }, ...transactions]);
+  const handleSaveTrans = async (data: Omit<Transaction, 'id'>) => {
+    await onTransactionsChange([{ ...data, id: `txn-${Date.now()}` }, ...transactions]);
     setShowAddTrans(false);
   };
 
-  const handleDeleteTrans = () => {
-    if (deleteTransId) onTransactionsChange(transactions.filter((tx) => tx.id !== deleteTransId));
+  const handleDeleteTrans = async () => {
+    if (deleteTransId) await onTransactionsChange(transactions.filter((tx) => tx.id !== deleteTransId));
     setDeleteTransId(null);
   };
 
@@ -224,7 +190,7 @@ export function Subscriptions({
           ? `${subscriptions.length} اشتراك · ${transactions.length} معاملة مالية`
           : `${subscriptions.length} subscriptions · ${transactions.length} transactions`}
       >
-        {canManage && (
+        {((activeTab === 'subscriptions' && canManage) || (activeTab === 'transactions' && canPay)) && (
           <button
             onClick={() => (activeTab === 'subscriptions' ? setShowAddSub(true) : setShowAddTrans(true))}
             className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold shadow-sm transition cursor-pointer"
@@ -420,9 +386,9 @@ export function Subscriptions({
 
                       {/* Actions */}
                       <div className="flex items-center gap-1.5 ms-auto">
-                        {!isPaid && canManage && (
+                        {!isPaid && canPay && (
                           <button
-                            onClick={() => handleMarkPaid(sub)}
+                            onClick={() => { setPaymentTarget(sub); setPaymentError(''); setPaymentMethod('cash'); }}
                             disabled={markingPaidId === sub.id}
                             className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                           >
@@ -434,7 +400,7 @@ export function Subscriptions({
                             {markingPaidId === sub.id ? t.processing : t.confirmPayment}
                           </button>
                         )}
-                        {canManage && (
+                        {isManager && !isPaid && (
                           <>
                             <button
                               onClick={() => setEditSub(sub)}
@@ -537,7 +503,7 @@ export function Subscriptions({
                       </div>
 
                       {/* Delete */}
-                      {canManage && (
+                      {isManager && !tx.subscriptionId && (
                         <button
                           onClick={() => setDeleteTransId(tx.id)}
                           className="flex items-center justify-center p-1.5 rounded-lg text-red-600 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 transition cursor-pointer shrink-0"
@@ -560,6 +526,16 @@ export function Subscriptions({
         <RemindersAnalyticsTab subscriptions={subscriptions} players={players} parents={parents} lang={lang} />
       )}
 
+      <Modal open={!!paymentTarget} onClose={() => { if (!markingPaidId) setPaymentTarget(null); }} title={t.confirmPayment}>
+        <div className="space-y-4">
+          {paymentError && <p role="alert" className="text-sm text-red-600">{paymentError}</p>}
+          <p>{paymentTarget && playerOf(paymentTarget.playerId)?.name} · {paymentTarget?.amount} {t.currency}</p>
+          <FormField label={t.paymentMethod}><select className={inputCls} value={paymentMethod} disabled={!!markingPaidId} onChange={e => setPaymentMethod(e.target.value)}>
+            {['cash', 'bank_transfer', 'benefit', 'card'].map(method => <option key={method} value={method}>{paymentMethodLabel(method, lang)}</option>)}
+          </select></FormField>
+          <button className="bg-emerald-600 text-white rounded-lg py-2 px-4 disabled:opacity-50" disabled={!!markingPaidId} onClick={() => void handleMarkPaid()}>{markingPaidId ? t.processing : t.confirmPayment}</button>
+        </div>
+      </Modal>
       {/* ---------------- Modals ---------------- */}
       {(showAddSub || editSub) && (
         <SubscriptionForm
@@ -625,7 +601,6 @@ function SubscriptionForm({
   onClose: () => void;
 }) {
   const t = tr(lang);
-  const isAr = lang === 'ar';
   const today = todayISO();
   const [form, setForm] = useState({
     playerId: subscription?.playerId || '',
@@ -634,10 +609,11 @@ function SubscriptionForm({
     startDate: subscription?.startDate || today,
     endDate: subscription?.endDate || calcEndDate(today, 'monthly'),
     status: subscription?.status || ('unpaid' as Subscription['status']),
-    paymentMethod: subscription?.paymentMethod || 'cash',
+
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   const handlePlanChange = (planType: Subscription['planType']) => {
     setForm((f) => ({
@@ -668,22 +644,24 @@ function SubscriptionForm({
     setErrors(e2);
     if (Object.keys(e2).length > 0) return;
 
-    setSaving(true);
-    await new Promise((r) => setTimeout(r, 400));
-    onSave(
+    if (saving) return;
+    setSaving(true); setSaveError('');
+    try {
+    await onSave(
       {
+        version: subscription?.version,
         playerId: form.playerId,
         planType: form.planType,
         amount: Number(form.amount) || 0,
         startDate: form.startDate,
         endDate: form.endDate,
-        status: form.status,
-        paymentMethod: form.paymentMethod,
-        paidAt: form.status === 'paid' ? subscription?.paidAt || today : undefined,
+        status: 'unpaid',
       },
       subscription?.id,
     );
-    setSaving(false);
+
+    } catch { setSaveError(lang === 'ar' ? 'تعذر حفظ التغيير. راجع الرسالة وحاول مجددًا.' : 'Could not save this change. Review the error and retry.'); }
+    finally { setSaving(false); }
   };
 
   const set = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) =>
@@ -694,6 +672,7 @@ function SubscriptionForm({
   return (
     <Modal open onClose={onClose} title={subscription ? t.editSubscription : t.addNewSubscription} size="lg">
       <form onSubmit={handleSubmit} className="space-y-4">
+        {saveError && <p role="alert" className="text-sm text-red-600">{saveError}</p>}
         {Object.keys(errors).length > 0 && (
           <FormError message={t.fixFields} />
         )}
@@ -730,7 +709,8 @@ function SubscriptionForm({
             >
               <option value="monthly">{planLabel('monthly', lang)} — {planAmounts.monthly}</option>
               <option value="quarterly">{planLabel('quarterly', lang)} — {planAmounts.quarterly}</option>
-              <option value="yearly">{planLabel('yearly', lang)} — {planAmounts.yearly}</option>
+              <option value="semi_annual">{planLabel('semi_annual', lang)} — {planAmounts.semi_annual}</option>
+              <option value="annual">{planLabel('annual', lang)} — {planAmounts.annual}</option>
             </select>
           </FormField>
 
@@ -744,17 +724,7 @@ function SubscriptionForm({
             />
           </FormField>
 
-          <FormField label={t.paymentMethod}>
-            <select
-              value={form.paymentMethod}
-              onChange={(e) => set('paymentMethod', e.target.value)}
-              className={inputCls}
-            >
-              <option value="cash">{t.cash}</option>
-              <option value="card">{t.card}</option>
-              <option value="transfer">{t.transfer}</option>
-            </select>
-          </FormField>
+
 
           <FormField label={t.startDate} error={errors.startDate}>
             <input
@@ -774,16 +744,7 @@ function SubscriptionForm({
             />
           </FormField>
 
-          <FormField label={t.paymentStatus}>
-            <select
-              value={form.status}
-              onChange={(e) => set('status', e.target.value as Subscription['status'])}
-              className={inputCls}
-            >
-              <option value="unpaid">{t.unpaid}</option>
-              <option value="paid">{t.paid}</option>
-            </select>
-          </FormField>
+
         </div>
 
         {/* Auto-fill hint */}
@@ -830,7 +791,7 @@ function TransactionForm({
 
   const [form, setForm] = useState({
     type: 'revenue' as Transaction['type'],
-    category: 'subscription' as Transaction['category'],
+    category: 'other' as Transaction['category'],
     amount: 0,
     transactionDate: today,
     description: '',
@@ -838,6 +799,7 @@ function TransactionForm({
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -847,9 +809,10 @@ function TransactionForm({
     setErrors(e2);
     if (Object.keys(e2).length > 0) return;
 
-    setSaving(true);
-    await new Promise((r) => setTimeout(r, 400));
-    onSave({
+    if (saving) return;
+    setSaving(true); setSaveError('');
+    try {
+    await onSave({
       type: form.type,
       category: form.category,
       amount: Number(form.amount) || 0,
@@ -857,7 +820,9 @@ function TransactionForm({
       description: form.description,
       recordedBy: form.recordedBy,
     });
-    setSaving(false);
+
+    } catch { setSaveError(lang === 'ar' ? 'تعذر حفظ التغيير. راجع الرسالة وحاول مجددًا.' : 'Could not save this change. Review the error and retry.'); }
+    finally { setSaving(false); }
   };
 
   const set = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) =>
@@ -866,6 +831,7 @@ function TransactionForm({
   return (
     <Modal open onClose={onClose} title={t.addTransactionTitle} size="lg">
       <form onSubmit={handleSubmit} className="space-y-4">
+        {saveError && <p role="alert" className="text-sm text-red-600">{saveError}</p>}
         {Object.keys(errors).length > 0 && (
           <FormError message={t.fixFields} />
         )}
@@ -887,7 +853,6 @@ function TransactionForm({
               onChange={(e) => set('category', e.target.value)}
               className={inputCls}
             >
-              <option value="subscription">{t.catSubscription}</option>
               <option value="salary">{t.catSalary}</option>
               <option value="equipment">{t.catEquipment}</option>
               <option value="rent">{t.catRent}</option>
@@ -983,7 +948,7 @@ function RemindersAnalyticsTab({
   const collectionRate = totalSubs > 0 ? Math.round((paidSubs / totalSubs) * 100) : 0;
 
   // Bar chart data: paid vs unpaid per plan type
-  const planTypes: Subscription['planType'][] = ['monthly', 'quarterly', 'yearly'];
+  const planTypes: Subscription['planType'][] = ['monthly', 'quarterly', 'semi_annual', 'annual'];
   const chartData = planTypes.map((plan) => {
     const planSubs = subscriptions.filter((s) => s.planType === plan);
     const paid = planSubs.filter((s) => s.status === 'paid').length;

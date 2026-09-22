@@ -32,18 +32,18 @@ export function Teams({ teams, staff, players, onTeamsChange, activeRole, lang }
   const coachOf = (id: string) => staff.find((s) => s.id === id);
   const playersIn = (teamId: string) => players.filter((p) => p.teamId === teamId).length;
 
-  const handleSave = (data: Omit<Team, 'id'>, id?: string) => {
+  const handleSave = async (data: Omit<Team, 'id'>, id?: string) => {
     if (id) {
-      onTeamsChange(teams.map((tm) => (tm.id === id ? { ...data, id } : tm)));
+      await onTeamsChange(teams.map((tm) => (tm.id === id ? { ...data, id } : tm)));
     } else {
-      onTeamsChange([...teams, { ...data, id: `team-${Date.now()}` }]);
+      await onTeamsChange([...teams, { ...data, id: `team-${Date.now()}` }]);
     }
     setShowAdd(false);
     setEditTeam(null);
   };
 
-  const handleDelete = () => {
-    if (deleteId) onTeamsChange(teams.filter((tm) => tm.id !== deleteId));
+  const handleDelete = async () => {
+    if (deleteId) await onTeamsChange(teams.filter((tm) => tm.id !== deleteId));
     setDeleteId(null);
   };
 
@@ -227,6 +227,7 @@ function TeamForm({
   );
 
   const [form, setForm] = useState({
+    version: team?.version,
     name: team?.name || '',
     ageGroup: team?.ageGroup || '',
     coachId: team?.coachId || eligibleCoaches[0]?.id || '',
@@ -245,14 +246,18 @@ function TeamForm({
   };
 
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!form.name || !form.coachId) return;
-    setSaving(true);
-    await new Promise((r) => setTimeout(r, 400));
-    onSave(form, team?.id);
-    setSaving(false);
+    if (saving) return;
+    setSaving(true); setSaveError('');
+    try {
+    await onSave(form, team?.id);
+
+    } catch { setSaveError(lang === 'ar' ? 'تعذر حفظ التغيير. راجع الرسالة وحاول مجددًا.' : 'Could not save this change. Review the error and retry.'); }
+    finally { setSaving(false); }
   };
 
   return (
@@ -263,6 +268,7 @@ function TeamForm({
       size="lg"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
+        {saveError && <p role="alert" className="text-sm text-red-600">{saveError}</p>}
         <div className="grid grid-cols-2 gap-4">
           <Field label={isAr ? 'اسم الفريق' : 'Team name'}>
             <input

@@ -94,34 +94,34 @@ export function Schedules({
   const totalMinutes = trainings.reduce((sum, tr) => sum + (tr.durationMinutes || 0), 0);
 
   /* ---------- handlers: matches ---------- */
-  const handleSaveMatch = (data: Omit<Match, 'id'>, id?: string) => {
+  const handleSaveMatch = async (data: Omit<Match, 'id'>, id?: string) => {
     if (id) {
-      onMatchesChange(matches.map((m) => (m.id === id ? { ...data, id } : m)));
+      await onMatchesChange(matches.map((m) => (m.id === id ? { ...data, id } : m)));
     } else {
-      onMatchesChange([...matches, { ...data, id: `match-${Date.now()}` }]);
+      await onMatchesChange([...matches, { ...data, id: `match-${Date.now()}` }]);
     }
     setShowMatch(false);
     setEditMatch(null);
   };
 
-  const handleDeleteMatch = () => {
-    if (deleteMatchId) onMatchesChange(matches.filter((m) => m.id !== deleteMatchId));
+  const handleDeleteMatch = async () => {
+    if (deleteMatchId) await onMatchesChange(matches.filter((m) => m.id !== deleteMatchId));
     setDeleteMatchId(null);
   };
 
   /* ---------- handlers: trainings ---------- */
-  const handleSaveTraining = (data: TrainingForm, id?: string) => {
+  const handleSaveTraining = async (data: TrainingForm, id?: string) => {
     if (id) {
-      onTrainingsChange(trainings.map((tr) => (tr.id === id ? { ...data, id } : tr)));
+      await onTrainingsChange(trainings.map((tr) => (tr.id === id ? { ...data, id } : tr)));
     } else {
-      onTrainingsChange([...trainings, { ...data, id: `training-${Date.now()}` }]);
+      await onTrainingsChange([...trainings, { ...data, id: `training-${Date.now()}` }]);
     }
     setShowTraining(false);
     setEditTraining(null);
   };
 
-  const handleDeleteTraining = () => {
-    if (deleteTrainingId) onTrainingsChange(trainings.filter((tr) => tr.id !== deleteTrainingId));
+  const handleDeleteTraining = async () => {
+    if (deleteTrainingId) await onTrainingsChange(trainings.filter((tr) => tr.id !== deleteTrainingId));
     setDeleteTrainingId(null);
   };
 
@@ -524,6 +524,7 @@ function MatchForm({
   const t = tr(lang);
   const isAr = lang === 'ar';
   const [form, setForm] = useState({
+    version: match?.version,
     teamId: match?.teamId || teams[0]?.id || '',
     opponent: match?.opponent || '',
     matchDate: match?.matchDate ? toLocalDatetime(match.matchDate) : '',
@@ -538,14 +539,17 @@ function MatchForm({
   const isScheduled = form.result === 'scheduled';
 
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!form.teamId || !form.opponent || !form.matchDate) return;
-    setSaving(true);
-    await new Promise((r) => setTimeout(r, 400));
-    onSave(
+    if (saving) return;
+    setSaving(true); setSaveError('');
+    try {
+    await onSave(
       {
+        version: match?.version,
         teamId: form.teamId,
         opponent: form.opponent,
         matchDate: new Date(form.matchDate).toISOString(),
@@ -558,12 +562,15 @@ function MatchForm({
       },
       match?.id,
     );
-    setSaving(false);
+
+    } catch { setSaveError(lang === 'ar' ? 'تعذر حفظ التغيير. راجع الرسالة وحاول مجددًا.' : 'Could not save this change. Review the error and retry.'); }
+    finally { setSaving(false); }
   };
 
   return (
     <Modal open onClose={onClose} title={match ? (isAr ? 'تعديل بيانات المباراة' : 'Edit Match') : (isAr ? 'إضافة مباراة جديدة' : 'Add New Match')} size="lg">
       <form onSubmit={handleSubmit} className="space-y-4">
+        {saveError && <p role="alert" className="text-sm text-red-600">{saveError}</p>}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label={t.team}>
             <select
@@ -705,6 +712,7 @@ function TrainingForm({
   const t = tr(lang);
   const isAr = lang === 'ar';
   const [form, setForm] = useState({
+    version: training?.version,
     teamId: training?.teamId || teams[0]?.id || '',
     title: training?.title || '',
     sessionDate: training?.sessionDate || '',
@@ -713,14 +721,17 @@ function TrainingForm({
   });
 
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!form.teamId || !form.title || !form.sessionDate) return;
-    setSaving(true);
-    await new Promise((r) => setTimeout(r, 400));
-    onSave(
+    if (saving) return;
+    setSaving(true); setSaveError('');
+    try {
+    await onSave(
       {
+        version: training?.version,
         teamId: form.teamId,
         title: form.title,
         sessionDate: form.sessionDate,
@@ -729,12 +740,15 @@ function TrainingForm({
       },
       training?.id,
     );
-    setSaving(false);
+
+    } catch { setSaveError(lang === 'ar' ? 'تعذر حفظ التغيير. راجع الرسالة وحاول مجددًا.' : 'Could not save this change. Review the error and retry.'); }
+    finally { setSaving(false); }
   };
 
   return (
     <Modal open onClose={onClose} title={training ? (isAr ? 'تعديل بيانات التدريب' : 'Edit Training') : (isAr ? 'إضافة تدريب جديد' : 'Add New Training')} size="lg">
       <form onSubmit={handleSubmit} className="space-y-4">
+        {saveError && <p role="alert" className="text-sm text-red-600">{saveError}</p>}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label={t.team}>
             <select

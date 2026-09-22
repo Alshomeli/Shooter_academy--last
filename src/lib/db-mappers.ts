@@ -8,8 +8,8 @@ import type {
 
 interface StaffRow {
   id: string; name: string; email: string; phone: string; role: string;
-  salary: number; specialization: string; status: string; joined_date: string;
-  avatar_url: string; national_id: string | null; licenses: string[] | null;
+  salary?: number; private_fields_loaded?: boolean; row_version?: number; specialization: string; status: string; joined_date: string;
+  avatar_url: string; national_id?: string | null; licenses: string[] | null;
   experience_years: number | null; rating: number | null;
   tactical_style: string | null; notes: string | null; user_id: string | null;
 }
@@ -18,13 +18,13 @@ interface TeamRow {
   training_days: string[]; training_time: string; pitch_number: string;
 }
 interface PlayerRow {
-  id: string; name: string; birth_date: string; blood_type: string;
-  jersey_number: number; position: string; team_id: string;
+  id: string; private_fields_loaded?: boolean; row_version?: number; name: string; birth_date: string; blood_type: string;
+  jersey_number: number; position: string; team_id: string | null;
   parent_name: string; parent_phone: string; parent_email: string;
-  parent_id: string; status: string; notes: string; joined_date: string;
+  parent_id: string | null; status: string; notes?: string; joined_date: string;
 }
 interface ParentRow {
-  id: string; name: string; national_id: string; nationality: string;
+  id: string; user_id?: string | null; private_fields_loaded?: boolean; row_version?: number; name: string; national_id?: string; nationality: string;
   phone: string; whatsapp_phone: string; email: string; address: string;
   occupation: string; workplace: string; avatar_url: string;
   status: string; notes: string; joined_date: string;
@@ -48,7 +48,7 @@ interface TrainingRow {
   duration_minutes: number; objectives: string;
 }
 interface TransactionRow {
-  id: string; type: string; category: string; amount: number;
+  id: string; subscription_id?: string | null; player_id?: string | null; type: string; category: string; amount: number;
   transaction_date: string; description: string; recorded_by: string;
 }
 interface TournamentRow {
@@ -61,6 +61,7 @@ interface VideoRow {
   markers: VideoMarker[];
 }
 interface SettingsRow {
+  row_version?: number;
   id: string; name: string; logo_url: string; phone: string;
   email: string; address: string; subscription_fee_monthly: number;
   subscription_fee_quarterly: number; subscription_fee_semi_annual: number;
@@ -78,7 +79,7 @@ interface NotificationRow {
 /* ---------- Row -> domain (snake_case to camelCase) ---------- */
 
 export const mapStaff = (r: StaffRow): Staff => ({
-  id: r.id, name: r.name, email: r.email, phone: r.phone, role: r.role as Staff['role'],
+  id: r.id, version: r.row_version, privateFieldsLoaded: r.private_fields_loaded, name: r.name, email: r.email, phone: r.phone, role: r.role as Staff['role'],
   salary: Number(r.salary) || 0, specialization: r.specialization, status: r.status as Staff['status'],
   joinedDate: r.joined_date, avatarUrl: r.avatar_url, nationalId: r.national_id ?? undefined,
   licenses: r.licenses ?? undefined, experienceYears: r.experience_years ?? undefined,
@@ -93,22 +94,22 @@ export const mapTeam = (r: TeamRow): Team => ({
 
 export const mapPlayer = (r: PlayerRow): Player => ({
   id: r.id, name: r.name, birthDate: r.birth_date, bloodType: r.blood_type,
-  jerseyNumber: r.jersey_number, position: r.position, teamId: r.team_id,
+  jerseyNumber: r.jersey_number, position: r.position, teamId: r.team_id ?? '',
   parentName: r.parent_name, parentPhone: r.parent_phone, parentEmail: r.parent_email,
-  parentId: r.parent_id, status: r.status as Player['status'], notes: r.notes,
+  parentId: r.parent_id ?? '', privateFieldsLoaded: r.private_fields_loaded, version: r.row_version, status: r.status as Player['status'], notes: r.notes ?? '',
   joinedDate: r.joined_date,
 });
 
 export const mapParent = (r: ParentRow): Parent => ({
-  id: r.id, name: r.name, nationalId: r.national_id, nationality: r.nationality,
+  id: r.id, name: r.name, nationalId: r.national_id ?? '', userId: r.user_id ?? undefined, privateFieldsLoaded: r.private_fields_loaded, version: r.row_version, nationality: r.nationality,
   phone: r.phone, whatsappPhone: r.whatsapp_phone, email: r.email, address: r.address,
   occupation: r.occupation, workplace: r.workplace, avatarUrl: r.avatar_url,
-  status: r.status as Parent['status'], notes: r.notes, joinedDate: r.joined_date,
+  status: r.status as Parent['status'], notes: r.notes ?? '', joinedDate: r.joined_date,
 });
 
 export const mapSubscription = (r: SubscriptionRow): Subscription => ({
-  id: r.id, playerId: r.player_id, planType: r.plan_type as Subscription['planType'],
-  amount: r.amount, startDate: r.start_date, endDate: r.end_date,
+  id: r.id, playerId: r.player_id, planType: (r.plan_type === 'yearly' ? 'annual' : r.plan_type) as Subscription['planType'],
+  amount: Number(r.amount), startDate: r.start_date, endDate: r.end_date,
   status: r.status as Subscription['status'], paymentMethod: r.payment_method ?? undefined,
   paidAt: r.paid_at ?? undefined,
 });
@@ -132,8 +133,8 @@ export const mapTraining = (r: TrainingRow): Training => ({
 });
 
 export const mapTransaction = (r: TransactionRow): Transaction => ({
-  id: r.id, type: r.type as Transaction['type'], category: r.category, amount: r.amount,
-  transactionDate: r.transaction_date, description: r.description, recordedBy: r.recorded_by,
+  id: r.id, type: r.type as Transaction['type'], category: r.category, amount: Number(r.amount),
+  transactionDate: r.transaction_date, description: r.description, recordedBy: r.recorded_by, subscriptionId: r.subscription_id ?? undefined, playerId: r.player_id ?? undefined,
 });
 
 export const mapTournament = (r: TournamentRow): Tournament => ({
@@ -150,10 +151,9 @@ export const mapVideo = (r: VideoRow): Video => ({
 });
 
 export const mapSettings = (r: SettingsRow): Settings => ({
-  id: r.id, name: r.name, logoUrl: r.logo_url, phone: r.phone, email: r.email,
+  id: r.id, version: r.row_version, subscriptionFeeSemiAnnual: Number(r.subscription_fee_semi_annual ?? 0), name: r.name, logoUrl: r.logo_url, phone: r.phone, email: r.email,
   address: r.address, subscriptionFeeMonthly: r.subscription_fee_monthly,
   subscriptionFeeQuarterly: r.subscription_fee_quarterly,
-  subscriptionFeeSemiAnnual: r.subscription_fee_semi_annual,
   subscriptionFeeYearly: r.subscription_fee_yearly,
 });
 
@@ -171,8 +171,8 @@ export const mapNotification = (r: NotificationRow): Notification => ({
 
 export const staffToRow = (s: Staff): StaffRow => ({
   id: s.id, name: s.name, email: s.email, phone: s.phone, role: s.role,
-  salary: s.salary, specialization: s.specialization, status: s.status,
-  joined_date: s.joinedDate, avatar_url: s.avatarUrl, national_id: s.nationalId ?? null,
+  ...(s.privateFieldsLoaded === false ? {} : { salary: s.salary }), specialization: s.specialization, status: s.status,
+  joined_date: s.joinedDate, avatar_url: s.avatarUrl, ...(s.privateFieldsLoaded === false ? {} : { national_id: s.nationalId ?? null }),
   licenses: s.licenses ?? null, experience_years: s.experienceYears ?? null,
   rating: s.rating ?? null, tactical_style: s.tacticalStyle ?? null, notes: s.notes ?? null,
   user_id: s.userId ?? null,
@@ -185,13 +185,13 @@ export const teamToRow = (t: Team): TeamRow => ({
 
 export const playerToRow = (p: Player): PlayerRow => ({
   id: p.id, name: p.name, birth_date: p.birthDate, blood_type: p.bloodType,
-  jersey_number: p.jerseyNumber, position: p.position, team_id: p.teamId,
+  jersey_number: p.jerseyNumber, position: p.position, team_id: p.teamId || null,
   parent_name: p.parentName, parent_phone: p.parentPhone, parent_email: p.parentEmail,
-  parent_id: p.parentId, status: p.status, notes: p.notes, joined_date: p.joinedDate,
+  parent_id: p.parentId || null, status: p.status, ...(p.privateFieldsLoaded === false ? {} : { notes: p.notes }), joined_date: p.joinedDate,
 });
 
 export const parentToRow = (p: Parent): ParentRow => ({
-  id: p.id, name: p.name, national_id: p.nationalId, nationality: p.nationality,
+  id: p.id, name: p.name, ...(p.privateFieldsLoaded === false ? {} : { national_id: p.nationalId }), nationality: p.nationality,
   phone: p.phone, whatsapp_phone: p.whatsappPhone, email: p.email, address: p.address,
   occupation: p.occupation, workplace: p.workplace, avatar_url: p.avatarUrl,
   status: p.status, notes: p.notes, joined_date: p.joinedDate,
@@ -200,7 +200,7 @@ export const parentToRow = (p: Parent): ParentRow => ({
 export const subscriptionToRow = (s: Subscription): SubscriptionRow => ({
   id: s.id, player_id: s.playerId, plan_type: s.planType, amount: s.amount,
   start_date: s.startDate, end_date: s.endDate, status: s.status,
-  payment_method: s.paymentMethod ?? null, paid_at: s.paidAt ?? null,
+  payment_method: s.status === 'paid' ? s.paymentMethod ?? null : null, paid_at: s.status === 'paid' ? s.paidAt ?? null : null,
 });
 
 export const attendanceToRow = (a: Attendance): AttendanceRow => ({
@@ -221,7 +221,7 @@ export const trainingToRow = (t: Training): TrainingRow => ({
 
 export const transactionToRow = (t: Transaction): TransactionRow => ({
   id: t.id, type: t.type, category: t.category, amount: t.amount,
-  transaction_date: t.transactionDate, description: t.description, recorded_by: t.recordedBy,
+  transaction_date: t.transactionDate, description: t.description, recorded_by: t.recordedBy, subscription_id: t.subscriptionId ?? null, player_id: t.playerId ?? null,
 });
 
 export const tournamentToRow = (t: Tournament): TournamentRow => ({
@@ -240,8 +240,7 @@ export const settingsToRow = (s: Settings): SettingsRow => ({
   id: s.id, name: s.name, logo_url: s.logoUrl, phone: s.phone, email: s.email,
   address: s.address, subscription_fee_monthly: s.subscriptionFeeMonthly,
   subscription_fee_quarterly: s.subscriptionFeeQuarterly,
-  subscription_fee_semi_annual: s.subscriptionFeeSemiAnnual,
-  subscription_fee_yearly: s.subscriptionFeeYearly,
+  subscription_fee_yearly: s.subscriptionFeeYearly, subscription_fee_semi_annual: s.subscriptionFeeSemiAnnual,
 });
 
 export const auditLogToRow = (a: AuditLog): AuditLogRow => ({

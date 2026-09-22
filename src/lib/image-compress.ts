@@ -9,6 +9,9 @@ export interface CompressionResult {
 }
 
 export async function compressImage(file: File): Promise<CompressionResult> {
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || !file.size || file.size > 20_000_000) {
+    throw new Error('Use a JPG, PNG or WebP photo smaller than 20 MB.');
+  }
   const originalSize = file.size;
   const bitmap = await createImageBitmap(file);
   const { width, height } = bitmap;
@@ -21,16 +24,19 @@ export async function compressImage(file: File): Promise<CompressionResult> {
     targetH = Math.round(height * scale);
   }
 
-  const canvas = new OffscreenCanvas(targetW, targetH);
-  const ctx = canvas.getContext('2d')!;
-  ctx.drawImage(bitmap, 0, 0, targetW, targetH);
-  bitmap.close();
-
-  let blob = await canvas.convertToBlob({ type: 'image/webp', quality: QUALITY });
-
-  if (!blob || blob.size === 0) {
-    blob = await canvas.convertToBlob({ type: 'image/jpeg', quality: QUALITY });
-  }
+  // HTMLCanvasElement also supports browsers without OffscreenCanvas.
+  const canvas = document.createElement('canvas');
+  canvas.width = targetW;
+  canvas.height = targetH;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) { bitmap.close(); throw new Error('Image compression is unavailable in this browser.'); }
+  try { ctx.drawImage(bitmap, 0, 0, targetW, targetH); }
+  finally { bitmap.close(); }
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob(result => result?.size ? resolve(result) : reject(new Error('Unable to compress this image.')), 'image/webp', QUALITY);
+  });
+  if (blob.type !== 'image/webp') throw new Error('This browser does not support WebP compression.');
+  if (blob.size > 5_000_000) throw new Error('Choose a smaller photo. The compressed file must be under 5 MB.');
 
   return {
     blob,

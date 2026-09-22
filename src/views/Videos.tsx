@@ -32,11 +32,11 @@ export function Videos({ videos, matches, trainings, players, onVideosChange, ac
 
   const canEdit = activeRole === 'manager' || activeRole === 'coach';
 
-  const handleSave = (data: Omit<Video, 'id' | 'createdAt' | 'markers'>, id?: string) => {
+  const handleSave = async (data: Omit<Video, 'id' | 'createdAt' | 'markers'>, id?: string) => {
     if (id) {
-      onVideosChange(videos.map((v) => (v.id === id ? { ...data, id, createdAt: v.createdAt, markers: v.markers } : v)));
+      await onVideosChange(videos.map((v) => (v.id === id ? { ...data, id, createdAt: v.createdAt, markers: v.markers } : v)));
     } else {
-      onVideosChange([
+      await onVideosChange([
         ...videos,
         { ...data, id: `video-${Date.now()}`, createdAt: new Date().toISOString(), markers: [] },
       ]);
@@ -45,13 +45,13 @@ export function Videos({ videos, matches, trainings, players, onVideosChange, ac
     setEditItem(null);
   };
 
-  const handleDelete = () => {
-    if (deleteId) onVideosChange(videos.filter((v) => v.id !== deleteId));
+  const handleDelete = async () => {
+    if (deleteId) await onVideosChange(videos.filter((v) => v.id !== deleteId));
     setDeleteId(null);
   };
 
-  const handleSaveMarkers = (videoId: string, markers: VideoMarker[]) => {
-    onVideosChange(videos.map((v) => (v.id === videoId ? { ...v, markers } : v)));
+  const handleSaveMarkers = async (videoId: string, markers: VideoMarker[]) => {
+    await onVideosChange(videos.map((v) => (v.id === videoId ? { ...v, markers, version: viewVideo?.version } : v)));
   };
 
   const associatedLabel = (v: Video) => {
@@ -178,8 +178,8 @@ export function Videos({ videos, matches, trainings, players, onVideosChange, ac
           canEdit={canEdit}
           lang={lang}
           onClose={() => setViewVideo(null)}
-          onSaveMarkers={(markers) => {
-            handleSaveMarkers(viewVideo.id, markers);
+          onSaveMarkers={async (markers) => {
+            await handleSaveMarkers(viewVideo.id, markers);
             setViewVideo({ ...viewVideo, markers });
           }}
         />
@@ -217,6 +217,7 @@ function VideoForm({
   const t = tr(lang);
   const isAr = lang === 'ar';
   const [form, setForm] = useState({
+    version: video?.version,
     title: video?.title || '',
     videoUrl: video?.videoUrl || '',
     associatedType: video?.associatedType || ('match' as 'match' | 'training'),
@@ -225,14 +226,18 @@ function VideoForm({
   });
 
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!form.title || !form.videoUrl) return;
-    setSaving(true);
-    await new Promise((r) => setTimeout(r, 400));
-    onSave(form, video?.id);
-    setSaving(false);
+    if (saving) return;
+    setSaving(true); setSaveError('');
+    try {
+    await onSave(form, video?.id);
+
+    } catch { setSaveError(lang === 'ar' ? 'تعذر حفظ التغيير. راجع الرسالة وحاول مجددًا.' : 'Could not save this change. Review the error and retry.'); }
+    finally { setSaving(false); }
   };
 
   const associatedOptions =
@@ -243,6 +248,7 @@ function VideoForm({
   return (
     <Modal open onClose={onClose} title={video ? t.editVideo : isAr ? 'إضافة فيديو تحليلي' : 'Add Analysis Video'} size="lg">
       <form onSubmit={handleSubmit} className="space-y-4">
+        {saveError && <p role="alert" className="text-sm text-red-600">{saveError}</p>}
         <Field label={t.videoTitle}>
           <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder={isAr ? 'مثال: تحليل تكتيكي لمباراة الهلال' : 'e.g. Tactical analysis vs Al-Hilal'} className={inputCls} required />
         </Field>
@@ -317,12 +323,20 @@ function VideoPlayerModal({
   const t = tr(lang);
   const isAr = lang === 'ar';
   const [markers, setMarkers] = useState<VideoMarker[]>(video.markers);
+  const [savingMarkers, setSavingMarkers] = useState(false);
+  const [markerSaveError, setMarkerSaveError] = useState('');
+  const saveMarkers = async () => {
+    if (savingMarkers) return; setSavingMarkers(true); setMarkerSaveError('');
+    try { await onSaveMarkers(markers); onClose(); }
+    catch { setMarkerSaveError(isAr ? 'تعذر حفظ العلامات.' : 'Could not save markers.'); }
+    finally { setSavingMarkers(false); }
+  };
   const [showMarkerForm, setShowMarkerForm] = useState(false);
   const [editMarker, setEditMarker] = useState<VideoMarker | null>(null);
 
   const ytId = getYouTubeId(video.videoUrl);
 
-  const handleSaveMarker = (data: Omit<VideoMarker, 'id'>, id?: string) => {
+  const handleSaveMarker = async (data: Omit<VideoMarker, 'id'>, id?: string) => {
     if (id) {
       setMarkers(markers.map((m) => (m.id === id ? { ...data, id } : m)));
     } else {
@@ -332,12 +346,13 @@ function VideoPlayerModal({
     setEditMarker(null);
   };
 
-  const handleDeleteMarker = (id: string) => {
+  const handleDeleteMarker = async (id: string) => {
     setMarkers(markers.filter((m) => m.id !== id));
   };
 
   return (
     <Modal open onClose={onClose} title={video.title} size="xl">
+      {markerSaveError && <p role="alert" className="text-red-600">{markerSaveError}</p>}
       <div className="space-y-4">
         {ytId ? (
           <div className="aspect-video rounded-xl overflow-hidden bg-black">
@@ -443,7 +458,7 @@ function VideoPlayerModal({
 
         {canEdit && (
           <div className="flex gap-2 justify-end pt-2 border-t border-slate-100 dark:border-slate-800">
-            <button onClick={() => { onSaveMarkers(markers); onClose(); }} className="px-4 py-2 rounded-lg text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-500 transition cursor-pointer">
+            <button disabled={savingMarkers} onClick={() => void saveMarkers()} className="px-4 py-2 rounded-lg text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-500 transition cursor-pointer">
               {isAr ? 'حفظ العلامات' : 'Save markers'}
             </button>
           </div>

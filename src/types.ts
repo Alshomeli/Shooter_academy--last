@@ -1,6 +1,7 @@
 export type Role = 'manager' | 'accountant' | 'coach' | 'receptionist' | 'parent';
 
 export interface Staff {
+  version?: number;
   id: string;
   name: string;
   email: string;
@@ -11,6 +12,7 @@ export interface Staff {
   status: 'active' | 'inactive' | 'pending';
   joinedDate: string;
   avatarUrl: string;
+  privateFieldsLoaded?: boolean;
   nationalId?: string;
   licenses?: string[];
   experienceYears?: number;
@@ -21,6 +23,7 @@ export interface Staff {
 }
 
 export interface Team {
+  version?: number;
   id: string;
   name: string;
   ageGroup: string;
@@ -31,6 +34,8 @@ export interface Team {
 }
 
 export interface Player {
+  version?: number;
+  privateFieldsLoaded?: boolean;
   id: string;
   name: string;
   birthDate: string;
@@ -48,6 +53,9 @@ export interface Player {
 }
 
 export interface Parent {
+  version?: number;
+  userId?: string;
+  privateFieldsLoaded?: boolean;
   id: string;
   name: string;
   nationalId: string;
@@ -65,9 +73,10 @@ export interface Parent {
 }
 
 export interface Subscription {
+  version?: number;
   id: string;
   playerId: string;
-  planType: 'monthly' | 'quarterly' | 'semi_annual' | 'yearly';
+  planType: 'monthly' | 'quarterly' | 'semi_annual' | 'annual';
   amount: number;
   startDate: string;
   endDate: string;
@@ -77,6 +86,7 @@ export interface Subscription {
 }
 
 export interface Attendance {
+  version?: number;
   id: string;
   playerId: string;
   sessionDate: string;
@@ -86,6 +96,7 @@ export interface Attendance {
 }
 
 export interface Match {
+  version?: number;
   id: string;
   teamId: string;
   opponent: string;
@@ -99,6 +110,7 @@ export interface Match {
 }
 
 export interface Training {
+  version?: number;
   id: string;
   teamId: string;
   title: string;
@@ -108,6 +120,9 @@ export interface Training {
 }
 
 export interface Transaction {
+  version?: number;
+  subscriptionId?: string;
+  playerId?: string;
   id: string;
   type: 'revenue' | 'expense';
   category: string;
@@ -118,6 +133,7 @@ export interface Transaction {
 }
 
 export interface Tournament {
+  version?: number;
   id: string;
   name: string;
   organizer: string;
@@ -137,6 +153,7 @@ export interface VideoMarker {
 }
 
 export interface Video {
+  version?: number;
   id: string;
   title: string;
   videoUrl: string;
@@ -157,6 +174,7 @@ export interface AuditLog {
 }
 
 export interface Notification {
+  version?: number;
   id: string;
   title: string;
   message: string;
@@ -166,6 +184,7 @@ export interface Notification {
 }
 
 export interface Settings {
+  version?: number;
   id: string;
   name: string;
   logoUrl: string;
@@ -179,6 +198,8 @@ export interface Settings {
 }
 
 export interface CurrentUser {
+  authUserId?: string;
+  registrationOnly?: boolean;
   id: string;
   name: string;
   email: string;
@@ -213,6 +234,7 @@ export type RegistrationType = 'initial_onboarding' | 'new_application';
 export type RegistrationStatus = 'draft' | 'pending' | 'under_review' | 'needs_info' | 'approved' | 'rejected';
 
 export interface RegistrationParentInput {
+  requestId?: string;
   registrationType: RegistrationType;
   fullName: string;
   nationalId: string;
@@ -227,6 +249,7 @@ export interface RegistrationParentInput {
 }
 
 export interface RegistrationChildInput {
+  childId?: string;
   clientKey: string;
   fullName: string;
   nationalId: string;
@@ -247,6 +270,7 @@ export interface RegistrationDraftResult {
 }
 
 export interface RegistrationChild {
+  clientKey?: string;
   id: string;
   fullName: string;
   nationalId?: string;

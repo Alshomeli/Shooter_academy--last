@@ -5,7 +5,7 @@ import {
 import type { Parent, Player, Team, Subscription, Lang, Role } from '@/types';
 import { Badge, Modal, ConfirmDialog, PageHeader, EmptyState, SaveButton } from '@/components/ui';
 import { ContactLinks } from '@/components/ContactLinks';
-import { tr, positionLabel, statusLabel } from '@/lib/i18n';
+import { tr, positionLabel } from '@/lib/i18n';
 
 interface ParentsProps {
   parents: Parent[];
@@ -47,18 +47,18 @@ export function Parents({ parents, players, teams, subscriptions, onParentsChang
   const teamName = (id: string) => teams.find((tm) => tm.id === id)?.name || (isAr ? 'غير محدد' : 'Not specified');
   const subOf = (playerId: string) => subscriptions.find((s) => s.playerId === playerId);
 
-  const handleSave = (data: Omit<Parent, 'id'>, id?: string) => {
+  const handleSave = async (data: Omit<Parent, 'id'>, id?: string) => {
     if (id) {
-      onParentsChange(parents.map((p) => (p.id === id ? { ...data, id } : p)));
+      await onParentsChange(parents.map((p) => (p.id === id ? { ...data, id } : p)));
     } else {
-      onParentsChange([...parents, { ...data, id: `parent-${Date.now()}` }]);
+      await onParentsChange([...parents, { ...data, id: `parent-${Date.now()}` }]);
     }
     setShowAdd(false);
     setEditParent(null);
   };
 
-  const handleDelete = () => {
-    if (deleteId) onParentsChange(parents.filter((p) => p.id !== deleteId));
+  const handleDelete = async () => {
+    if (deleteId) await onParentsChange(parents.filter((p) => p.id !== deleteId));
     setDeleteId(null);
   };
 
@@ -177,12 +177,12 @@ export function Parents({ parents, players, teams, subscriptions, onParentsChang
                       >
                         <Edit2 className="h-3.5 w-3.5" /> {t.edit}
                       </button>
-                      <button
+                      {activeRole === 'manager' && <button
                         onClick={() => setDeleteId(p.id)}
                         className="flex items-center justify-center gap-1 py-1.5 px-2.5 rounded-lg text-[11px] font-bold text-red-600 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 transition cursor-pointer"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
-                      </button>
+                      </button>}
                     </>
                   )}
                 </div>
@@ -254,6 +254,8 @@ function ParentForm({
   const t = tr(lang);
   const isAr = lang === 'ar';
   const [form, setForm] = useState({
+    version: parent?.version,
+    privateFieldsLoaded: parent?.privateFieldsLoaded,
     name: parent?.name || '',
     nationalId: parent?.nationalId || '',
     nationality: parent?.nationality || (isAr ? 'بحريني' : 'Bahraini'),
@@ -270,19 +272,24 @@ function ParentForm({
   });
 
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!form.name || !form.phone) return;
-    setSaving(true);
-    await new Promise((r) => setTimeout(r, 400));
-    onSave(form, parent?.id);
-    setSaving(false);
+    if (saving) return;
+    setSaving(true); setSaveError('');
+    try {
+    await onSave(form, parent?.id);
+
+    } catch { setSaveError(lang === 'ar' ? 'تعذر حفظ التغيير. راجع الرسالة وحاول مجددًا.' : 'Could not save this change. Review the error and retry.'); }
+    finally { setSaving(false); }
   };
 
   return (
     <Modal open onClose={onClose} title={parent ? t.editParent : isAr ? 'إضافة ولي أمر جديد' : 'Add New Parent'} size="lg">
       <form onSubmit={handleSubmit} className="space-y-4">
+        {saveError && <p role="alert" className="text-sm text-red-600">{saveError}</p>}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label={isAr ? 'الاسم بالكامل' : 'Full name'}>
             <input
@@ -294,6 +301,7 @@ function ParentForm({
           </Field>
           <Field label={isAr ? 'الرقم الوطني' : 'National ID'}>
             <input
+              disabled={form.privateFieldsLoaded === false}
               value={form.nationalId}
               onChange={(e) => setForm({ ...form, nationalId: e.target.value })}
               className={inputCls}

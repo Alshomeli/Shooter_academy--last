@@ -62,14 +62,14 @@ export function AttendanceView({ players, teams, attendance, onAttendanceChange,
     return { total, present, absent, excused, rate };
   }, [attendance]);
 
-  const handleDelete = () => {
-    if (deleteId) onAttendanceChange(attendance.filter((a) => a.id !== deleteId));
+  const handleDelete = async () => {
+    if (deleteId) await onAttendanceChange(attendance.filter((a) => a.id !== deleteId));
     setDeleteId(null);
   };
 
-  const handleBatchSave = (records: Omit<Attendance, 'id'>[]) => {
+  const handleBatchSave = async (records: Omit<Attendance, 'id'>[]) => {
     const withIds = records.map((r, i) => ({ ...r, id: `att-${Date.now()}-${i}` }));
-    onAttendanceChange([...withIds, ...attendance]);
+    await onAttendanceChange([...withIds, ...attendance]);
     setShowAdd(false);
   };
 
@@ -319,6 +319,8 @@ function BatchAttendanceForm({
   const [sessionType, setSessionType] = useState<SessionType>('training');
   const [marks, setMarks] = useState<Record<string, Status>>({});
   const [notes, setNotes] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   const teamPlayers = useMemo(
     () => players.filter((p) => p.teamId === teamId),
@@ -351,7 +353,7 @@ function BatchAttendanceForm({
     });
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const records: Omit<Attendance, 'id'>[] = teamPlayers
       .filter((p) => marks[p.id])
       .map((p) => ({
@@ -362,12 +364,16 @@ function BatchAttendanceForm({
         notes: notes || undefined,
       }));
     if (records.length === 0) return;
-    onSave(records);
+    if (saving) return; setSaving(true); setSaveError('');
+    try { await onSave(records); }
+    catch { setSaveError(isAr ? 'تعذر حفظ الحضور. راجع السجلات قبل إعادة المحاولة.' : 'Could not save attendance. Review the records before retrying.'); }
+    finally { setSaving(false); }
   };
 
   return (
     <Modal open onClose={onClose} title={isAr ? 'تسجيل حضور جديد' : 'Record New Attendance'} size="xl">
       <div className="space-y-5">
+        {saveError && <p role="alert" className="text-red-600">{saveError}</p>}
         {/* Step 1: session config */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
@@ -530,7 +536,7 @@ function BatchAttendanceForm({
             <button
               type="button"
               onClick={handleSave}
-              disabled={markedCount === 0}
+              disabled={saving || markedCount === 0}
               className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
             >
               <Check className="h-4 w-4" />

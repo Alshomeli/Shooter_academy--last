@@ -4,32 +4,34 @@ import {
   AlertTriangle, ChevronRight, ChevronLeft, Loader2, Users,
   FileText, Camera, User, Shield, Trophy, Info,
 } from 'lucide-react';
-import type { Lang, Role, Team, RegistrationApplication, RegistrationStatus } from '@/types';
+import type { Lang, Role, Team, Player, RegistrationApplication, RegistrationStatus } from '@/types';
 import { Badge, Modal, ConfirmDialog, PageHeader, EmptyState, StatCard } from '@/components/ui';
 import { tr } from '@/lib/i18n';
 import {
   fetchAllApplications, reviewApplication, approveApplication,
-  finalizePlayer, getSignedUrl,
+  finalizePlayer, getSignedUrl, errorMessage,
 } from '@/lib/registration';
 
 interface Props {
   lang: Lang;
   activeRole: Role;
   teams: Team[];
+  players: Player[];
+  onRefresh: () => Promise<void>;
 }
 
-const STATUS_CONFIGS: Record<RegistrationStatus, { color: string; icon: typeof Clock }> = {
+const STATUS_CONFIGS: Record<RegistrationStatus, { color: 'slate' | 'amber' | 'blue' | 'emerald' | 'red'; icon: typeof Clock }> = {
   draft: { color: 'slate', icon: FileText },
   pending: { color: 'amber', icon: Clock },
   under_review: { color: 'blue', icon: Eye },
-  needs_info: { color: 'orange', icon: AlertTriangle },
+  needs_info: { color: 'amber', icon: AlertTriangle },
   approved: { color: 'emerald', icon: CheckCircle2 },
   rejected: { color: 'red', icon: XCircle },
 };
 
 const maskCpr = (v?: string) => v && v.length > 4 ? '***' + v.slice(-4) : v || '—';
 
-export function RegistrationAdmin({ lang, activeRole, teams }: Props) {
+export function RegistrationAdmin({ lang, activeRole, teams, players, onRefresh }: Props) {
   const t = tr(lang);
   const isAr = lang === 'ar';
 
@@ -40,6 +42,8 @@ export function RegistrationAdmin({ lang, activeRole, teams }: Props) {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [search, setSearch] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const [confirmAction, setConfirmAction] = useState<{ type: string; id: string } | null>(null);
   const [reviewNotes, setReviewNotes] = useState('');
@@ -51,29 +55,37 @@ export function RegistrationAdmin({ lang, activeRole, teams }: Props) {
   const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
 
   const loadApps = useCallback(async () => {
+    if (activeRole !== 'manager') return [];
     setLoading(true);
     try {
       const data = await fetchAllApplications();
-      setApps(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    }
-    setLoading(false);
-  }, []);
+      setApps(data); setError('');
+      return data;
+    } catch (e) { setError(errorMessage(e, lang === 'ar')); return null; }
+    finally { setLoading(false); }
+  }, [activeRole, lang]);
 
-  useEffect(() => { loadApps(); }, [loadApps]);
+  useEffect(() => {
+    void loadApps();
+    const refreshVisible = () => { if (document.visibilityState === 'visible') void loadApps(); };
+    const timer = setInterval(refreshVisible, 60000);
+    window.addEventListener('focus', refreshVisible);
+    return () => { clearInterval(timer); window.removeEventListener('focus', refreshVisible); };
+  }, [loadApps]);
 
-  // Load photo URLs for selected app
   useEffect(() => {
     if (!selectedApp) return;
-    const photoDocs = selectedApp.documents.filter((d) => d.fileCategory === 'photo');
-    for (const doc of photoDocs) {
-      if (photoUrls[doc.storagePath]) continue;
-      getSignedUrl(doc.storagePath).then((url) => {
-        if (url) setPhotoUrls((prev) => ({ ...prev, [doc.storagePath]: url }));
-      });
-    }
-  }, [selectedApp]);
+    let cancelled = false;
+    setPhotoUrls({});
+    const refresh = async () => {
+      const results = await Promise.allSettled(selectedApp.documents.map(async doc => [doc.storagePath, await getSignedUrl(doc.storagePath)] as const));
+      if (cancelled) return;
+      setPhotoUrls(Object.fromEntries(results.flatMap(r => r.status === 'fulfilled' ? [r.value] : [])));
+      if (results.some(r => r.status === 'rejected')) setError(lang === 'ar' ? 'تعذر تحميل بعض الملفات الخاصة. أعد فتح الطلب للمحاولة.' : 'Some private files could not be loaded. Reopen the application to retry.');
+    };
+    void refresh(); const timer = setInterval(() => void refresh(), 240000);
+    return () => { cancelled = true; clearInterval(timer); };
+  }, [selectedApp, lang]);
 
   const statusLabel = (status: RegistrationStatus): string => {
     const map: Record<string, string> = {
@@ -99,55 +111,45 @@ export function RegistrationAdmin({ lang, activeRole, teams }: Props) {
     return apps.filter((a) => {
       if (statusFilter !== 'all' && a.status !== statusFilter) return false;
       if (typeFilter !== 'all' && a.registrationType !== typeFilter) return false;
+      const date = a.createdAt.slice(0, 10);
+      if (dateFrom && date < dateFrom) return false;
+      if (dateTo && date > dateTo) return false;
       if (search) {
         const q = search.toLowerCase();
         if (!a.parentName.toLowerCase().includes(q) && !a.parentPhone.includes(q)) return false;
       }
       return true;
     });
-  }, [apps, statusFilter, typeFilter, search]);
+  }, [apps, statusFilter, typeFilter, search, dateFrom, dateTo]);
 
   /* ---- Actions ---- */
   const handleAction = async (type: string, appId: string) => {
-    setActionLoading(true);
+    if (actionLoading || activeRole !== 'manager') return;
+    setActionLoading(true); setError('');
     try {
-      if (type === 'under_review') {
-        await reviewApplication(appId, 'under_review', reviewNotes);
-      } else if (type === 'needs_info') {
-        await reviewApplication(appId, 'needs_info', reviewNotes);
-      } else if (type === 'rejected') {
-        await reviewApplication(appId, 'rejected', reviewNotes);
-      } else if (type === 'approved') {
-        await approveApplication(appId);
-      }
-      await loadApps();
-      if (selectedApp?.id === appId) {
-        const updated = (await fetchAllApplications()).find((a) => a.id === appId);
-        setSelectedApp(updated || null);
-      }
-      setReviewNotes('');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    }
-    setActionLoading(false);
-    setConfirmAction(null);
+      if ((type === 'needs_info' || type === 'rejected') && !reviewNotes.trim()) throw new Error(isAr ? 'اكتب سبب القرار لولي الأمر.' : 'Add a reason for the parent.');
+      if (type === 'approved') await approveApplication(appId);
+      else if (type === 'under_review' || type === 'needs_info' || type === 'rejected') await reviewApplication(appId, type, reviewNotes.trim());
+      else throw new Error('Unknown registration action.');
+      const updated = await loadApps();
+      if (updated && selectedApp?.id === appId) setSelectedApp(updated.find(a => a.id === appId) || null);
+      setReviewNotes(''); setConfirmAction(null);
+      await onRefresh();
+    } catch (e) { setError(errorMessage(e, isAr)); throw e; }
+    finally { setActionLoading(false); }
   };
 
   const handleFinalize = async (playerId: string) => {
     const data = assignData[playerId];
-    if (!data?.teamId || !data?.position) return;
-    setActionLoading(true);
+    if (actionLoading || activeRole !== 'manager' || !data?.teamId || !data.position || !Number.isInteger(data.jerseyNumber) || data.jerseyNumber <= 0) return;
+    setActionLoading(true); setError('');
     try {
-      await finalizePlayer(playerId, data.teamId, data.position, data.jerseyNumber || 0);
-      await loadApps();
-      if (selectedApp) {
-        const updated = (await fetchAllApplications()).find((a) => a.id === selectedApp.id);
-        setSelectedApp(updated || null);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    }
-    setActionLoading(false);
+      await finalizePlayer(playerId, data.teamId, data.position, data.jerseyNumber);
+      await onRefresh();
+      const updated = await loadApps();
+      if (updated && selectedApp) setSelectedApp(updated.find(a => a.id === selectedApp.id) || null);
+    } catch (e) { setError(errorMessage(e, isAr)); }
+    finally { setActionLoading(false); }
   };
 
   const setAssign = (playerId: string, field: string, value: string | number) => {
@@ -188,6 +190,7 @@ export function RegistrationAdmin({ lang, activeRole, teams }: Props) {
         <StatCard icon={<XCircle className="h-5 w-5" />} label={t.regStatusRejected} value={counts.rejected} color="red" />
       </div>
 
+      <button onClick={() => void loadApps()} disabled={loading} className="text-sm font-bold text-emerald-600">{isAr ? 'تحديث الطلبات' : 'Refresh applications'}</button>
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-48">
@@ -213,7 +216,11 @@ export function RegistrationAdmin({ lang, activeRole, teams }: Props) {
         </select>
       </div>
 
-      {error && <p className="text-xs text-red-500 font-bold">{error}</p>}
+      <div className="flex flex-wrap gap-3">
+        <label className="text-xs text-slate-500">{isAr ? 'من تاريخ' : 'From'}<input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className={inputCls} /></label>
+        <label className="text-xs text-slate-500">{isAr ? 'إلى تاريخ' : 'To'}<input type="date" min={dateFrom} value={dateTo} onChange={e => setDateTo(e.target.value)} className={inputCls} /></label>
+      </div>
+      {error && <p role="alert" className="text-xs text-red-500 font-bold">{error}</p>}
 
       {/* List */}
       {loading ? (
@@ -228,17 +235,17 @@ export function RegistrationAdmin({ lang, activeRole, teams }: Props) {
             return (
               <button
                 key={app.id}
-                onClick={() => setSelectedApp(app)}
+                onClick={() => { setSelectedApp(app); setReviewNotes(''); setError(''); }}
                 className="w-full bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-4 hover:shadow-md transition-shadow cursor-pointer text-right"
               >
                 <div className="flex items-center gap-4">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-${cfg.color}-100 dark:bg-${cfg.color}-900/30 text-${cfg.color}-600 dark:text-${cfg.color}-400`}>
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
                     <StatusIcon className="h-5 w-5" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-black text-slate-900 dark:text-white truncate">{app.parentName}</p>
                     <div className="flex items-center gap-2 mt-1 flex-wrap">
-                      <Badge color={cfg.color as 'emerald'}>{statusLabel(app.status)}</Badge>
+                      <Badge color={cfg.color}>{statusLabel(app.status)}</Badge>
                       <span className="text-[11px] text-slate-400">{regTypeLabel(app.registrationType)}</span>
                       <span className="text-[11px] text-slate-400">· {app.children.length} {isAr ? 'لاعب' : 'player(s)'}</span>
                     </div>
@@ -256,11 +263,13 @@ export function RegistrationAdmin({ lang, activeRole, teams }: Props) {
 
       {/* Detail modal */}
       {selectedApp && (
-        <Modal open onClose={() => setSelectedApp(null)} title={t.regApplicationDetails} size="xl">
+        <Modal open onClose={() => { if (!actionLoading) setSelectedApp(null); }} title={t.regApplicationDetails} size="xl">
+          {error && <p role="alert" className="text-sm text-red-600 mb-3">{error}</p>}
           <AppDetail
             app={selectedApp}
             lang={lang}
             teams={teams}
+            players={players}
             photoUrls={photoUrls}
             assignData={assignData}
             actionLoading={actionLoading}
@@ -270,7 +279,7 @@ export function RegistrationAdmin({ lang, activeRole, teams }: Props) {
               if (type === 'approved' || type === 'rejected') {
                 setConfirmAction({ type, id: selectedApp.id });
               } else {
-                handleAction(type, selectedApp.id);
+                void handleAction(type, selectedApp.id).catch(() => {});
               }
             }}
             onFinalize={handleFinalize}
@@ -283,7 +292,7 @@ export function RegistrationAdmin({ lang, activeRole, teams }: Props) {
       <ConfirmDialog
         open={confirmAction?.type === 'approved'}
         onClose={() => setConfirmAction(null)}
-        onConfirm={() => confirmAction && handleAction('approved', confirmAction.id)}
+        onConfirm={async () => { if (confirmAction) await handleAction('approved', confirmAction.id); }}
         title={t.regApprove}
         message={t.regApproveConfirm}
         confirmLabel={t.regApprove}
@@ -291,7 +300,7 @@ export function RegistrationAdmin({ lang, activeRole, teams }: Props) {
       <ConfirmDialog
         open={confirmAction?.type === 'rejected'}
         onClose={() => setConfirmAction(null)}
-        onConfirm={() => confirmAction && handleAction('rejected', confirmAction.id)}
+        onConfirm={async () => { if (confirmAction) await handleAction('rejected', confirmAction.id); }}
         title={t.regReject}
         message={t.regRejectConfirm}
         confirmLabel={t.regReject}
@@ -305,12 +314,13 @@ export function RegistrationAdmin({ lang, activeRole, teams }: Props) {
 /* ------------------------------------------------------------------ */
 
 function AppDetail({
-  app, lang, teams, photoUrls, assignData, actionLoading, reviewNotes, setReviewNotes,
+  app, lang, teams, players, photoUrls, assignData, actionLoading, reviewNotes, setReviewNotes,
   onAction, onFinalize, onAssignChange,
 }: {
   app: RegistrationApplication;
   lang: Lang;
   teams: Team[];
+  players: Player[];
   photoUrls: Record<string, string>;
   assignData: Record<string, { teamId: string; position: string; jerseyNumber: number }>;
   actionLoading: boolean;
@@ -349,7 +359,7 @@ function AppDetail({
     <div className="space-y-5 max-h-[75vh] overflow-y-auto">
       {/* Status + type */}
       <div className="flex items-center gap-3 flex-wrap">
-        <Badge color={cfg.color as 'emerald'}>{
+        <Badge color={cfg.color}>{
           ({ draft: t.regStatusDraft, pending: t.regStatusPending, under_review: t.regStatusUnderReview, needs_info: t.regStatusNeedsInfo, approved: t.regStatusApproved, rejected: t.regStatusRejected })[app.status]
         }</Badge>
         <Badge color="blue">{regTypeLabel}</Badge>
@@ -378,6 +388,7 @@ function AppDetail({
           const photoUrl = photoDoc ? photoUrls[photoDoc.storagePath] : undefined;
           const childDocs = app.documents.filter((d) => d.childId === child.id && d.fileCategory === 'document');
           const assign = child.playerId ? assignData[child.playerId] : undefined;
+          const activated = players.some(p => p.id === child.playerId && p.status === 'active' && p.teamId);
           const selectedTeam = assign?.teamId ? teams.find((tm) => tm.id === assign.teamId) : undefined;
 
           return (
@@ -404,20 +415,21 @@ function AppDetail({
               {childDocs.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {childDocs.map((doc) => (
-                    <span key={doc.id} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-[11px] font-bold text-slate-600 dark:text-slate-400">
+                    <a key={doc.id} href={photoUrls[doc.storagePath]} target="_blank" rel="noreferrer" aria-disabled={!photoUrls[doc.storagePath]} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-[11px] font-bold text-emerald-600 underline">
                       <FileText className="h-3 w-3" /> {docTypeLabel(doc.documentType)}
-                    </span>
+                    </a>
                   ))}
                 </div>
               )}
 
               {/* Assignment UI for approved apps */}
-              {app.status === 'approved' && child.playerId && (
+              {activated && <Badge color="emerald">{isAr ? 'تم توزيع اللاعب وتفعيله' : 'Player assigned and activated'}</Badge>}
+              {app.status === 'approved' && child.playerId && !activated && (
                 <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-900/30 space-y-3">
                   <h4 className="text-xs font-black text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
                     <Trophy className="h-3.5 w-3.5" /> {t.regAssignTeam}
                   </h4>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <div>
                       <label className="block text-[10px] font-bold text-slate-500 mb-1">{t.team}</label>
                       <select
@@ -446,7 +458,7 @@ function AppDetail({
                     <div>
                       <label className="block text-[10px] font-bold text-slate-500 mb-1">{t.regAssignJersey}</label>
                       <input
-                        type="number" min={0}
+                        type="number" min={1} step={1}
                         value={assign?.jerseyNumber || ''}
                         onChange={(e) => onAssignChange(child.playerId!, 'jerseyNumber', Number(e.target.value) || 0)}
                         className={inputCls}
@@ -455,7 +467,7 @@ function AppDetail({
                   </div>
                   <button
                     onClick={() => onFinalize(child.playerId!)}
-                    disabled={actionLoading || !assign?.teamId || !assign?.position}
+                    disabled={actionLoading || !assign?.teamId || !assign?.position || !Number.isInteger(assign?.jerseyNumber) || assign.jerseyNumber <= 0}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {actionLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Shield className="h-3.5 w-3.5" />}
@@ -499,7 +511,7 @@ function AppDetail({
                 {t.regRequestInfo}
               </ActionBtn>
             )}
-            {(app.status === 'under_review' || app.status === 'needs_info') && (
+            {(app.status === 'pending' || app.status === 'under_review') && (
               <ActionBtn onClick={() => onAction('approved')} loading={actionLoading} color="emerald" icon={<CheckCircle2 className="h-3.5 w-3.5" />}>
                 {t.regApprove}
               </ActionBtn>
@@ -542,11 +554,17 @@ function ActionBtn({ onClick, loading, color, icon, children }: {
   onClick: () => void; loading: boolean; color: string;
   icon: React.ReactNode; children: React.ReactNode;
 }) {
+  const colors: Record<string, string> = {
+    blue: 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 hover:bg-blue-100',
+    amber: 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 hover:bg-amber-100',
+    emerald: 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100',
+    red: 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 hover:bg-red-100',
+  };
   return (
     <button
       onClick={onClick}
       disabled={loading}
-      className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed bg-${color}-50 dark:bg-${color}-900/20 text-${color}-700 dark:text-${color}-400 hover:bg-${color}-100 dark:hover:bg-${color}-900/30`}
+      className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${colors[color]}`}
     >
       {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : icon}
       {children}

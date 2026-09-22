@@ -68,18 +68,18 @@ export function StaffView({ staff, teams, players, onStaffChange, activeRole, la
     return players.filter((p) => teamIds.includes(p.teamId)).length;
   };
 
-  const handleSave = (data: Omit<Staff, 'id'>, id?: string) => {
+  const handleSave = async (data: Omit<Staff, 'id'>, id?: string) => {
     if (id) {
-      onStaffChange(staff.map((s) => (s.id === id ? { ...data, id } : s)));
+      await onStaffChange(staff.map((s) => (s.id === id ? { ...data, id } : s)));
     } else {
-      onStaffChange([...staff, { ...data, id: `staff-${Date.now()}` }]);
+      await onStaffChange([...staff, { ...data, id: `staff-${Date.now()}` }]);
     }
     setShowAdd(false);
     setEditMember(null);
   };
 
-  const handleDelete = () => {
-    if (deleteId) onStaffChange(staff.filter((s) => s.id !== deleteId));
+  const handleDelete = async () => {
+    if (deleteId) await onStaffChange(staff.filter((s) => s.id !== deleteId));
     setDeleteId(null);
   };
 
@@ -308,6 +308,9 @@ function StaffForm({
   const t = tr(lang);
   const isAr = lang === 'ar';
   const [form, setForm] = useState({
+    version: member?.version,
+    privateFieldsLoaded: member?.privateFieldsLoaded,
+    userId: member?.userId,
     name: member?.name || '',
     email: member?.email || '',
     phone: member?.phone || '',
@@ -328,18 +331,21 @@ function StaffForm({
   const isCoach = form.role === 'coach';
 
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!form.name || !form.email) return;
-    setSaving(true);
-    await new Promise((r) => setTimeout(r, 400));
+    if (saving) return;
+    setSaving(true); setSaveError('');
+    try {
     const licensesArray = form.licenses
       .split('،')
       .map((l) => l.trim())
       .filter(Boolean);
-    onSave(
+    await onSave(
       {
+        version: member?.version, privateFieldsLoaded: member?.privateFieldsLoaded, userId: member?.userId,
         name: form.name,
         email: form.email,
         phone: form.phone,
@@ -358,7 +364,9 @@ function StaffForm({
       },
       member?.id,
     );
-    setSaving(false);
+
+    } catch { setSaveError(lang === 'ar' ? 'تعذر حفظ التغيير. راجع الرسالة وحاول مجددًا.' : 'Could not save this change. Review the error and retry.'); }
+    finally { setSaving(false); }
   };
 
   const set = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) =>
@@ -367,6 +375,7 @@ function StaffForm({
   return (
     <Modal open onClose={onClose} title={member ? t.editStaff : isAr ? 'إضافة موظف جديد' : 'Add New Staff'} size="lg">
       <form onSubmit={handleSubmit} className="space-y-4">
+        {saveError && <p role="alert" className="text-sm text-red-600">{saveError}</p>}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label={isAr ? 'الاسم بالكامل' : 'Full name'}>
             <input value={form.name} onChange={(e) => set('name', e.target.value)} className={inputCls} required />

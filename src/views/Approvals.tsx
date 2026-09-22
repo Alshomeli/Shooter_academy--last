@@ -1,13 +1,16 @@
+import { RegistrationAdmin } from '@/views/RegistrationAdmin';
 import { useState } from 'react';
 import {
   ShieldCheck, CheckCircle, XCircle, Clock, UserPlus, Search, AlertCircle, Loader2,
 } from 'lucide-react';
-import type { Player, Staff, Lang, Role } from '@/types';
+import type { Player, Staff, Lang, Role, Team } from '@/types';
 import { Badge, PageHeader, EmptyState, ConfirmDialog } from '@/components/ui';
 import { tr, roleLabel } from '@/lib/i18n';
 
 interface ApprovalsProps {
   players: Player[];
+  teams: Team[];
+  onRefresh: () => Promise<void>;
   staff: Staff[];
   onPlayersChange: (p: Player[]) => void;
   onStaffChange: (s: Staff[]) => void;
@@ -15,7 +18,7 @@ interface ApprovalsProps {
   lang: Lang;
 }
 
-export function Approvals({ staff, onStaffChange, activeRole, lang }: ApprovalsProps) {
+export function Approvals({ players, teams, onRefresh, staff, onStaffChange, activeRole, lang }: ApprovalsProps) {
   const t = tr(lang);
   const isAr = lang === 'ar';
   const isRtl = isAr;
@@ -51,7 +54,7 @@ export function Approvals({ staff, onStaffChange, activeRole, lang }: ApprovalsP
     return true;
   });
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (!actionTarget || processingId) return;
     setProcessingId(actionTarget.id);
     try {
@@ -59,7 +62,7 @@ export function Approvals({ staff, onStaffChange, activeRole, lang }: ApprovalsP
         if (s.id !== actionTarget.id) return s;
         return { ...s, status: actionTarget.action === 'approve' ? 'active' as const : 'inactive' as const };
       });
-      onStaffChange(updated);
+      await onStaffChange(updated);
       setActionTarget(null);
     } finally {
       setProcessingId(null);
@@ -79,6 +82,7 @@ export function Approvals({ staff, onStaffChange, activeRole, lang }: ApprovalsP
         subtitle={isAr ? 'مراجعة وقبول طلبات تسجيل المستخدمين الجدد' : 'Review and approve new user registrations'}
       />
 
+      <RegistrationAdmin players={players} teams={teams} onRefresh={onRefresh} activeRole={activeRole} lang={lang} />
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-4 shadow-sm">

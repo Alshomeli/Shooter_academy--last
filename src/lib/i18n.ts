@@ -293,7 +293,6 @@ export const t = {
     // Teams
     teamManagement: 'إدارة الفرق',
     ageGroup: 'الفئة العمرية',
-    coach: 'المدرب',
     trainingDays: 'أيام التدريب',
     trainingTime: 'وقت التدريب',
     pitchNumber: 'رقم الملعب',
@@ -328,7 +327,6 @@ export const t = {
     tournamentManagement: 'إدارة البطولات',
     organizer: 'المنظم',
     season: 'الموسم',
-    teamsCount: 'عدد الفرق',
     addTournament: 'إضافة بطولة',
     editTournament: 'تعديل البطولة',
     deleteTournament: 'حذف البطولة',
@@ -375,7 +373,6 @@ export const t = {
     userRole: 'دور المستخدم',
     userName: 'اسم المستخدم',
     action: 'الإجراء',
-    timestamp: 'الوقت',
     details: 'التفاصيل',
     exportCsv: 'تصدير CSV',
     // Mobile
@@ -811,7 +808,6 @@ export const t = {
     // Teams
     teamManagement: 'Team Management',
     ageGroup: 'Age Group',
-    coach: 'Coach',
     trainingDays: 'Training Days',
     trainingTime: 'Training Time',
     pitchNumber: 'Pitch Number',
@@ -846,7 +842,6 @@ export const t = {
     tournamentManagement: 'Tournament Management',
     organizer: 'Organizer',
     season: 'Season',
-    teamsCount: 'Teams Count',
     addTournament: 'Add Tournament',
     editTournament: 'Edit Tournament',
     deleteTournament: 'Delete Tournament',
@@ -893,7 +888,6 @@ export const t = {
     userRole: 'User Role',
     userName: 'User Name',
     action: 'Action',
-    timestamp: 'Timestamp',
     details: 'Details',
     exportCsv: 'Export CSV',
     // Mobile
@@ -1034,7 +1028,7 @@ export const t = {
   },
 } as const;
 
-export function tr(lang: Lang): typeof t.ar {
+export function tr(lang: Lang): { [K in keyof typeof t.ar]: string } {
   return t[lang];
 }
 
@@ -1064,6 +1058,8 @@ export function statusLabel(status: string, lang: Lang): string {
 }
 
 export function planLabel(plan: string, lang: Lang): string {
+  if (plan === 'annual') plan = 'yearly';
+  if (plan === 'semi_annual') return lang === 'ar' ? 'نصف سنوي' : 'Semi-annual';
   const t = tr(lang);
   const map: Record<string, string> = {
     monthly: t.monthly, quarterly: t.quarterly, semi_annual: t.semiAnnual, yearly: t.yearly,
@@ -1083,7 +1079,7 @@ export function categoryLabel(category: string, lang: Lang): string {
 export function paymentMethodLabel(method: string, lang: Lang): string {
   const t = tr(lang);
   const map: Record<string, string> = {
-    cash: t.cash, card: t.card, transfer: t.transfer,
+    cash: t.cash, card: t.card, transfer: t.transfer, bank_transfer: t.transfer, benefit: lang === 'ar' ? 'بنفت' : 'Benefit',
   };
   return map[method] || method;
 }

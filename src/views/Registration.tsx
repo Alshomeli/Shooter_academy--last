@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, type FormEvent } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   ClipboardList, User, Users, Camera, FileCheck, CheckCircle2,
   ChevronLeft, ChevronRight, Plus, Trash2, Upload, Loader2,
@@ -9,371 +9,259 @@ import type {
   RegistrationParentInput, RegistrationApplication,
 } from '@/types';
 import { tr } from '@/lib/i18n';
+import { Badge } from '@/components/ui';
 import { supabase } from '@/lib/supabase';
 import {
-  createDraft, uploadChildPhoto, registerDocument,
-  submitApplication, fetchMyApplications,
+  createDraft, updateDraft, uploadRegistrationFile, registerDocument,
+  submitApplication, fetchMyApplications, getSignedUrl, errorMessage,
 } from '@/lib/registration';
+import { completeRegistrationUpload, registrationFilePath, type PendingUpload } from '@/lib/registration-upload';
 import { compressImage, formatBytes } from '@/lib/image-compress';
 
-/* ------------------------------------------------------------------ */
-/*  Constants                                                          */
-/* ------------------------------------------------------------------ */
-
-interface Props { lang: Lang; }
-
+interface Props {
+  lang: Lang;
+  initial?: RegistrationApplication;
+  onSaved?: () => Promise<void>;
+  onExit?: () => void;
+  onBusyChange?: (busy: boolean) => void;
+}
 type Step = 0 | 1 | 2 | 3 | 4 | 5;
-
 const STEP_ICONS = [ClipboardList, User, Users, Camera, FileCheck, CheckCircle2];
-
 const BLOOD_TYPES = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
-
-const DOC_TYPES = [
-  'parent_cpr', 'player_cpr', 'passport',
-  'birth_certificate', 'medical_report', 'other',
-] as const;
-
-const inputCls =
-  'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-800 dark:text-white';
-
+const DOC_TYPES = ['parent_cpr', 'player_cpr', 'passport', 'birth_certificate', 'medical_report', 'other'] as const;
+const inputCls = 'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-800 dark:text-white';
 const maskCpr = (v: string) => v.length > 4 ? '***' + v.slice(-4) : v;
-
-/* ------------------------------------------------------------------ */
-/*  Child photo state per child                                        */
-/* ------------------------------------------------------------------ */
+const blankChild = () => ({ clientKey: crypto.randomUUID(), _key: crypto.randomUUID(), fullName: '', nationalId: '', birthDate: '', bloodType: '', notes: '' });
 
 interface ChildPhoto {
-  file: File;
-  preview: string;
-  compressed?: Blob;
-  originalSize: number;
-  compressedSize?: number;
-  reductionPercent?: number;
-  uploading: boolean;
-  uploaded: boolean;
-  storagePath?: string;
-  error?: string;
+  file?: File; preview: string; compressed?: Blob; originalSize: number;
+  compressedSize?: number; reductionPercent?: number; compressing?: boolean;
+  uploading: boolean; uploaded: boolean; storagePath?: string; error?: string;
 }
-
 interface ExtraDoc {
-  id: string;
-  childId: string;
-  docType: string;
-  file: File;
-  uploading: boolean;
-  uploaded: boolean;
-  error?: string;
+  id: string; childId: string; docType: string; file?: File; fileName: string;
+  uploading: boolean; uploaded: boolean; error?: string;
 }
 
-/* ------------------------------------------------------------------ */
-/*  Component                                                          */
-/* ------------------------------------------------------------------ */
-
-export function Registration({ lang }: Props) {
+export function Registration({ lang, initial, onSaved, onExit, onBusyChange }: Props) {
   const t = tr(lang);
   const isAr = lang === 'ar';
-
   const [step, setStep] = useState<Step>(0);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const [reload, setReload] = useState(0);
+  const [resumeApp, setResumeApp] = useState(initial);
   const [existingApp, setExistingApp] = useState<RegistrationApplication | null>(null);
   const [userEmail, setUserEmail] = useState('');
-
-  // Step 0
   const [regType, setRegType] = useState<RegistrationType | ''>('');
-
-  // Step 1 - Parent
+  const [requestId] = useState(() => crypto.randomUUID());
   const [parent, setParent] = useState<RegistrationParentInput>({
-    registrationType: 'new_application',
-    fullName: '', nationalId: '', phone: '', email: '',
-    whatsapp: '', nationality: '', occupation: '',
-    workplace: '', address: '', notes: '',
+    registrationType: 'new_application', fullName: '', nationalId: '', phone: '', email: '',
+    whatsapp: '', nationality: '', occupation: '', workplace: '', address: '', notes: '',
   });
-
-  // Step 2 - Children
-  const [children, setChildren] = useState<(RegistrationChildInput & { _key: string })[]>([
-    { clientKey: crypto.randomUUID(), _key: crypto.randomUUID(), fullName: '', nationalId: '', birthDate: '', bloodType: '', notes: '' },
-  ]);
-
-  // Step 3 - Photos/docs
+  const [children, setChildren] = useState<(RegistrationChildInput & { _key: string })[]>(() => [blankChild()]);
   const [childPhotos, setChildPhotos] = useState<Record<string, ChildPhoto>>({});
   const [extraDocs, setExtraDocs] = useState<ExtraDoc[]>([]);
   const [draftId, setDraftId] = useState<string | null>(null);
   const [childIdMap, setChildIdMap] = useState<Record<string, string>>({});
   const [draftCreating, setDraftCreating] = useState(false);
   const [draftError, setDraftError] = useState('');
-
-  // Step 4 - Review
   const [confirmed, setConfirmed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
-
-  // Step 5 - Success
   const [applicationRef, setApplicationRef] = useState('');
-
-  // Validation
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const busy = useRef(false);
+  const uploads = useRef(new Map<string, PendingUpload>());
+  const uploadLocks = useRef(new Set<string>());
+  const previews = useRef(new Set<string>());
+  const displayLang = useRef(lang);
+  displayLang.current = lang;
 
-  /* ---- Init ---- */
   useEffect(() => {
-    (async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user?.email) setUserEmail(user.email);
-        const apps = await fetchMyApplications();
-        const active = apps.find((a) =>
-          a.status !== 'rejected' && a.status !== 'approved'
-        );
-        if (active) setExistingApp(active);
-      } catch { /* ignore */ }
-      setLoading(false);
-    })();
+    const urls = previews.current;
+    return () => { urls.forEach(url => URL.revokeObjectURL(url)); urls.clear(); };
   }, []);
 
-  /* ---- Step labels ---- */
-  const stepLabels = [
-    t.regStepType, t.regStepParent, t.regStepChildren,
-    t.regStepDocuments, t.regStepReview, t.regStepSuccess,
-  ];
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true); setLoadError('');
+    (async () => {
+      try {
+        const { data: { user }, error } = await supabase.auth.getUser();
+        if (error) throw error;
+        if (!user?.email) throw new Error('Sign in to continue registration.');
+        if (cancelled) return;
+        setUserEmail(user.email);
+        if (resumeApp) {
+          if (!['draft', 'needs_info'].includes(resumeApp.status)) {
+            setExistingApp(resumeApp); return;
+          }
+          const photos: Record<string, ChildPhoto> = {};
+          await Promise.all(resumeApp.documents.filter(d => d.fileCategory === 'photo' && d.childId).map(async d => {
+            const preview = await getSignedUrl(d.storagePath).catch(() => '');
+            photos[d.childId!] = { preview, originalSize: d.fileSize, uploaded: true, uploading: false, storagePath: d.storagePath };
+          }));
+          if (cancelled) return;
+          setRegType(resumeApp.registrationType);
+          setParent({ registrationType: resumeApp.registrationType, fullName: resumeApp.parentName, nationalId: resumeApp.parentNationalId || '',
+            phone: resumeApp.parentPhone, email: user.email, whatsapp: resumeApp.parentWhatsapp || '', nationality: resumeApp.parentNationality || '',
+            occupation: resumeApp.parentOccupation || '', workplace: resumeApp.parentWorkplace || '', address: resumeApp.parentAddress || '', notes: resumeApp.parentNotes || '' });
+          setChildren(resumeApp.children.map(c => ({ _key: c.id, clientKey: c.clientKey || c.id, childId: c.id, fullName: c.fullName,
+            nationalId: c.nationalId || '', birthDate: c.birthDate, bloodType: c.bloodType || '', notes: c.notes || '' })));
+          setChildIdMap(Object.fromEntries(resumeApp.children.map(c => [c.id, c.id])));
+          setChildPhotos(photos);
+          setExtraDocs(resumeApp.documents.filter(d => d.fileCategory === 'document').map(d => ({ id: d.id, childId: d.childId || '', docType: d.documentType || 'other', fileName: d.fileName, uploading: false, uploaded: true })));
+          setDraftId(resumeApp.id); setStep(1); setExistingApp(null);
+        } else {
+          const apps = await fetchMyApplications();
+          if (cancelled) return;
+          setExistingApp(apps.find(a => a.status !== 'rejected' && a.status !== 'approved') || null);
+          setParent(p => ({ ...p, email: user.email! }));
+        }
+      } catch (e) { if (!cancelled) setLoadError(errorMessage(e, displayLang.current === 'ar')); }
+      finally { if (!cancelled) setLoading(false); }
+    })();
+    return () => { cancelled = true; };
+  }, [resumeApp, reload]);
 
-  /* ---- Validation ---- */
-  const validateParent = useCallback((): Record<string, string> => {
+  const stepLabels = [t.regStepType, t.regStepParent, t.regStepChildren, t.regStepDocuments, t.regStepReview, t.regStepSuccess];
+  const validateParent = (): Record<string, string> => {
     const e: Record<string, string> = {};
-    if (!parent.fullName.trim()) e.fullName = t.regFieldRequired;
+    if (parent.fullName.trim().length < 2) e.fullName = t.regFieldRequired;
     if (!parent.nationalId.trim()) e.nationalId = t.regFieldRequired;
     if (!parent.phone.trim()) e.phone = t.regFieldRequired;
     if (!parent.email.trim()) e.email = t.regFieldRequired;
-    else if (userEmail && parent.email.toLowerCase() !== userEmail.toLowerCase())
-      e.email = t.regEmailMismatch;
+    else if (parent.email.trim().toLowerCase() !== userEmail.toLowerCase()) e.email = t.regEmailMismatch;
     return e;
-  }, [parent, userEmail, t]);
-
-  const validateChildren = useCallback((): Record<string, string> => {
+  };
+  const validateChildren = (): Record<string, string> => {
     const e: Record<string, string> = {};
-    if (children.length === 0) { e._children = t.regChildRequired; return e; }
+    if (!children.length) e._children = t.regChildRequired;
     children.forEach((c, i) => {
-      if (!c.fullName.trim()) e[`child_${i}_name`] = t.regFieldRequired;
+      if (c.fullName.trim().length < 2) e[`child_${i}_name`] = t.regFieldRequired;
       if (!c.nationalId.trim()) e[`child_${i}_cpr`] = t.regFieldRequired;
-      if (!c.birthDate) e[`child_${i}_birth`] = t.regFieldRequired;
+      if (!c.birthDate || c.birthDate > new Date().toISOString().slice(0, 10)) e[`child_${i}_birth`] = t.regFieldRequired;
     });
     return e;
-  }, [children, t]);
-
-  /* ---- Navigation ---- */
-  const canGoNext = (): boolean => {
+  };
+  const photosReady = children.length > 0 && children.every(c => childPhotos[c._key]?.uploaded);
+  const filesReady = photosReady && extraDocs.every(d => d.uploaded);
+  const filesBusy = Object.values(childPhotos).some(p => p.compressing || p.uploading) || extraDocs.some(d => d.uploading);
+  const operationInProgress = draftCreating || submitting || filesBusy;
+  useEffect(() => {
+    onBusyChange?.(operationInProgress);
+    return () => { onBusyChange?.(false); };
+  }, [onBusyChange, operationInProgress]);
+  const canGoNext = () => {
     if (step === 0) return !!regType;
     if (step === 1) return Object.keys(validateParent()).length === 0;
     if (step === 2) return Object.keys(validateChildren()).length === 0;
-    if (step === 3) {
-      return children.every((c) => {
-        const photo = childPhotos[c._key];
-        return photo?.uploaded;
-      });
-    }
-    if (step === 4) return confirmed && !submitting;
+    if (step === 3) return filesReady && !filesBusy;
+    if (step === 4) return confirmed && filesReady && !submitting;
     return false;
   };
-
-  const goNext = async () => {
-    if (step === 0 && regType) {
-      setParent((p) => ({ ...p, registrationType: regType, email: userEmail || p.email }));
-      setStep(1);
-    } else if (step === 1) {
-      const e = validateParent();
-      setErrors(e);
-      if (Object.keys(e).length > 0) return;
-      setStep(2);
-    } else if (step === 2) {
-      const e = validateChildren();
-      setErrors(e);
-      if (Object.keys(e).length > 0) return;
-      // Create draft
-      if (!draftId) {
-        setDraftCreating(true);
-        setDraftError('');
-        try {
-          const result = await createDraft(
-            { ...parent, registrationType: regType as RegistrationType },
-            children.map((c) => ({
-              clientKey: c.clientKey,
-              fullName: c.fullName,
-              nationalId: c.nationalId,
-              birthDate: c.birthDate,
-              bloodType: c.bloodType,
-              notes: c.notes,
-            })),
-          );
-          setDraftId(result.applicationId);
-          const map: Record<string, string> = {};
-          for (const ch of result.children) {
-            const match = children.find((c) => c.clientKey === ch.clientKey);
-            if (match) map[match._key] = ch.childId;
-          }
-          setChildIdMap(map);
-        } catch (err) {
-          setDraftError(err instanceof Error ? err.message : String(err));
-          setDraftCreating(false);
-          return;
-        }
-        setDraftCreating(false);
-      }
-      setStep(3);
-    } else if (step === 3) {
-      setStep(4);
-    } else if (step === 4) {
-      await handleSubmit();
+  const saveDraft = async () => {
+    const payload = children.map(({ _key, ...c }) => ({ ...c, childId: childIdMap[_key] || c.childId }));
+    const parentPayload = { ...parent, registrationType: regType as RegistrationType, requestId };
+    if (draftId) { await updateDraft(draftId, parentPayload, payload); return; }
+    const result = await createDraft(parentPayload, payload);
+    const map: Record<string, string> = {};
+    for (const c of children) {
+      const saved = result.children.find(ch => ch.clientKey === c.clientKey);
+      if (!saved) throw new Error('Could not match the saved children. Reopen registration to resume the draft.');
+      map[c._key] = saved.childId;
     }
+    setDraftId(result.applicationId); setChildIdMap(map);
+    await updateDraft(result.applicationId, parentPayload, children.map(({ _key, ...c }) => ({ ...c, childId: map[_key] })));
   };
-
-  const goBack = () => {
-    if (step > 0 && step < 5) setStep((s) => (s - 1) as Step);
-    setErrors({});
-  };
-
-  /* ---- Submit ---- */
   const handleSubmit = async () => {
-    if (!draftId || submitting) return;
-    setSubmitting(true);
-    setSubmitError('');
+    if (!draftId || !filesReady || !confirmed) return;
+    setSubmitting(true); setSubmitError('');
     try {
       await submitApplication(draftId);
-      setApplicationRef(draftId.slice(0, 8).toUpperCase());
-      setStep(5);
-    } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : String(err));
-    }
-    setSubmitting(false);
+      setApplicationRef(draftId.slice(0, 8).toUpperCase()); setStep(5);
+      // A refresh failure must not turn a successful submission into another write.
+      await onSaved?.().catch(e => setSubmitError(errorMessage(e, isAr)));
+    } catch (e) { setSubmitError(errorMessage(e, isAr)); }
+    finally { setSubmitting(false); }
+  };
+  const goNext = async () => {
+    if (busy.current || !canGoNext()) return;
+    busy.current = true; setDraftError('');
+    try {
+      if (step === 0 && regType) { setParent(p => ({ ...p, registrationType: regType, email: userEmail })); setStep(1); }
+      else if (step === 1) { setErrors(validateParent()); setStep(2); }
+      else if (step === 2) {
+        setDraftCreating(true); setErrors(validateChildren()); await saveDraft(); setStep(3);
+      } else if (step === 3) { setConfirmed(false); setStep(4); }
+      else if (step === 4) await handleSubmit();
+    } catch (e) { setDraftError(errorMessage(e, isAr)); }
+    finally { busy.current = false; setDraftCreating(false); }
+  };
+  const goBack = () => {
+    if (busy.current || filesBusy) return;
+    if (step > 0 && step < 5) setStep(s => (s - 1) as Step);
+    setConfirmed(false); setErrors({});
   };
 
-  /* ---- Photo handling ---- */
-  const handlePhotoSelect = async (childKey: string, file: File) => {
-    if (!file.type.startsWith('image/')) return;
-    const preview = URL.createObjectURL(file);
-    setChildPhotos((prev) => ({
-      ...prev,
-      [childKey]: { file, preview, originalSize: file.size, uploading: false, uploaded: false },
-    }));
-
+  const uploadPhoto = async (key: string, supplied?: ChildPhoto) => {
+    const photo = supplied || childPhotos[key];
+    const childId = childIdMap[key];
+    if (!photo?.compressed || photo.uploaded || !draftId || !childId || uploadLocks.current.has(key)) return;
+    uploadLocks.current.add(key);
+    setChildPhotos(prev => ({ ...prev, [key]: { ...photo, uploading: true, error: undefined } }));
+    try {
+      let job = uploads.current.get(key);
+      if (!job) { job = { path: registrationFilePath(draftId, childId, photo.compressed.type), uploaded: false }; uploads.current.set(key, job); }
+      const blob = photo.compressed;
+      await completeRegistrationUpload(job, path => uploadRegistrationFile(path, blob), path => registerDocument(draftId, childId, path, path.split('/').pop()!, blob.type, blob.size, 'photo', 'profile_photo'));
+      setChildPhotos(prev => ({ ...prev, [key]: { ...photo, uploading: false, uploaded: true, storagePath: job.path } }));
+    } catch (e) { setChildPhotos(prev => ({ ...prev, [key]: { ...photo, uploading: false, error: errorMessage(e, isAr) } })); }
+    finally { uploadLocks.current.delete(key); }
+  };
+  const handlePhotoSelect = async (key: string, file: File) => {
+    if (uploadLocks.current.has(key)) return;
+    uploadLocks.current.add(key);
+    const old = childPhotos[key]?.preview;
+    if (old?.startsWith('blob:')) { URL.revokeObjectURL(old); previews.current.delete(old); }
+    const preview = URL.createObjectURL(file); previews.current.add(preview); uploads.current.delete(key);
+    const photo: ChildPhoto = { file, preview, originalSize: file.size, uploaded: false, uploading: false, compressing: true };
+    setChildPhotos(prev => ({ ...prev, [key]: photo }));
     try {
       const result = await compressImage(file);
-      setChildPhotos((prev) => ({
-        ...prev,
-        [childKey]: {
-          ...prev[childKey],
-          compressed: result.blob,
-          compressedSize: result.compressedSize,
-          reductionPercent: result.reductionPercent,
-        },
-      }));
-    } catch {
-      /* keep original preview */
-    }
+      const compressed = { ...photo, compressed: result.blob, compressedSize: result.compressedSize, reductionPercent: result.reductionPercent, compressing: false };
+      setChildPhotos(prev => ({ ...prev, [key]: compressed }));
+      uploadLocks.current.delete(key);
+      await uploadPhoto(key, compressed);
+    } catch (e) { setChildPhotos(prev => ({ ...prev, [key]: { ...photo, compressing: false, error: errorMessage(e, isAr) } })); }
+    finally { uploadLocks.current.delete(key); }
   };
-
-  const uploadPhoto = async (childKey: string) => {
-    const photo = childPhotos[childKey];
-    if (!photo || photo.uploaded || photo.uploading || !draftId) return;
-    const childId = childIdMap[childKey];
-    if (!childId) return;
-
-    setChildPhotos((prev) => ({
-      ...prev,
-      [childKey]: { ...prev[childKey], uploading: true, error: undefined },
-    }));
-
+  const uploadExtraDoc = async (id: string, supplied?: ExtraDoc) => {
+    const doc = supplied || extraDocs.find(d => d.id === id);
+    const childId = doc && childIdMap[doc.childId];
+    if (!doc?.file || doc.uploaded || !draftId || !childId || uploadLocks.current.has(id)) return;
+    uploadLocks.current.add(id);
+    setExtraDocs(prev => prev.map(d => d.id === id ? { ...d, uploading: true, error: undefined } : d));
     try {
-      const blob = photo.compressed || photo.file;
-      const mime = photo.compressed ? 'image/webp' : photo.file.type;
-      const path = await uploadChildPhoto(draftId, childId, blob, mime);
-      await registerDocument(draftId, childId, path, photo.file.name, mime, blob.size, 'photo');
-      setChildPhotos((prev) => ({
-        ...prev,
-        [childKey]: { ...prev[childKey], uploading: false, uploaded: true, storagePath: path },
-      }));
-    } catch (err) {
-      setChildPhotos((prev) => ({
-        ...prev,
-        [childKey]: { ...prev[childKey], uploading: false, error: t.regUploadFailed },
-      }));
-    }
+      if (!doc.file.size || doc.file.size > 5_000_000) throw new Error(isAr ? 'يجب أن يكون المستند أقل من 5 ميجابايت.' : 'The document must be smaller than 5 MB.');
+      let job = uploads.current.get(id);
+      if (!job) { job = { path: registrationFilePath(draftId, childId, doc.file.type), uploaded: false }; uploads.current.set(id, job); }
+      const file = doc.file;
+      await completeRegistrationUpload(job, path => uploadRegistrationFile(path, file), path => registerDocument(draftId, childId, path, path.split('/').pop()!, file.type, file.size, 'document', doc.docType));
+      setExtraDocs(prev => prev.map(d => d.id === id ? { ...d, uploading: false, uploaded: true } : d));
+    } catch (e) { setExtraDocs(prev => prev.map(d => d.id === id ? { ...d, uploading: false, error: errorMessage(e, isAr) } : d)); }
+    finally { uploadLocks.current.delete(id); }
   };
-
-  // Auto-upload when photo is compressed and draft exists
-  useEffect(() => {
-    if (!draftId) return;
-    for (const key of Object.keys(childPhotos)) {
-      const p = childPhotos[key];
-      if (p && !p.uploaded && !p.uploading && !p.error && (p.compressed || p.file)) {
-        uploadPhoto(key);
-      }
-    }
-  }, [draftId, childPhotos, childIdMap]);
-
-  /* ---- Extra document handling ---- */
   const handleDocSelect = (childKey: string, docType: string, file: File) => {
-    setExtraDocs((prev) => [
-      ...prev,
-      { id: crypto.randomUUID(), childId: childKey, docType, file, uploading: false, uploaded: false },
-    ]);
+    const doc: ExtraDoc = { id: crypto.randomUUID(), childId: childKey, docType, file, fileName: file.name, uploading: false, uploaded: false };
+    setExtraDocs(prev => [...prev, doc]); void uploadExtraDoc(doc.id, doc);
   };
-
-  const uploadExtraDoc = async (docId: string) => {
-    const idx = extraDocs.findIndex((d) => d.id === docId);
-    if (idx < 0 || !draftId) return;
-    const doc = extraDocs[idx];
-    if (doc.uploaded || doc.uploading) return;
-    const childId = childIdMap[doc.childId];
-    if (!childId) return;
-
-    setExtraDocs((prev) => prev.map((d) => d.id === docId ? { ...d, uploading: true, error: undefined } : d));
-
-    try {
-      const ext = doc.file.name.split('.').pop() || 'bin';
-      const path = `applications/${draftId}/${childId}/${crypto.randomUUID()}.${ext}`;
-      const { error: upErr } = await supabase.storage
-        .from('player-documents')
-        .upload(path, doc.file, { contentType: doc.file.type, upsert: false });
-      if (upErr) throw upErr;
-      await registerDocument(draftId, childId, path, doc.file.name, doc.file.type, doc.file.size, 'document', doc.docType);
-      setExtraDocs((prev) => prev.map((d) => d.id === docId ? { ...d, uploading: false, uploaded: true } : d));
-    } catch {
-      setExtraDocs((prev) => prev.map((d) => d.id === docId ? { ...d, uploading: false, error: t.regUploadFailed } : d));
-    }
-  };
-
-  useEffect(() => {
-    if (!draftId) return;
-    for (const doc of extraDocs) {
-      if (!doc.uploaded && !doc.uploading && !doc.error) uploadExtraDoc(doc.id);
-    }
-  }, [draftId, extraDocs]);
-
-  /* ---- Children management ---- */
-  const addChild = () => {
-    setChildren((prev) => [
-      ...prev,
-      { clientKey: crypto.randomUUID(), _key: crypto.randomUUID(), fullName: '', nationalId: '', birthDate: '', bloodType: '', notes: '' },
-    ]);
-  };
-
-  const removeChild = (key: string) => {
-    if (children.length <= 1) return;
-    setChildren((prev) => prev.filter((c) => c._key !== key));
-    setChildPhotos((prev) => { const n = { ...prev }; delete n[key]; return n; });
-  };
-
-  const updateChild = (key: string, field: string, value: string) => {
-    setChildren((prev) => prev.map((c) => c._key === key ? { ...c, [field]: value } : c));
-  };
-
-  /* ---- Doc type labels ---- */
-  const docTypeLabel = (dt: string): string => {
-    const map: Record<string, string> = {
-      parent_cpr: t.regDocParentCpr, player_cpr: t.regDocPlayerCpr,
-      passport: t.regDocPassport, birth_certificate: t.regDocBirthCert,
-      medical_report: t.regDocMedical, other: t.regDocOther,
-    };
-    return map[dt] || dt;
-  };
+  const addChild = () => { if (!draftId) setChildren(prev => [...prev, blankChild()]); };
+  const removeChild = (key: string) => { if (!draftId && children.length > 1) setChildren(prev => prev.filter(c => c._key !== key)); };
+  const updateChild = (key: string, field: string, value: string) => setChildren(prev => prev.map(c => c._key === key ? { ...c, [field]: value } : c));
+  const docTypeLabel = (dt: string) => ({ parent_cpr: t.regDocParentCpr, player_cpr: t.regDocPlayerCpr, passport: t.regDocPassport,
+    birth_certificate: t.regDocBirthCert, medical_report: t.regDocMedical, other: t.regDocOther } as Record<string, string>)[dt] || dt;
 
   /* ================================================================== */
   /*  Render                                                            */
@@ -387,9 +275,11 @@ export function Registration({ lang }: Props) {
     );
   }
 
+  if (loadError) return <div role="alert" className="space-y-3 p-5 text-red-600"><p>{loadError}</p><button onClick={() => setReload(n => n + 1)}>{isAr ? 'إعادة المحاولة' : 'Retry'}</button></div>;
+
   /* ---- Existing application status ---- */
   if (existingApp) {
-    return <ExistingAppStatus app={existingApp} lang={lang} />;
+    return <ExistingAppStatus app={existingApp} lang={lang} onContinue={() => setResumeApp(existingApp)} />;
   }
 
   return (
@@ -402,6 +292,8 @@ export function Registration({ lang }: Props) {
         </p>
       </div>
 
+      {resumeApp?.reviewNotes && <p className="p-3 rounded-lg bg-amber-50 text-amber-800">{resumeApp.reviewNotes}</p>}
+      {draftError && <p role="alert" className="p-3 text-sm text-red-600">{draftError}</p>}
       {/* Stepper */}
       <div className="flex items-center justify-center gap-1 px-2">
         {stepLabels.map((label, i) => {
@@ -425,7 +317,7 @@ export function Registration({ lang }: Props) {
       </div>
 
       {/* Card */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 sm:p-6 shadow-sm">
+      <fieldset disabled={draftCreating || submitting} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 sm:p-6 shadow-sm">
 
         {/* ======== STEP 0: Registration Type ======== */}
         {step === 0 && (
@@ -467,7 +359,7 @@ export function Registration({ lang }: Props) {
                 <input value={parent.phone} onChange={(e) => setParent((p) => ({ ...p, phone: e.target.value }))} className={inputCls} dir="ltr" type="tel" />
               </Field>
               <Field label={t.regEmail} required error={errors.email}>
-                <input value={parent.email} onChange={(e) => setParent((p) => ({ ...p, email: e.target.value }))} className={inputCls} dir="ltr" type="email" />
+                <input value={parent.email} readOnly className={inputCls} dir="ltr" type="email" />
               </Field>
               <Field label={t.regWhatsapp}>
                 <input value={parent.whatsapp} onChange={(e) => setParent((p) => ({ ...p, whatsapp: e.target.value }))} className={inputCls} dir="ltr" type="tel" />
@@ -527,7 +419,7 @@ export function Registration({ lang }: Props) {
                     <input value={child.nationalId} onChange={(e) => updateChild(child._key, 'nationalId', e.target.value)} className={inputCls} dir="ltr" />
                   </Field>
                   <Field label={t.regChildBirthDate} required error={errors[`child_${idx}_birth`]}>
-                    <input type="date" value={child.birthDate} onChange={(e) => updateChild(child._key, 'birthDate', e.target.value)} className={inputCls} dir="ltr" />
+                    <input type="date" max={new Date().toISOString().slice(0, 10)} value={child.birthDate} onChange={(e) => updateChild(child._key, 'birthDate', e.target.value)} className={inputCls} dir="ltr" />
                   </Field>
                   <Field label={t.regChildBloodType}>
                     <select value={child.bloodType} onChange={(e) => updateChild(child._key, 'bloodType', e.target.value)} className={inputCls}>
@@ -569,9 +461,9 @@ export function Registration({ lang }: Props) {
                     <label className="flex items-center gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
                       <Camera className="h-3.5 w-3.5" /> {t.regChildPhoto} <span className="text-red-500">*</span>
                     </label>
-                    {photo?.preview ? (
+                    {photo ? (
                       <div className="flex items-start gap-3">
-                        <img src={photo.preview} alt="" className="w-20 h-20 rounded-xl object-cover border border-slate-200 dark:border-slate-700" />
+                        {photo.preview && <img src={photo.preview} alt="" className="w-20 h-20 rounded-xl object-cover border border-slate-200 dark:border-slate-700" />}
                         <div className="text-xs space-y-1">
                           <p className="text-slate-500">{t.regOriginalSize}: <span className="font-bold text-slate-700 dark:text-slate-300">{formatBytes(photo.originalSize)}</span></p>
                           {photo.compressedSize != null && (
@@ -580,12 +472,13 @@ export function Registration({ lang }: Props) {
                               <p className="text-emerald-600 font-bold">{t.regSaving}: {photo.reductionPercent}%</p>
                             </>
                           )}
+                          {photo.compressing && <p className="text-blue-500">{isAr ? 'جارٍ ضغط الصورة…' : 'Compressing photo…'}</p>}
                           {photo.uploading && <p className="text-blue-500 flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" /> {isAr ? 'جاري الرفع...' : 'Uploading...'}</p>}
                           {photo.uploaded && <p className="text-emerald-600 flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> {isAr ? 'تم الرفع' : 'Uploaded'}</p>}
                           {photo.error && (
                             <div>
                               <p className="text-red-500">{photo.error}</p>
-                              <button onClick={() => uploadPhoto(child._key)} className="text-blue-500 hover:underline cursor-pointer">{isAr ? 'إعادة المحاولة' : 'Retry'}</button>
+                              <button disabled={photo.compressing || photo.uploading} onClick={() => photo.compressed ? void uploadPhoto(child._key) : photo.file && void handlePhotoSelect(child._key, photo.file)} className="text-blue-500 hover:underline cursor-pointer">{isAr ? 'إعادة المحاولة' : 'Retry'}</button>
                             </div>
                           )}
                         </div>
@@ -597,6 +490,7 @@ export function Registration({ lang }: Props) {
                         <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => { if (e.target.files?.[0]) handlePhotoSelect(child._key, e.target.files[0]); }} />
                       </label>
                     )}
+                    {photo && <label className="block text-xs font-bold text-emerald-600 mt-2">{isAr ? 'تغيير الصورة' : 'Replace photo'}<input aria-label={t.regChildPhoto} type="file" accept="image/jpeg,image/png,image/webp" disabled={photo.compressing || photo.uploading} className="block w-full mt-1" onChange={e => { if (e.target.files?.[0]) void handlePhotoSelect(child._key, e.target.files[0]); e.target.value = ''; }} /></label>}
                   </div>
 
                   {/* Extra documents */}
@@ -607,10 +501,10 @@ export function Registration({ lang }: Props) {
                     {childDocs.map((doc) => (
                       <div key={doc.id} className="flex items-center gap-2 text-xs py-1">
                         <FileText className="h-3.5 w-3.5 text-slate-400" />
-                        <span className="text-slate-700 dark:text-slate-300">{docTypeLabel(doc.docType)}: {doc.file.name}</span>
+                        <span className="text-slate-700 dark:text-slate-300">{docTypeLabel(doc.docType)}: {doc.fileName}</span>
                         {doc.uploading && <Loader2 className="h-3 w-3 animate-spin text-blue-500" />}
                         {doc.uploaded && <CheckCircle2 className="h-3 w-3 text-emerald-500" />}
-                        {doc.error && <span className="text-red-500">{doc.error}</span>}
+                        {doc.error && <><span className="text-red-500">{doc.error}</span><button onClick={() => void uploadExtraDoc(doc.id)}>{isAr ? 'إعادة المحاولة' : 'Retry'}</button><button onClick={() => setExtraDocs(prev => prev.filter(d => d.id !== doc.id))}>{isAr ? 'إزالة المرفق' : 'Remove attachment'}</button></>}
                       </div>
                     ))}
                     <div className="flex items-center gap-2 mt-2">
@@ -619,7 +513,7 @@ export function Registration({ lang }: Props) {
                       </select>
                       <label className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 cursor-pointer">
                         <Upload className="h-3.5 w-3.5" /> {t.regUploadDocument}
-                        <input type="file" className="hidden" onChange={(e) => {
+                        <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="hidden" onChange={(e) => {
                           const sel = document.getElementById(`doc-type-${child._key}`) as HTMLSelectElement;
                           if (e.target.files?.[0]) handleDocSelect(child._key, sel.value, e.target.files[0]);
                           e.target.value = '';
@@ -662,7 +556,7 @@ export function Registration({ lang }: Props) {
 
             {/* Children */}
             <ReviewSection title={t.regChildrenInfo}>
-              {children.map((child, idx) => {
+              {children.map((child) => {
                 const photo = childPhotos[child._key];
                 return (
                   <div key={child._key} className="flex items-start gap-3 py-2 border-b border-slate-100 dark:border-slate-800 last:border-0">
@@ -682,7 +576,7 @@ export function Registration({ lang }: Props) {
               <ReviewSection title={t.regDocuments}>
                 {extraDocs.filter((d) => d.uploaded).map((doc) => (
                   <p key={doc.id} className="text-xs text-slate-600 dark:text-slate-400 flex items-center gap-1.5 py-0.5">
-                    <FileText className="h-3 w-3" /> {docTypeLabel(doc.docType)} — {doc.file.name}
+                    <FileText className="h-3 w-3" /> {docTypeLabel(doc.docType)} — {doc.fileName}
                   </p>
                 ))}
               </ReviewSection>
@@ -705,6 +599,8 @@ export function Registration({ lang }: Props) {
               <CheckCircle2 className="h-8 w-8" />
             </div>
             <h2 className="text-lg font-black text-slate-900 dark:text-white">{t.regSuccessTitle}</h2>
+            {onExit && <button onClick={onExit} className="block mx-auto px-4 py-2 rounded-lg bg-emerald-600 text-white">{isAr ? 'العودة إلى بوابة ولي الأمر' : 'Back to parent portal'}</button>}
+            {submitError && <p role="alert" className="text-red-600 text-sm">{submitError}</p>}
             <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto">{t.regSuccessMessage}</p>
             <div className="inline-block px-4 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-sm font-bold text-slate-700 dark:text-slate-300">
               {t.regReference}: <span className="font-black text-emerald-600">{applicationRef}</span>
@@ -716,7 +612,7 @@ export function Registration({ lang }: Props) {
         {step < 5 && (
           <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-100 dark:border-slate-800">
             {step > 0 ? (
-              <button onClick={goBack} className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer">
+              <button disabled={filesBusy || draftCreating || submitting} onClick={goBack} className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer">
                 {isAr ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
                 {t.regBack}
               </button>
@@ -733,7 +629,7 @@ export function Registration({ lang }: Props) {
             </button>
           </div>
         )}
-      </div>
+      </fieldset>
     </div>
   );
 }
@@ -746,17 +642,17 @@ function TypeCard({ selected, onClick, title, description, icon, color }: {
   selected: boolean; onClick: () => void; title: string;
   description: string; icon: React.ReactNode; color: 'blue' | 'emerald';
 }) {
-  const ring = selected
-    ? `border-${color}-500 ring-2 ring-${color}-500/30 bg-${color}-50 dark:bg-${color}-900/10`
-    : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600';
+  const colors = color === 'blue' ? {
+    ring: 'border-blue-500 ring-blue-500/30 bg-blue-50 dark:bg-blue-900/10',
+    icon: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600', text: 'text-blue-700 dark:text-blue-400',
+  } : {
+    ring: 'border-emerald-500 ring-emerald-500/30 bg-emerald-50 dark:bg-emerald-900/10',
+    icon: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600', text: 'text-emerald-700 dark:text-emerald-400',
+  };
   return (
-    <button onClick={onClick} className={`p-5 rounded-xl border text-right transition cursor-pointer ${ring}`}>
-      <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-3 ${
-        selected
-          ? `bg-${color}-100 dark:bg-${color}-900/30 text-${color}-600`
-          : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
-      }`}>{icon}</div>
-      <h3 className={`text-sm font-black mb-1 ${selected ? `text-${color}-700 dark:text-${color}-400` : 'text-slate-800 dark:text-white'}`}>{title}</h3>
+    <button onClick={onClick} aria-pressed={selected} className={`p-5 rounded-xl border text-start transition cursor-pointer ${selected ? `ring-2 ${colors.ring}` : 'border-slate-200 dark:border-slate-700 hover:border-slate-300'}`}>
+      <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-3 ${selected ? colors.icon : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}>{icon}</div>
+      <h3 className={`text-sm font-black mb-1 ${selected ? colors.text : 'text-slate-800 dark:text-white'}`}>{title}</h3>
       <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{description}</p>
     </button>
   );
@@ -792,14 +688,14 @@ function Dt({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ExistingAppStatus({ app, lang }: { app: RegistrationApplication; lang: Lang }) {
+function ExistingAppStatus({ app, lang, onContinue }: { app: RegistrationApplication; lang: Lang; onContinue: () => void }) {
   const t = tr(lang);
   const isAr = lang === 'ar';
-  const statusMap: Record<string, { label: string; color: string }> = {
+  const statusMap: Record<string, { label: string; color: 'slate' | 'amber' | 'blue' | 'emerald' | 'red' }> = {
     draft: { label: t.regStatusDraft, color: 'slate' },
     pending: { label: t.regStatusPending, color: 'amber' },
     under_review: { label: t.regStatusUnderReview, color: 'blue' },
-    needs_info: { label: t.regStatusNeedsInfo, color: 'orange' },
+    needs_info: { label: t.regStatusNeedsInfo, color: 'amber' },
     approved: { label: t.regStatusApproved, color: 'emerald' },
     rejected: { label: t.regStatusRejected, color: 'red' },
   };
@@ -815,9 +711,8 @@ function ExistingAppStatus({ app, lang }: { app: RegistrationApplication; lang: 
           <Info className="h-7 w-7" />
         </div>
         <h2 className="text-base font-black text-slate-900 dark:text-white">{t.regExistingApp}</h2>
-        <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-${s.color}-100 dark:bg-${s.color}-900/30 text-${s.color}-700 dark:text-${s.color}-400`}>
-          {s.label}
-        </div>
+        {['draft', 'needs_info'].includes(app.status) && <button onClick={onContinue} className="block mx-auto px-4 py-2 bg-emerald-600 text-white rounded-lg">{isAr ? 'استكمال الطلب' : 'Continue application'}</button>}
+        <Badge color={s.color}>{s.label}</Badge>
         <p className="text-xs text-slate-500">{t.regReference}: <span className="font-black">{app.id.slice(0, 8).toUpperCase()}</span></p>
         {app.reviewNotes && (
           <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-900/30 text-xs text-amber-700 dark:text-amber-400 text-right">

@@ -1,3 +1,4 @@
+import { getDateRange, type DateRangePreset } from '@/lib/report-dates';
 import { useState, useMemo, type ReactNode } from 'react';
 import {
   BarChart3, Download, TrendingUp, Users, Trophy, Wallet,
@@ -8,7 +9,7 @@ import type {
   Attendance, Lang, Role,
 } from '@/types';
 import { PageHeader, StatCard } from '@/components/ui';
-import { tr, monthsArray, roleLabel, positionLabel, statusLabel } from '@/lib/i18n';
+import { tr, monthsArray, roleLabel, positionLabel } from '@/lib/i18n';
 import { BarChart, DonutChart, LineChart } from '@/components/Charts';
 
 interface ReportsProps {
@@ -67,7 +68,7 @@ function exportReportCsv(
   type: 'players' | 'financial',
   data: (Player | Transaction)[],
   teams: Team[],
-  lang: Lang,
+
 ) {
   const teamName = (id: string) => teams.find((tm) => tm.id === id)?.name || '';
   if (type === 'players') {
@@ -85,21 +86,12 @@ function exportReportCsv(
   }
 }
 
-type DateRangePreset = 'this_month' | 'last_month' | 'last_3_months' | 'this_year' | 'custom';
-
-function getDateRange(preset: DateRangePreset): [string, string] {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = now.getMonth();
-  switch (preset) {
-    case 'this_month': return [`${y}-${String(m + 1).padStart(2, '0')}-01`, `${y}-${String(m + 1).padStart(2, '0')}-${new Date(y, m + 1, 0).getDate()}`];
-    case 'last_month': { const pm = m === 0 ? 11 : m - 1; const py = m === 0 ? y - 1 : y; return [`${py}-${String(pm + 1).padStart(2, '0')}-01`, `${py}-${String(pm + 1).padStart(2, '0')}-${new Date(py, pm + 1, 0).getDate()}`]; }
-    case 'last_3_months': { const d = new Date(y, m - 2, 1); return [d.toISOString().substring(0, 10), now.toISOString().substring(0, 10)]; }
-    case 'this_year': return [`${y}-01-01`, `${y}-12-31`];
-    default: return ['', ''];
-  }
-}
-
+const POSITION_COLORS: Record<string, string> = {
+    'حارس مرمى': '#f59e0b', 'Goalkeeper': '#f59e0b',
+    'مدافع': '#3b82f6', 'Defender': '#3b82f6',
+    'خط وسط': '#10b981', 'Midfielder': '#10b981',
+    'مهاجم': '#ef4444', 'Forward': '#ef4444',
+  };
 export function Reports({
   players, teams, staff, matches, transactions,
   subscriptions, attendance, lang,
@@ -133,12 +125,6 @@ export function Reports({
     });
   }, [subscriptions, rangeFrom, rangeTo]);
 
-  const POSITION_COLORS: Record<string, string> = {
-    'حارس مرمى': '#f59e0b', 'Goalkeeper': '#f59e0b',
-    'مدافع': '#3b82f6', 'Defender': '#3b82f6',
-    'خط وسط': '#10b981', 'Midfielder': '#10b981',
-    'مهاجم': '#ef4444', 'Forward': '#ef4444',
-  };
 
   /* Financial Summary */
   const financial = useMemo(() => {
@@ -152,20 +138,18 @@ export function Reports({
     const byMonthRev: Record<string, number> = {};
     const byMonthExp: Record<string, number> = {};
     filteredTransactions.forEach((tx) => {
-      const monthIdx = parseInt(tx.transactionDate.substring(5, 7), 10) - 1;
-      const label = MONTHS[monthIdx] || tx.transactionDate.substring(5, 7);
-      if (tx.type === 'revenue') byMonthRev[label] = (byMonthRev[label] || 0) + tx.amount;
-      else byMonthExp[label] = (byMonthExp[label] || 0) + tx.amount;
+      const month = tx.transactionDate.slice(0, 7);
+      if (tx.type === 'revenue') byMonthRev[month] = (byMonthRev[month] || 0) + tx.amount;
+      else byMonthExp[month] = (byMonthExp[month] || 0) + tx.amount;
     });
-
-    const activeMonths = MONTHS.filter((m) => byMonthRev[m] || byMonthExp[m]);
-    const months = activeMonths.length > 0 ? activeMonths : MONTHS.slice(0, 6);
+    const months = [...new Set([...Object.keys(byMonthRev), ...Object.keys(byMonthExp)])].sort();
+    const monthLabel = (key: string) => `${MONTHS[Number(key.slice(5)) - 1]} ${key.slice(0, 4)}`;
 
     return {
       revenueTotal, expenseTotal, netProfit, collectionRate, paidSubs, totalSubs,
-      revenueBars: months.map((label) => ({ label, value: byMonthRev[label] || 0, color: '#10b981' })),
-      expenseBars: months.map((label) => ({ label, value: byMonthExp[label] || 0, color: '#ef4444' })),
-      netTrend: months.map((label) => ({ label, value: (byMonthRev[label] || 0) - (byMonthExp[label] || 0) })),
+      revenueBars: months.map((label) => ({ label: monthLabel(label), value: byMonthRev[label] || 0, color: '#10b981' })),
+      expenseBars: months.map((label) => ({ label: monthLabel(label), value: byMonthExp[label] || 0, color: '#ef4444' })),
+      netTrend: months.map((label) => ({ label: monthLabel(label), value: (byMonthRev[label] || 0) - (byMonthExp[label] || 0) })),
     };
   }, [filteredTransactions, filteredSubscriptions, MONTHS]);
 
@@ -207,7 +191,7 @@ export function Reports({
       value: players.filter((p) => p.teamId === team.id).length, color: '#10b981',
     }));
     return { totalPlayers, activePlayers, positionDonut, teamBars };
-  }, [players, teams, lang, isAr, POSITION_COLORS]);
+  }, [players, teams, lang, isAr]);
 
   /* Attendance Report */
   const attendanceStats = useMemo(() => {
@@ -240,10 +224,10 @@ export function Reports({
   return (
     <div className="space-y-6 text-right" dir={isAr ? 'rtl' : 'ltr'}>
       <PageHeader title={t.reports} subtitle={t.reportsSubtitle}>
-        <button onClick={() => exportReportCsv('players', players, teams, lang)} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition cursor-pointer shadow-sm">
+        <button onClick={() => exportReportCsv('players', players, teams)} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition cursor-pointer shadow-sm">
           <Download className="h-4 w-4" /> {t.exportPlayersCsv}
         </button>
-        <button onClick={() => exportReportCsv('financial', transactions, teams, lang)} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 transition cursor-pointer shadow-sm">
+        <button onClick={() => exportReportCsv('financial', transactions, teams)} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 transition cursor-pointer shadow-sm">
           <Download className="h-4 w-4" /> {t.exportFinancialCsv}
         </button>
         <button onClick={() => window.print()} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer shadow-sm">
@@ -277,7 +261,7 @@ export function Reports({
             <div className="flex items-center gap-2">
               <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs py-1.5 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50" dir="ltr" />
               <span className="text-xs text-slate-400">→</span>
-              <input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs py-1.5 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50" dir="ltr" />
+              <input type="date" min={customFrom} value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs py-1.5 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50" dir="ltr" />
             </div>
           )}
         </div>
