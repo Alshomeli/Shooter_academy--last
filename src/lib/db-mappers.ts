@@ -63,7 +63,8 @@ interface VideoRow {
 interface SettingsRow {
   id: string; name: string; logo_url: string; phone: string;
   email: string; address: string; subscription_fee_monthly: number;
-  subscription_fee_quarterly: number; subscription_fee_yearly: number;
+  subscription_fee_quarterly: number; subscription_fee_semi_annual: number;
+  subscription_fee_yearly: number;
 }
 interface AuditLogRow {
   id: string; action: string; timestamp: string; user_role: string;
@@ -152,6 +153,7 @@ export const mapSettings = (r: SettingsRow): Settings => ({
   id: r.id, name: r.name, logoUrl: r.logo_url, phone: r.phone, email: r.email,
   address: r.address, subscriptionFeeMonthly: r.subscription_fee_monthly,
   subscriptionFeeQuarterly: r.subscription_fee_quarterly,
+  subscriptionFeeSemiAnnual: r.subscription_fee_semi_annual,
   subscriptionFeeYearly: r.subscription_fee_yearly,
 });
 
@@ -238,6 +240,7 @@ export const settingsToRow = (s: Settings): SettingsRow => ({
   id: s.id, name: s.name, logo_url: s.logoUrl, phone: s.phone, email: s.email,
   address: s.address, subscription_fee_monthly: s.subscriptionFeeMonthly,
   subscription_fee_quarterly: s.subscriptionFeeQuarterly,
+  subscription_fee_semi_annual: s.subscriptionFeeSemiAnnual,
   subscription_fee_yearly: s.subscriptionFeeYearly,
 });
 

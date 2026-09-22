@@ -27,6 +27,7 @@ interface SubscriptionsProps {
 const DEFAULT_PLAN_AMOUNTS: Record<Subscription['planType'], number> = {
   monthly: 35,
   quarterly: 90,
+  semi_annual: 170,
   yearly: 320,
 };
 
@@ -35,13 +36,15 @@ function getPlanAmounts(settings: Settings | null): Record<Subscription['planTyp
   return {
     monthly: settings.subscriptionFeeMonthly || DEFAULT_PLAN_AMOUNTS.monthly,
     quarterly: settings.subscriptionFeeQuarterly || DEFAULT_PLAN_AMOUNTS.quarterly,
+    semi_annual: settings.subscriptionFeeSemiAnnual || DEFAULT_PLAN_AMOUNTS.semi_annual,
     yearly: settings.subscriptionFeeYearly || DEFAULT_PLAN_AMOUNTS.yearly,
   };
 }
 
-const PLAN_COLORS: Record<Subscription['planType'], 'blue' | 'amber' | 'emerald'> = {
+const PLAN_COLORS: Record<Subscription['planType'], 'blue' | 'amber' | 'emerald' | 'cyan'> = {
   monthly: 'blue',
   quarterly: 'amber',
+  semi_annual: 'cyan',
   yearly: 'emerald',
 };
 
@@ -55,11 +58,33 @@ const CATEGORY_COLORS: Record<string, 'emerald' | 'blue' | 'amber' | 'slate'> = 
 
 const todayISO = () => new Date().toISOString().substring(0, 10);
 
+type LifecycleStatus = 'active' | 'expiring' | 'expired' | 'future';
+
+function getLifecycleStatus(sub: Subscription): LifecycleStatus {
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const start = new Date(sub.startDate);
+  const end = new Date(sub.endDate);
+  if (start > now) return 'future';
+  if (end < now) return 'expired';
+  const daysLeft = Math.ceil((end.getTime() - now.getTime()) / 86_400_000);
+  if (daysLeft <= 7) return 'expiring';
+  return 'active';
+}
+
+const LIFECYCLE_BADGE: Record<LifecycleStatus, { color: 'emerald' | 'amber' | 'red' | 'blue'; key: 'subActive' | 'subExpiring' | 'subExpired' | 'subFuture' }> = {
+  active:   { color: 'emerald', key: 'subActive' },
+  expiring: { color: 'amber',   key: 'subExpiring' },
+  expired:  { color: 'red',     key: 'subExpired' },
+  future:   { color: 'blue',    key: 'subFuture' },
+};
+
 function calcEndDate(startDate: string, planType: Subscription['planType']): string {
   const d = new Date(startDate);
   if (isNaN(d.getTime())) return startDate;
   if (planType === 'monthly') d.setMonth(d.getMonth() + 1);
   else if (planType === 'quarterly') d.setMonth(d.getMonth() + 3);
+  else if (planType === 'semi_annual') d.setMonth(d.getMonth() + 6);
   else if (planType === 'yearly') d.setFullYear(d.getFullYear() + 1);
   return d.toISOString().substring(0, 10);
 }
@@ -373,7 +398,7 @@ export function Subscriptions({
                       </div>
 
                       {/* Status */}
-                      <div className="min-w-24">
+                      <div className="min-w-24 flex flex-wrap gap-1.5">
                         <Badge color={isPaid ? 'emerald' : 'amber'}>
                           {isPaid ? (
                             <>
@@ -385,6 +410,7 @@ export function Subscriptions({
                             </>
                           )}
                         </Badge>
+                        {(() => { const lc = getLifecycleStatus(sub); const cfg = LIFECYCLE_BADGE[lc]; return <Badge color={cfg.color}>{t[cfg.key]}</Badge>; })()}
                       </div>
 
                       {/* Payment method */}

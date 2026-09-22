@@ -29,7 +29,7 @@ const REGISTER_ROLES: { id: Role; iconBg: string }[] = [
   { id: 'accountant', iconBg: 'from-teal-500 to-teal-600' },
 ];
 
-type RegisterTab = 'staff' | 'player';
+
 
 type Screen = 'login' | 'register' | 'forgot' | 'forgot-sent' | 'register-success';
 
@@ -44,10 +44,7 @@ export function Login({ onLogin, lang, setLang }: LoginProps) {
   const [resetEmail, setResetEmail] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [registerTab, setRegisterTab] = useState<RegisterTab>('staff');
-  const [playerName, setPlayerName] = useState('');
-  const [playerBirthDate, setPlayerBirthDate] = useState('');
-  const [playerPhone, setPlayerPhone] = useState('');
+
   const t = tr(lang);
   const isRtl = lang === 'ar';
 
@@ -173,91 +170,7 @@ export function Login({ onLogin, lang, setLang }: LoginProps) {
   };
 
   /* ── Player registration ── */
-  const handlePlayerRegister = async (e: FormEvent) => {
-    e.preventDefault();
-    clearError();
-    if (!fullName.trim()) { setError(isRtl ? 'يرجى إدخال اسم ولي الأمر' : 'Please enter parent name'); return; }
-    if (!playerName.trim()) { setError(isRtl ? 'يرجى إدخال اسم اللاعب' : 'Please enter player name'); return; }
-    if (!email) { setError(isRtl ? 'يرجى إدخال البريد الإلكتروني' : 'Please enter your email'); return; }
-    if (!password) { setError(isRtl ? 'يرجى إدخال كلمة المرور' : 'Please enter your password'); return; }
-    if (password.length < 10 || !/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
-      setError(isRtl
-        ? 'كلمة المرور يجب أن تكون 10 أحرف على الأقل وتحتوي على حروف وأرقام'
-        : 'Password must be at least 10 characters and include letters and numbers');
-      return;
-    }
-    if (password !== confirmPassword) { setError(isRtl ? 'كلمتا المرور غير متطابقتين' : 'Passwords do not match'); return; }
 
-    setLoading(true);
-    setRegistering(true);
-    try {
-      const { data: authData, error: authError } = await signUp(email, password);
-      if (authError) {
-        setRegistering(false);
-        console.error('[signup]', authError);
-        setError(isRtl
-          ? 'تعذّر إنشاء الحساب. إذا كان لديك حساب بالفعل، فسجّل الدخول أو استخدم "نسيت كلمة المرور؟".'
-          : 'Could not create the account. If you already have one, sign in or use "Forgot password?".');
-        return;
-      }
-      if (!authData.user) {
-        setRegistering(false);
-        setError(isRtl ? 'حدث خطأ غير متوقع' : 'An unexpected error occurred');
-        return;
-      }
-
-      const staffRecord = {
-        id: authData.user.id,
-        name: fullName.trim(),
-        email: email.toLowerCase(),
-        phone: playerPhone.trim() || phone.trim() || '-',
-        role: 'parent' as const,
-        salary: 0,
-        specialization: ROLE_LABELS['parent'].ar,
-        status: 'pending' as const,
-        joinedDate: new Date().toISOString().split('T')[0],
-        avatarUrl: '',
-        userId: authData.user.id,
-      };
-      await db.saveStaff(staffRecord);
-
-      const playerRecord = {
-        id: `player-${Date.now()}`,
-        name: playerName.trim(),
-        teamId: '',
-        position: 'غير محدد',
-        jerseyNumber: 0,
-        birthDate: playerBirthDate || '2015-01-01',
-        bloodType: '',
-        parentName: fullName.trim(),
-        parentPhone: playerPhone.trim() || phone.trim() || '-',
-        parentEmail: email.toLowerCase(),
-        parentId: '',
-        status: 'inactive' as const,
-        notes: '',
-        joinedDate: new Date().toISOString().split('T')[0],
-      };
-      await db.savePlayer(playerRecord);
-
-      await db.addLoginAuditLog({
-        id: `reg-log-${Date.now()}`,
-        action: isRtl ? 'تسجيل لاعب جديد' : 'New player registered',
-        timestamp: new Date().toISOString(),
-        userRole: 'parent' as const,
-        userName: fullName.trim(),
-        details: `تسجيل لاعب جديد: ${playerName.trim()} بواسطة ${fullName.trim()}`,
-      }).catch(() => {});
-
-      await supabase.auth.signOut();
-      setRegistering(false);
-      setScreen('register-success');
-    } catch {
-      setRegistering(false);
-      setError(isRtl ? 'حدث خطأ، يرجى المحاولة مرة أخرى' : 'An error occurred, please try again');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   /* ── Google sign in ── */
   const handleGoogleLogin = async () => {
@@ -416,27 +329,6 @@ export function Login({ onLogin, lang, setLang }: LoginProps) {
             <>
               {error && <ErrorBanner message={error} />}
 
-              {/* Sub-tab: staff vs player */}
-              <div className="flex items-center gap-1 p-1 bg-white/5 rounded-xl mb-4">
-                <button
-                  type="button"
-                  onClick={() => setRegisterTab('staff')}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-black transition cursor-pointer ${registerTab === 'staff' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'}`}
-                >
-                  <Briefcase className="h-3.5 w-3.5" />
-                  {isRtl ? 'حساب موظف/ولي أمر' : 'Staff / Parent'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRegisterTab('player')}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-black transition cursor-pointer ${registerTab === 'player' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'}`}
-                >
-                  <Dumbbell className="h-3.5 w-3.5" />
-                  {isRtl ? 'تسجيل لاعب' : 'Register Player'}
-                </button>
-              </div>
-
-              {registerTab === 'staff' ? (
               <form onSubmit={handleRegister} className="space-y-4">
                 <InputField
                   label={isRtl ? 'الاسم الكامل' : 'Full Name'}
@@ -520,78 +412,6 @@ export function Login({ onLogin, lang, setLang }: LoginProps) {
                   {isRtl ? 'إنشاء الحساب' : 'Create Account'}
                 </button>
               </form>
-              ) : (
-              <form onSubmit={handlePlayerRegister} className="space-y-4">
-                <InputField
-                  label={isRtl ? 'اسم ولي الأمر' : 'Parent Name'}
-                  icon={<User className="h-4 w-4 text-slate-400" />}
-                  type="text"
-                  value={fullName}
-                  placeholder={isRtl ? 'اسم ولي الأمر الكامل' : 'Enter parent full name'}
-                  onChange={(v) => { setFullName(v); clearError(); }}
-                />
-                <InputField
-                  label={isRtl ? 'اسم اللاعب' : 'Player Name'}
-                  icon={<Dumbbell className="h-4 w-4 text-slate-400" />}
-                  type="text"
-                  value={playerName}
-                  placeholder={isRtl ? 'اسم اللاعب الكامل' : 'Enter player full name'}
-                  onChange={(v) => { setPlayerName(v); clearError(); }}
-                />
-                <InputField
-                  label={t.email}
-                  icon={<Mail className="h-4 w-4 text-slate-400" />}
-                  type="email"
-                  value={email}
-                  placeholder="name@shooter.com"
-                  onChange={(v) => { setEmail(v); clearError(); }}
-                />
-                <InputField
-                  label={isRtl ? 'رقم الهاتف' : 'Phone Number'}
-                  icon={<Phone className="h-4 w-4 text-slate-400" />}
-                  type="tel"
-                  value={playerPhone}
-                  placeholder="05XXXXXXXX"
-                  onChange={(v) => { setPlayerPhone(v); clearError(); }}
-                />
-                <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1.5">{isRtl ? 'تاريخ ميلاد اللاعب' : 'Player Birth Date'}</label>
-                  <div className="relative">
-                    <input
-                      type="date"
-                      value={playerBirthDate}
-                      onChange={(e) => { setPlayerBirthDate(e.target.value); clearError(); }}
-                      className="w-full bg-slate-900/60 text-white text-sm py-3 px-4 rounded-xl border border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition"
-                      dir="ltr"
-                    />
-                  </div>
-                </div>
-                <InputField
-                  label={t.password}
-                  icon={<Lock className="h-4 w-4 text-slate-400" />}
-                  type="password"
-                  value={password}
-                  placeholder={isRtl ? '10 أحرف على الأقل مع أرقام' : 'At least 10 characters with numbers'}
-                  onChange={(v) => { setPassword(v); clearError(); }}
-                />
-                <InputField
-                  label={isRtl ? 'تأكيد كلمة المرور' : 'Confirm Password'}
-                  icon={<Lock className="h-4 w-4 text-slate-400" />}
-                  type="password"
-                  value={confirmPassword}
-                  placeholder="••••••••"
-                  onChange={(v) => { setConfirmPassword(v); clearError(); }}
-                />
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-black py-3 rounded-xl shadow-lg shadow-emerald-900/30 transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed mt-2"
-                >
-                  {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <UserPlus className="h-5 w-5" />}
-                  {isRtl ? 'تسجيل اللاعب' : 'Register Player'}
-                </button>
-              </form>
-              )}
             </>
           )}
 

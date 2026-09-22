@@ -3,6 +3,7 @@ import {
   Trophy, Dumbbell, Wallet, ClipboardCheck, CalendarDays,
   BarChart3, Sparkles, Settings as SettingsIcon,
   LogOut, Moon, Sun, RotateCcw, X, Medal, Film, ScrollText, Send,
+  ClipboardList, FileCheck,
 } from 'lucide-react';
 import type { CurrentUser, Lang, Role, ViewId } from '@/types';
 import { tr } from '@/lib/i18n';
@@ -65,6 +66,8 @@ export function Sidebar({
 
     { id: 'messages', label: t.messages, icon: Send, allowedRoles: ['manager', 'coach', 'receptionist', 'accountant'] },
     { id: 'ai-center', label: t.aiCenter, icon: Sparkles, allowedRoles: ['manager', 'accountant', 'coach', 'receptionist'] },
+    { id: 'registration', label: t.registration, icon: ClipboardList, allowedRoles: ['parent'] },
+    { id: 'registration-admin', label: t.registrationAdmin, icon: FileCheck, allowedRoles: ['manager'] },
     { id: 'settings', label: t.settings, icon: SettingsIcon, allowedRoles: ['manager'] },
   ];
 

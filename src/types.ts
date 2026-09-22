@@ -67,7 +67,7 @@ export interface Parent {
 export interface Subscription {
   id: string;
   playerId: string;
-  planType: 'monthly' | 'quarterly' | 'yearly';
+  planType: 'monthly' | 'quarterly' | 'semi_annual' | 'yearly';
   amount: number;
   startDate: string;
   endDate: string;
@@ -174,6 +174,7 @@ export interface Settings {
   address: string;
   subscriptionFeeMonthly: number;
   subscriptionFeeQuarterly: number;
+  subscriptionFeeSemiAnnual: number;
   subscriptionFeeYearly: number;
 }
 
@@ -202,4 +203,87 @@ export type ViewId =
   | 'mobile'
   | 'ai-center'
   | 'messages'
-  | 'settings';
+  | 'settings'
+  | 'registration'
+  | 'registration-admin';
+
+/* ---- Registration module ---- */
+
+export type RegistrationType = 'initial_onboarding' | 'new_application';
+export type RegistrationStatus = 'draft' | 'pending' | 'under_review' | 'needs_info' | 'approved' | 'rejected';
+
+export interface RegistrationParentInput {
+  registrationType: RegistrationType;
+  fullName: string;
+  nationalId: string;
+  phone: string;
+  email: string;
+  whatsapp?: string;
+  nationality?: string;
+  occupation?: string;
+  workplace?: string;
+  address?: string;
+  notes?: string;
+}
+
+export interface RegistrationChildInput {
+  clientKey: string;
+  fullName: string;
+  nationalId: string;
+  birthDate: string;
+  bloodType?: string;
+  notes?: string;
+}
+
+export interface RegistrationDraftResult {
+  applicationId: string;
+  status: 'draft';
+  registrationType: RegistrationType;
+  children: Array<{
+    clientKey?: string;
+    childId: string;
+    fullName: string;
+  }>;
+}
+
+export interface RegistrationChild {
+  id: string;
+  fullName: string;
+  nationalId?: string;
+  birthDate: string;
+  bloodType?: string;
+  notes?: string;
+  playerId?: string;
+}
+
+export interface RegistrationDocument {
+  id: string;
+  childId?: string;
+  storagePath: string;
+  fileName: string;
+  mimeType: string;
+  fileSize: number;
+  fileCategory: 'photo' | 'document';
+  documentType?: string;
+}
+
+export interface RegistrationApplication {
+  id: string;
+  registrationType: RegistrationType;
+  status: RegistrationStatus;
+  parentName: string;
+  parentNationalId?: string;
+  parentPhone: string;
+  parentEmail: string;
+  parentWhatsapp?: string;
+  parentNationality?: string;
+  parentOccupation?: string;
+  parentWorkplace?: string;
+  parentAddress?: string;
+  parentNotes?: string;
+  children: RegistrationChild[];
+  documents: RegistrationDocument[];
+  reviewNotes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
