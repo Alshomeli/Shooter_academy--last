@@ -22,6 +22,8 @@ export function SettingsView({ settings, onSettingsChange, activeRole, lang }: S
   const isAr = lang === 'ar';
   const [form, setForm] = useState<Settings>(settings);
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   /* --------------------------- Access control --------------------------- */
   if (activeRole !== 'manager') {
@@ -50,11 +52,15 @@ export function SettingsView({ settings, onSettingsChange, activeRole, lang }: S
   const set = <K extends keyof Settings>(key: K, value: Settings[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    onSettingsChange(form);
-    setSaved(true);
-    window.setTimeout(() => setSaved(false), 2600);
+    if (saving) return; setSaving(true); setSaveError('');
+    try {
+      await onSettingsChange(form);
+      setForm({ ...form, version: (form.version ?? 0) + 1 });
+      setSaved(true); window.setTimeout(() => setSaved(false), 2600);
+    } catch { setSaveError(isAr ? 'تعذر حفظ الإعدادات. حدّث الصفحة وحاول مجددًا.' : 'Could not save settings. Refresh and retry.'); }
+    finally { setSaving(false); }
   };
 
   /* ------------------------------- Render ------------------------------- */
@@ -65,6 +71,7 @@ export function SettingsView({ settings, onSettingsChange, activeRole, lang }: S
         subtitle={isAr ? 'تهيئة الإعدادات العامة للأكاديمية والرسوم المعتمدة' : 'Configure general academy settings and approved fees'}
       />
 
+      {saveError && <p role="alert" className="text-red-600">{saveError}</p>}
       {/* Form card */}
       <form
         onSubmit={handleSubmit}
@@ -184,6 +191,12 @@ export function SettingsView({ settings, onSettingsChange, activeRole, lang }: S
             currency={t.currency}
           />
           <FeeField
+            label={isAr ? 'نصف سنوي' : 'Semi-annual'}
+            value={form.subscriptionFeeSemiAnnual ?? 0}
+            onChange={(v) => set('subscriptionFeeSemiAnnual', v)}
+            currency={t.currency}
+          />
+          <FeeField
             label={t.yearly}
             value={form.subscriptionFeeYearly}
             onChange={(v) => set('subscriptionFeeYearly', v)}
@@ -199,7 +212,7 @@ export function SettingsView({ settings, onSettingsChange, activeRole, lang }: S
         {/* ---------------------------- Actions ---------------------------- */}
         <div className="flex justify-end pt-5 border-t border-slate-100 dark:border-slate-800">
           <button
-            type="submit"
+            type="submit" disabled={saving}
             className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold shadow-sm transition cursor-pointer"
           >
             <Save className="h-4 w-4" />

@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Shield, Search, Filter, Clock, User, FileText, LogIn, Download } from 'lucide-react';
+import { Shield, Search, Filter, Clock, FileText, LogIn, Download } from 'lucide-react';
 import type { AuditLog, Lang, Role } from '@/types';
 import { PageHeader, EmptyState, Badge } from '@/components/ui';
 import { tr } from '@/lib/i18n';

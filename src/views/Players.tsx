@@ -3,7 +3,7 @@ import {
   Users, Plus, Search, Phone, Mail, Edit2, Trash2, Eye,
   FileText,
 } from 'lucide-react';
-import type { Player, Team, Lang, Role } from '@/types';
+import type { Player, Parent, Team, Lang, Role } from '@/types';
 import { Badge, Modal, ConfirmDialog, PageHeader, EmptyState, FormField, FormError, SaveButton, inputCls } from '@/components/ui';
 import { tr, positionLabel } from '@/lib/i18n';
 import { ContactLinks } from '@/components/ContactLinks';
@@ -13,6 +13,7 @@ import { validateRequired, validatePhone, validateEmail, validateNumber, validat
 
 interface PlayersProps {
   players: Player[];
+  parents: Parent[];
   teams: Team[];
   onPlayersChange: (p: Player[]) => void;
   activeRole: Role;
@@ -29,7 +30,7 @@ const POSITION_COLORS: Record<string, 'red' | 'blue' | 'emerald' | 'amber'> = {
   'مهاجم': 'red',
 };
 
-export function Players({ players, teams, onPlayersChange, activeRole, lang }: PlayersProps) {
+export function Players({ players, parents, teams, onPlayersChange, activeRole, lang }: PlayersProps) {
   const t = tr(lang);
   const isAr = lang === 'ar';
   const [search, setSearch] = useState('');
@@ -75,18 +76,18 @@ export function Players({ players, teams, onPlayersChange, activeRole, lang }: P
 
   const teamName = (id: string) => teams.find((t) => t.id === id)?.name || (isAr ? 'غير محدد' : 'Not specified');
 
-  const handleSave = (data: Omit<Player, 'id'>, id?: string) => {
+  const handleSave = async (data: Omit<Player, 'id'>, id?: string) => {
     if (id) {
-      onPlayersChange(players.map((p) => (p.id === id ? { ...data, id } : p)));
+      await onPlayersChange(players.map((p) => (p.id === id ? { ...data, id } : p)));
     } else {
-      onPlayersChange([...players, { ...data, id: `player-${Date.now()}` }]);
+      await onPlayersChange([...players, { ...data, id: `player-${Date.now()}` }]);
     }
     setShowAdd(false);
     setEditPlayer(null);
   };
 
-  const handleDelete = () => {
-    if (deleteId) onPlayersChange(players.filter((p) => p.id !== deleteId));
+  const handleDelete = async () => {
+    if (deleteId) await onPlayersChange(players.filter((p) => p.id !== deleteId));
     setDeleteId(null);
   };
 
@@ -189,9 +190,9 @@ export function Players({ players, teams, onPlayersChange, activeRole, lang }: P
                     <button onClick={() => setEditPlayer(p)} className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[11px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition cursor-pointer">
                       <Edit2 className="h-3.5 w-3.5" /> {t.edit}
                     </button>
-                    <button onClick={() => setDeleteId(p.id)} className="flex items-center justify-center gap-1 py-1.5 px-2.5 rounded-lg text-[11px] font-bold text-red-600 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 transition cursor-pointer">
+                    {activeRole === 'manager' && <button onClick={() => setDeleteId(p.id)} className="flex items-center justify-center gap-1 py-1.5 px-2.5 rounded-lg text-[11px] font-bold text-red-600 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 transition cursor-pointer">
                       <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                    </button>}
                   </>
                 )}
               </div>
@@ -204,6 +205,7 @@ export function Players({ players, teams, onPlayersChange, activeRole, lang }: P
       {(showAdd || editPlayer) && (
         <PlayerForm
           player={editPlayer}
+          parents={parents}
           teams={teams}
           players={players}
           activeRole={activeRole}
@@ -233,10 +235,11 @@ export function Players({ players, teams, onPlayersChange, activeRole, lang }: P
   );
 }
 
-function PlayerForm({ player, teams, players, activeRole, onSave, onClose, lang }: {
+function PlayerForm({ player, parents, teams, players, activeRole, onSave, onClose, lang }: {
   player: Player | null;
   teams: Team[];
   players: Player[];
+  parents: Parent[];
   activeRole: Role;
   onSave: (data: Omit<Player, 'id'>, id?: string) => void;
   onClose: () => void;
@@ -244,14 +247,16 @@ function PlayerForm({ player, teams, players, activeRole, onSave, onClose, lang 
 }) {
   const t = tr(lang);
   const isAr = lang === 'ar';
-  const canEditSensitive = activeRole === 'manager';
+  const canEditSensitive = activeRole === 'manager' || !player;
   const [form, setForm] = useState({
+    version: player?.version,
+    privateFieldsLoaded: player?.privateFieldsLoaded,
     name: player?.name || '',
     birthDate: player?.birthDate || '',
     bloodType: player?.bloodType || BLOOD_TYPES[0],
     jerseyNumber: player?.jerseyNumber || 1,
     position: player?.position || POSITIONS[0],
-    teamId: player?.teamId || teams[0]?.id || '',
+    teamId: player ? player.teamId : teams[0]?.id || '',
     parentName: player?.parentName || '',
     parentPhone: player?.parentPhone || '',
     parentEmail: player?.parentEmail || '',
@@ -262,6 +267,7 @@ function PlayerForm({ player, teams, players, activeRole, onSave, onClose, lang 
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -273,7 +279,7 @@ function PlayerForm({ player, teams, players, activeRole, onSave, onClose, lang 
     const jerseyCheck = validateNumber(form.jerseyNumber, 1, 99, t.jerseyNumber);
     if (!jerseyCheck.valid) e2.jerseyNumber = jerseyCheck.message!;
     else {
-      const uniqueCheck = validateJerseyUnique(form.jerseyNumber, players, player?.id);
+      const uniqueCheck = validateJerseyUnique(form.jerseyNumber, players.filter(p => p.teamId === form.teamId), player?.id);
       if (!uniqueCheck.valid) e2.jerseyNumber = uniqueCheck.message!;
     }
     const phoneCheck = validatePhone(form.parentPhone);
@@ -284,15 +290,19 @@ function PlayerForm({ player, teams, players, activeRole, onSave, onClose, lang 
     setErrors(e2);
     if (Object.keys(e2).length > 0) return;
 
-    setSaving(true);
-    await new Promise((r) => setTimeout(r, 400));
-    onSave(form, player?.id);
-    setSaving(false);
+    if (saving) return;
+    setSaving(true); setSaveError('');
+    try {
+    await onSave(form, player?.id);
+
+    } catch { setSaveError(lang === 'ar' ? 'تعذر حفظ التغيير. راجع الرسالة وحاول مجددًا.' : 'Could not save this change. Review the error and retry.'); }
+    finally { setSaving(false); }
   };
 
   return (
     <Modal open onClose={onClose} title={player ? t.editPlayerTitle : t.addPlayerTitle} size="lg">
       <form onSubmit={handleSubmit} className="space-y-4">
+        {saveError && <p role="alert" className="text-sm text-red-600">{saveError}</p>}
         {Object.keys(errors).length > 0 && (
           <FormError message={t.fixFields} />
         )}
@@ -301,7 +311,7 @@ function PlayerForm({ player, teams, players, activeRole, onSave, onClose, lang 
             <input value={form.name} onChange={(e) => { setForm({ ...form, name: e.target.value }); setErrors((p) => ({ ...p, name: '' })); }} className={`${inputCls} ${errors.name ? 'border-red-400 ring-1 ring-red-400' : ''}`} required />
           </FormField>
           <FormField label={t.birthDate}>
-            <input type="date" value={form.birthDate} onChange={(e) => setForm({ ...form, birthDate: e.target.value })} className={inputCls} />
+            <input type="date" required max={new Date().toISOString().slice(0, 10)} value={form.birthDate} onChange={(e) => setForm({ ...form, birthDate: e.target.value })} className={inputCls} />
           </FormField>
           <FormField label={t.jerseyNumber} error={errors.jerseyNumber}>
             <input type="number" min={1} max={99} value={form.jerseyNumber} onChange={(e) => { setForm({ ...form, jerseyNumber: parseInt(e.target.value) || 1 }); setErrors((p) => ({ ...p, jerseyNumber: '' })); }} className={`${inputCls} ${errors.jerseyNumber ? 'border-red-400 ring-1 ring-red-400' : ''}`} />
@@ -322,14 +332,20 @@ function PlayerForm({ player, teams, players, activeRole, onSave, onClose, lang 
               {BLOOD_TYPES.map((b) => <option key={b} value={b}>{b}</option>)}
             </select>
           </FormField>
+          <FormField label={isAr ? 'ربط ولي الأمر' : 'Linked parent'}>
+            <select className={inputCls} value={form.parentId} disabled={!canEditSensitive} onChange={e => {
+              const selected = parents.find(p => p.id === e.target.value);
+              setForm({ ...form, parentId: selected?.id || '', parentName: selected?.name || '', parentPhone: selected?.phone || '', parentEmail: selected?.email || '' });
+            }}><option value="">{isAr ? 'اختر ولي الأمر' : 'Select parent'}</option>{parents.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select>
+          </FormField>
           <FormField label={t.parentName}>
-            <input value={form.parentName} onChange={(e) => setForm({ ...form, parentName: e.target.value })} className={inputCls} />
+            <input disabled={!!form.parentId} value={form.parentName} onChange={(e) => setForm({ ...form, parentName: e.target.value })} className={inputCls} />
           </FormField>
           <FormField label={t.parentPhone} error={errors.parentPhone}>
-            <input value={form.parentPhone} onChange={(e) => { setForm({ ...form, parentPhone: e.target.value }); setErrors((p) => ({ ...p, parentPhone: '' })); }} className={`${inputCls} ${errors.parentPhone ? 'border-red-400 ring-1 ring-red-400' : ''}`} dir="ltr" />
+            <input disabled={!!form.parentId} value={form.parentPhone} onChange={(e) => { setForm({ ...form, parentPhone: e.target.value }); setErrors((p) => ({ ...p, parentPhone: '' })); }} className={`${inputCls} ${errors.parentPhone ? 'border-red-400 ring-1 ring-red-400' : ''}`} dir="ltr" />
           </FormField>
           <FormField label={isAr ? 'بريد ولي الأمر' : 'Parent email'} error={errors.parentEmail}>
-            <input type="email" value={form.parentEmail} onChange={(e) => { setForm({ ...form, parentEmail: e.target.value }); setErrors((p) => ({ ...p, parentEmail: '' })); }} className={`${inputCls} ${errors.parentEmail ? 'border-red-400 ring-1 ring-red-400' : ''}`} dir="ltr" disabled={!canEditSensitive} />
+            <input type="email" value={form.parentEmail} onChange={(e) => { setForm({ ...form, parentEmail: e.target.value }); setErrors((p) => ({ ...p, parentEmail: '' })); }} className={`${inputCls} ${errors.parentEmail ? 'border-red-400 ring-1 ring-red-400' : ''}`} dir="ltr" disabled={!canEditSensitive || !!form.parentId} />
             {!canEditSensitive && <p className="text-[10px] text-amber-500 mt-1">{isAr ? 'يُتاح تعديل البريد للمدير فقط' : 'Email editing is restricted to managers'}</p>}
           </FormField>
           <FormField label={t.status}>
@@ -340,7 +356,7 @@ function PlayerForm({ player, teams, players, activeRole, onSave, onClose, lang 
           </FormField>
         </div>
         <FormField label={t.notes}>
-          <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} className={inputCls} />
+          <textarea disabled={activeRole !== 'manager' || form.privateFieldsLoaded === false} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} className={inputCls} />
         </FormField>
         <div className="flex gap-2 justify-end pt-2">
           <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer">{t.cancel}</button>

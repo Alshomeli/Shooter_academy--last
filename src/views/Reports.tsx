@@ -8,7 +8,7 @@ import type {
   Attendance, Lang, Role,
 } from '@/types';
 import { PageHeader, StatCard } from '@/components/ui';
-import { tr, monthsArray, roleLabel, positionLabel, statusLabel } from '@/lib/i18n';
+import { tr, monthsArray, roleLabel, positionLabel } from '@/lib/i18n';
 import { BarChart, DonutChart, LineChart } from '@/components/Charts';
 
 interface ReportsProps {
@@ -67,7 +67,7 @@ function exportReportCsv(
   type: 'players' | 'financial',
   data: (Player | Transaction)[],
   teams: Team[],
-  lang: Lang,
+
 ) {
   const teamName = (id: string) => teams.find((tm) => tm.id === id)?.name || '';
   if (type === 'players') {
@@ -85,6 +85,13 @@ function exportReportCsv(
   }
 }
 
+const POSITION_COLORS: Record<string, string> = {
+    'حارس مرمى': '#f59e0b', 'Goalkeeper': '#f59e0b',
+    'مدافع': '#3b82f6', 'Defender': '#3b82f6',
+    'خط وسط': '#10b981', 'Midfielder': '#10b981',
+    'مهاجم': '#ef4444', 'Forward': '#ef4444',
+  };
+
 export function Reports({
   players, teams, staff, matches, transactions,
   subscriptions, attendance, lang,
@@ -93,12 +100,7 @@ export function Reports({
   const isAr = lang === 'ar';
   const MONTHS = monthsArray(lang);
 
-  const POSITION_COLORS: Record<string, string> = {
-    'حارس مرمى': '#f59e0b', 'Goalkeeper': '#f59e0b',
-    'مدافع': '#3b82f6', 'Defender': '#3b82f6',
-    'خط وسط': '#10b981', 'Midfielder': '#10b981',
-    'مهاجم': '#ef4444', 'Forward': '#ef4444',
-  };
+
 
   /* Financial Summary */
   const financial = useMemo(() => {
@@ -167,7 +169,7 @@ export function Reports({
       value: players.filter((p) => p.teamId === team.id).length, color: '#10b981',
     }));
     return { totalPlayers, activePlayers, positionDonut, teamBars };
-  }, [players, teams, lang, isAr, POSITION_COLORS]);
+  }, [players, teams, lang, isAr]);
 
   /* Attendance Report */
   const attendanceStats = useMemo(() => {
@@ -200,10 +202,10 @@ export function Reports({
   return (
     <div className="space-y-6 text-right" dir={isAr ? 'rtl' : 'ltr'}>
       <PageHeader title={t.reports} subtitle={t.reportsSubtitle}>
-        <button onClick={() => exportReportCsv('players', players, teams, lang)} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition cursor-pointer shadow-sm">
+        <button onClick={() => exportReportCsv('players', players, teams)} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition cursor-pointer shadow-sm">
           <Download className="h-4 w-4" /> {t.exportPlayersCsv}
         </button>
-        <button onClick={() => exportReportCsv('financial', transactions, teams, lang)} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 transition cursor-pointer shadow-sm">
+        <button onClick={() => exportReportCsv('financial', transactions, teams)} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 transition cursor-pointer shadow-sm">
           <Download className="h-4 w-4" /> {t.exportFinancialCsv}
         </button>
         <button onClick={() => window.print()} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer shadow-sm">

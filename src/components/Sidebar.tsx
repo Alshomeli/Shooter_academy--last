@@ -2,7 +2,7 @@ import {
   LayoutDashboard, ShieldCheck, Users, UsersRound,
   Trophy, Dumbbell, Wallet, ClipboardCheck, CalendarDays,
   BarChart3, Sparkles, Settings as SettingsIcon,
-  LogOut, Moon, Sun, RotateCcw, X, Medal, Film, ScrollText, Send,
+  LogOut, Moon, Sun, X, Medal, Film, ScrollText, Send,
 } from 'lucide-react';
 import type { CurrentUser, Lang, Role, ViewId } from '@/types';
 import { tr } from '@/lib/i18n';
@@ -18,7 +18,6 @@ interface SidebarProps {
   setDarkMode: (v: boolean) => void;
   currentUser: CurrentUser;
   onLogout: () => void;
-  onResetDb: () => void;
   mobileOpen: boolean;
   setMobileOpen: (v: boolean) => void;
 }
@@ -42,7 +41,7 @@ function getRoleOptions(lang: Lang): { value: Role; label: string }[] {
 
 export function Sidebar({
   currentTab, setCurrentTab, activeRole, lang, setLang,
-  darkMode, setDarkMode, currentUser, onLogout, onResetDb, mobileOpen, setMobileOpen,
+  darkMode, setDarkMode, currentUser, onLogout, mobileOpen, setMobileOpen,
 }: SidebarProps) {
   const t = tr(lang);
   const isAr = lang === 'ar';
@@ -162,13 +161,6 @@ export function Sidebar({
               {lang === 'ar' ? ' English' : ' العربية'}
             </button>
           </div>
-          <button
-            onClick={onResetDb}
-            className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-bold bg-amber-900/30 hover:bg-amber-900/50 text-amber-400 border border-amber-800/30 transition cursor-pointer"
-          >
-            <RotateCcw className="h-3.5 w-3.5" />
-            {t.resetDb}
-          </button>
           <button
             onClick={onLogout}
             className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-bold bg-red-900/30 hover:bg-red-900/50 text-red-400 border border-red-800/30 transition cursor-pointer"

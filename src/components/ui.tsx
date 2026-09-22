@@ -1,4 +1,4 @@
-import { type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { X, Loader2, AlertCircle } from 'lucide-react';
 
 interface ModalProps {
@@ -20,7 +20,7 @@ export function Modal({ open, onClose, title, children, size = 'md' }: ModalProp
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" dir="rtl">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm animate-fadeIn" onClick={onClose} />
       <div className={`relative w-full ${sizes[size]} max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 animate-fadeIn`}>
         <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-t-2xl">
@@ -138,7 +138,7 @@ export function PageHeader({ title, subtitle, children }: PageHeaderProps) {
 interface ConfirmDialogProps {
   open: boolean;
   onClose: () => void;
-  onConfirm: () => void;
+  onConfirm: () => void | Promise<void>;
   title: string;
   message: string;
   confirmLabel?: string;
@@ -146,18 +146,27 @@ interface ConfirmDialogProps {
 }
 
 export function ConfirmDialog({ open, onClose, onConfirm, title, message, confirmLabel = 'Confirm', cancelLabel = 'Cancel' }: ConfirmDialogProps) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
   if (!open) return null;
+  const confirm = async () => {
+    if (busy) return; setBusy(true); setError('');
+    try { await onConfirm(); onClose(); }
+    catch { setError(document.documentElement.lang === 'ar' ? 'تعذر حفظ التغيير. حاول مجددًا.' : 'Could not save the change. Please try again.'); }
+    finally { setBusy(false); }
+  };
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm animate-fadeIn" onClick={onClose} />
       <div className="relative w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 animate-fadeIn">
         <h3 className="text-base font-black text-slate-900 dark:text-white mb-2">{title}</h3>
         <p className="text-sm text-slate-600 dark:text-slate-300 mb-5 leading-relaxed">{message}</p>
+        <div role="alert" className="text-sm text-red-600 mb-3">{error}</div>
         <div className="flex gap-2 justify-end">
-          <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer">
+          <button disabled={busy} onClick={onClose} className="px-4 py-2 rounded-lg text-sm font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer">
             {cancelLabel}
           </button>
-          <button onClick={() => { onConfirm(); onClose(); }} className="px-4 py-2 rounded-lg text-sm font-bold text-white bg-red-600 hover:bg-red-700 transition cursor-pointer">
+          <button disabled={busy} onClick={() => void confirm()} className="px-4 py-2 rounded-lg text-sm font-bold text-white bg-red-600 hover:bg-red-700 transition cursor-pointer">
             {confirmLabel}
           </button>
         </div>

@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo, useCallback, useRef, Suspense, lazy, Component, type ReactNode } from 'react';
 import { Menu, Bell, Clock, Target, Loader2, AlertTriangle, RefreshCw } from 'lucide-react';
-import { db, prefs, seedDatabaseIfEmpty, signOut, resetAndSeedDatabase, isRegistering } from '@/lib/store';
+import { db, prefs, signOut, isRegistering } from '@/lib/store';
 import { supabase } from '@/lib/supabase';
 import type { Session } from '@supabase/supabase-js';
 import { tr } from '@/lib/i18n';
-import { generateReminderNotifications } from '@/lib/reminders';
+import { ParentPortal } from '@/views/ParentPortal';
 import type {
   CurrentUser, Lang, Role, ViewId,
   Staff as StaffType, Team, Player, Parent, Subscription, Attendance,
@@ -13,7 +13,7 @@ import type {
 } from '@/types';
 import { Login } from '@/components/Login';
 import { Sidebar } from '@/components/Sidebar';
-import { ConfirmDialog } from '@/components/ui';
+
 
 /* ── Lazy-loaded views for code splitting ── */
 const Dashboard = lazy(() => import('@/views/Dashboard').then(m => ({ default: m.Dashboard })));
@@ -109,85 +109,72 @@ export default function App() {
   const [darkMode, setDarkMode] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [currentTime, setCurrentTime] = useState('');
-  const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
 
   const [authReady, setAuthReady] = useState(false);
+  const [recovery, setRecovery] = useState(false);
   const [data, setData] = useState<DataState>(EMPTY_DATA);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const dataRef = useRef(data);
   dataRef.current = data;
-  const loadingRef = useRef(false);
+  const loadSequence = useRef(0);
+  const userRef = useRef(currentUser?.authUserId);
+  userRef.current = currentUser?.authUserId;
 
   useEffect(() => {
     setLang(prefs.getLang());
     setDarkMode(prefs.getDarkMode());
 
+    let generation = 0;
     const { data: authData } = supabase.auth.onAuthStateChange((_event, session: Session | null) => {
-      (async () => {
-        if (isRegistering()) {
+      const request = ++generation;
+      if (_event === 'PASSWORD_RECOVERY') setRecovery(true);
+      if (isRegistering()) { setAuthReady(true); return; }
+      if (!session?.user) {
+        setCurrentUser(null); setData(EMPTY_DATA); setAuthReady(true); return;
+      }
+      // Leave the auth callback before starting another Supabase request.
+      setTimeout(() => {
+        void db.getCurrentUser().then(member => {
+          if (request !== generation) return;
+          setCurrentUser(member);
+          if (member) setActiveRole(member.role);
           setAuthReady(true);
-          return;
-        }
-        if (!session?.user) {
-          setCurrentUser(null);
-          setData(EMPTY_DATA);
-          setAuthReady(true);
-          return;
-        }
-        const email = session.user.email;
-        if (!email) {
-          setCurrentUser(null);
-          setAuthReady(true);
-          return;
-        }
-        try {
-          const staff = await db.getStaff();
-          const member = staff.find((s) => s.email.toLowerCase() === email.toLowerCase());
-          if (!member) {
-            await signOut();
-            setCurrentUser(null);
-            setAuthReady(true);
-            return;
-          }
-          if (member.status === 'pending') {
-            await signOut();
-            setCurrentUser(null);
-            setAuthReady(true);
-            return;
-          }
-          setCurrentUser({ id: member.id, name: member.name, email: member.email, role: member.role });
-          if (member.role !== 'parent') setActiveRole(member.role);
-        } catch {
-          setCurrentUser(null);
-        }
-        setAuthReady(true);
-      })();
+        }).catch(() => {
+          if (request === generation) { setCurrentUser(null); setAuthReady(true); }
+        });
+      }, 0);
     });
-
-    return () => authData.subscription.unsubscribe();
+    return () => { generation++; authData.subscription.unsubscribe(); };
   }, []);
 
   const loadAllData = useCallback(async () => {
-    if (loadingRef.current) return;
-    loadingRef.current = true;
+    if (!currentUser) return;
+    const request = ++loadSequence.current;
+    const userId = currentUser.authUserId;
+    const stillCurrent = () => request === loadSequence.current && userRef.current === userId;
     try {
-      setLoading(true);
+      if (!dataRef.current.settings && !currentUser?.registrationOnly) setLoading(true);
       setLoadError(null);
-      await seedDatabaseIfEmpty();
+      const role = currentUser?.role;
+      const manager = role === 'manager';
+      const finance = manager || role === 'accountant';
+      const parent = role === 'parent';
+      if (currentUser?.registrationOnly) { setData(EMPTY_DATA); return; }
       const [
         settings, staff, teams, players, parents, subscriptions,
         attendance, matches, trainings, transactions, tournaments, videos, notifications,
         auditLogs, loginLogs,
       ] = await Promise.all([
         db.getSettings(),
-        db.getStaff(), db.getTeams(), db.getPlayers(), db.getParents(),
-        db.getSubscriptions(), db.getAttendance(), db.getMatches(),
-        db.getTrainings(), db.getTransactions(), db.getTournaments(),
-        db.getVideos(), db.getNotifications(),
-        db.getAuditLogs(), db.getLoginAuditLogs(),
+        parent ? [] : db.getStaff(), parent ? [] : db.getTeams(), db.getPlayers(), db.getParents(),
+        role === 'coach' ? [] : db.getSubscriptions(), db.getAttendance(), parent ? [] : db.getMatches(),
+        parent ? [] : db.getTrainings(), finance ? db.getTransactions() : [], parent ? [] : db.getTournaments(),
+        parent ? [] : db.getVideos(), db.getNotifications(),
+        manager ? db.getAuditLogs() : [], manager ? db.getLoginAuditLogs() : [],
       ]);
+      if (!stillCurrent()) return;
       setData({
         settings, staff, teams, players, parents, subscriptions,
         attendance, matches, trainings, transactions, tournaments, videos, notifications,
@@ -195,12 +182,11 @@ export default function App() {
       });
     } catch (err) {
       console.error('[load]', err);
-      setLoadError('تعذر تحميل البيانات. يرجى المحاولة مرة أخرى. / Could not load your data. Please try again.');
+      if (stillCurrent()) setLoadError('تعذر تحميل البيانات. يرجى المحاولة مرة أخرى. / Could not load your data. Please try again.');
     } finally {
-      setLoading(false);
-      loadingRef.current = false;
+      if (stillCurrent()) setLoading(false);
     }
-  }, []);
+  }, [currentUser]);
 
   useEffect(() => {
     if (currentUser) loadAllData();
@@ -219,9 +205,13 @@ export default function App() {
       debounce = setTimeout(() => loadAllData(), 300);
     };
     const channels = tables.map((t) => db.subscribe(t, handleChange));
+    const refreshVisible = () => { if (document.visibilityState === 'visible') void loadAllData(); };
+    const poll = window.setInterval(refreshVisible, 60000);
+    window.addEventListener('focus', refreshVisible);
     return () => {
       if (debounce) clearTimeout(debounce);
       channels.forEach((ch) => supabaseUnsubscribe(ch));
+      clearInterval(poll); window.removeEventListener('focus', refreshVisible);
     };
   }, [currentUser, loadAllData]);
 
@@ -244,27 +234,19 @@ export default function App() {
     return () => clearInterval(interval);
   }, [lang]);
 
-  useEffect(() => { prefs.saveLang(lang); }, [lang]);
+  useEffect(() => { prefs.saveLang(lang); document.documentElement.lang = lang; document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr'; }, [lang]);
   useEffect(() => {
     prefs.saveDarkMode(darkMode);
     if (darkMode) document.documentElement.classList.add('dark');
     else document.documentElement.classList.remove('dark');
   }, [darkMode]);
 
-  useEffect(() => {
-    if (!currentUser || data.subscriptions.length === 0) return;
-    const updated = generateReminderNotifications(data.subscriptions, data.players, data.notifications);
-    if (updated.length !== data.notifications.length) {
-      setData((prev) => ({ ...prev, notifications: updated }));
-      db.syncNotifications(updated).catch(() => {});
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data.subscriptions, data.players, currentUser]);
-
   /* ── Sync error handler ── */
   const handleSyncError = useCallback((err: unknown) => {
     const msg = err instanceof Error ? err.message : 'Sync failed';
-    if (msg.includes('row-level security') || msg.includes('policy')) {
+    if (msg === 'STALE_RECORD') {
+      setSyncError(lang === 'ar' ? 'تغير السجل منذ فتحه. أعد فتحه ثم احفظ التعديل.' : 'This record changed. Reopen it before saving.');
+    } else if (msg.includes('row-level security') || msg.includes('policy')) {
       setSyncError(lang === 'ar' ? 'ليس لديك صلاحية لإجراء هذا التعديل' : 'You do not have permission for this action');
     } else {
       setSyncError(lang === 'ar' ? 'حدث خطأ أثناء حفظ البيانات' : 'Failed to save data');
@@ -275,7 +257,7 @@ export default function App() {
 
   const handleLogin = (user: CurrentUser) => {
     setCurrentUser(user);
-    if (user.role !== 'parent') setActiveRole(user.role);
+    setActiveRole(user.role);
     setCurrentTab('dashboard');
   };
 
@@ -286,69 +268,55 @@ export default function App() {
     setData(EMPTY_DATA);
   };
 
-  const handleResetDb = async () => {
-    try {
-      setLoading(true);
-      await resetAndSeedDatabase();
-      await loadAllData();
-    } catch {
-      setLoadError('Failed to reset database');
-    } finally {
-      setLoading(false);
-    }
+  /* Persist only the differences from the snapshot shown in each view. */
+  const saveSettings = async (settings: SettingsType) => {
+    try { await db.saveSettings(settings); await loadAllData(); }
+    catch (error) { handleSyncError(error); throw error; }
   };
-
-  /* ---------- Data change handlers with proper error handling ---------- */
-
-  const saveSettings = useCallback((s: SettingsType) => {
-    setData((p) => ({ ...p, settings: s }));
-    db.saveSettings(s).catch(handleSyncError);
-  }, [handleSyncError]);
-  const saveStaff = useCallback((s: StaffType[]) => {
-    setData((p) => ({ ...p, staff: s }));
-    db.syncStaff(s).catch(handleSyncError);
-  }, [handleSyncError]);
-  const saveTeams = useCallback((t: Team[]) => {
-    setData((p) => ({ ...p, teams: t }));
-    db.syncTeams(t).catch(handleSyncError);
-  }, [handleSyncError]);
-  const savePlayers = useCallback((p: Player[]) => {
-    setData((prev) => ({ ...prev, players: p }));
-    db.syncPlayers(p).catch(handleSyncError);
-  }, [handleSyncError]);
-  const saveParents = useCallback((p: Parent[]) => {
-    setData((prev) => ({ ...prev, parents: p }));
-    db.syncParents(p).catch(handleSyncError);
-  }, [handleSyncError]);
-  const saveSubscriptions = useCallback((s: Subscription[]) => {
-    setData((p) => ({ ...p, subscriptions: s }));
-    db.syncSubscriptions(s).catch(handleSyncError);
-  }, [handleSyncError]);
-  const saveAttendance = useCallback((a: Attendance[]) => {
-    setData((p) => ({ ...p, attendance: a }));
-    db.syncAttendance(a).catch(handleSyncError);
-  }, [handleSyncError]);
-  const saveMatches = useCallback((m: Match[]) => {
-    setData((p) => ({ ...p, matches: m }));
-    db.syncMatches(m).catch(handleSyncError);
-  }, [handleSyncError]);
-  const saveTrainings = useCallback((t: Training[]) => {
-    setData((p) => ({ ...p, trainings: t }));
-    db.syncTrainings(t).catch(handleSyncError);
-  }, [handleSyncError]);
-  const saveTransactions = useCallback((t: Transaction[]) => {
-    setData((p) => ({ ...p, transactions: t }));
-    db.syncTransactions(t).catch(handleSyncError);
-  }, [handleSyncError]);
-  const saveTournaments = useCallback((tn: TournamentType[]) => {
-    setData((p) => ({ ...p, tournaments: tn }));
-    db.syncTournaments(tn).catch(handleSyncError);
-  }, [handleSyncError]);
-  const saveVideos = useCallback((v: VideoType[]) => {
-    setData((p) => ({ ...p, videos: v }));
-    db.syncVideos(v).catch(handleSyncError);
-  }, [handleSyncError]);
-
+  const saveStaff = async (items: StaffType[]) => {
+    try { await db.syncStaff(items, data.staff); await loadAllData(); }
+    catch (error) { handleSyncError(error); throw error; }
+  };
+  const saveTeams = async (items: Team[]) => {
+    try { await db.syncTeams(items, data.teams); await loadAllData(); }
+    catch (error) { handleSyncError(error); throw error; }
+  };
+  const savePlayers = async (items: Player[]) => {
+    try { await db.syncPlayers(items, data.players); await loadAllData(); }
+    catch (error) { handleSyncError(error); throw error; }
+  };
+  const saveParents = async (items: Parent[]) => {
+    try { await db.syncParents(items, data.parents); await loadAllData(); }
+    catch (error) { handleSyncError(error); throw error; }
+  };
+  const saveSubscriptions = async (items: Subscription[]) => {
+    try { await db.syncSubscriptions(items, data.subscriptions); await loadAllData(); }
+    catch (error) { handleSyncError(error); throw error; }
+  };
+  const saveAttendance = async (items: Attendance[]) => {
+    try { await db.syncAttendance(items, data.attendance); await loadAllData(); }
+    catch (error) { handleSyncError(error); throw error; }
+  };
+  const saveMatches = async (items: Match[]) => {
+    try { await db.syncMatches(items, data.matches); await loadAllData(); }
+    catch (error) { handleSyncError(error); throw error; }
+  };
+  const saveTrainings = async (items: Training[]) => {
+    try { await db.syncTrainings(items, data.trainings); await loadAllData(); }
+    catch (error) { handleSyncError(error); throw error; }
+  };
+  const saveTransactions = async (items: Transaction[]) => {
+    try { await db.syncTransactions(items, data.transactions); await loadAllData(); }
+    catch (error) { handleSyncError(error); throw error; }
+  };
+  const saveTournaments = async (items: TournamentType[]) => {
+    try { await db.syncTournaments(items, data.tournaments); await loadAllData(); }
+    catch (error) { handleSyncError(error); throw error; }
+  };
+  const saveVideos = async (items: VideoType[]) => {
+    try { await db.syncVideos(items, data.videos); await loadAllData(); }
+    catch (error) { handleSyncError(error); throw error; }
+  };
   const t = tr(lang);
 
   const viewTitles: Record<ViewId, string> = {
@@ -372,11 +340,11 @@ export default function App() {
   };
 
   const roleLabels: Record<Role, string> = {
-    manager: 'المدير العام',
-    accountant: 'المحاسب المالي',
-    coach: 'المدرب الفني',
-    receptionist: 'موظف الاستقبال',
-    parent: 'ولي الأمر',
+    manager: t.manager,
+    accountant: t.accountant,
+    coach: t.coach,
+    receptionist: t.receptionist,
+    parent: t.parent,
   };
 
   const renderView = () => {
@@ -384,9 +352,9 @@ export default function App() {
       case 'dashboard':
         return <Dashboard players={data.players} subscriptions={data.subscriptions} matches={data.matches} transactions={data.transactions} staff={data.staff} teams={data.teams} parents={data.parents} setCurrentTab={setCurrentTab} activeRole={activeRole} lang={lang} />;
       case 'approvals':
-        return <Approvals players={data.players} staff={data.staff} onPlayersChange={savePlayers} onStaffChange={saveStaff} activeRole={activeRole} lang={lang} />;
+        return <Approvals teams={data.teams} onRefresh={loadAllData} players={data.players} staff={data.staff} onPlayersChange={savePlayers} onStaffChange={saveStaff} activeRole={activeRole} lang={lang} />;
       case 'players':
-        return <Players players={data.players} teams={data.teams} onPlayersChange={savePlayers} activeRole={activeRole} lang={lang} />;
+        return <Players players={data.players} parents={data.parents} teams={data.teams} onPlayersChange={savePlayers} activeRole={activeRole} lang={lang} />;
       case 'parents':
         return <Parents parents={data.parents} players={data.players} teams={data.teams} subscriptions={data.subscriptions} onParentsChange={saveParents} activeRole={activeRole} lang={lang} />;
       case 'teams':
@@ -394,7 +362,7 @@ export default function App() {
       case 'staff':
         return <StaffView staff={data.staff} teams={data.teams} players={data.players} onStaffChange={saveStaff} activeRole={activeRole} lang={lang} />;
       case 'subscriptions':
-        return <Subscriptions subscriptions={data.subscriptions} transactions={data.transactions} players={data.players} parents={data.parents} staff={data.staff} settings={data.settings} onSubscriptionsChange={saveSubscriptions} onTransactionsChange={saveTransactions} activeRole={activeRole} lang={lang} />;
+        return <Subscriptions onPayment={async (sub, method) => { await db.recordPayment(sub, method); await loadAllData(); }} subscriptions={data.subscriptions} transactions={data.transactions} players={data.players} parents={data.parents} staff={data.staff} settings={data.settings} onSubscriptionsChange={saveSubscriptions} onTransactionsChange={saveTransactions} activeRole={activeRole} lang={lang} />;
       case 'attendance':
         return <AttendanceView players={data.players} teams={data.teams} attendance={data.attendance} onAttendanceChange={saveAttendance} activeRole={activeRole} lang={lang} />;
       case 'schedules':
@@ -430,8 +398,8 @@ export default function App() {
     );
   }
 
-  if (!currentUser) {
-    return <Login onLogin={handleLogin} lang={lang} setLang={setLang} />;
+  if (!currentUser || recovery) {
+    return <Login recovery={recovery} onLogin={(user) => { setRecovery(false); handleLogin(user); }} lang={lang} setLang={setLang} />;
   }
 
   if (loading) {
@@ -459,6 +427,11 @@ export default function App() {
     );
   }
 
+  if (currentUser.role === 'parent') {
+    return <ParentPortal user={currentUser} players={data.players} subscriptions={data.subscriptions}
+      attendance={data.attendance} lang={lang} setLang={setLang} onLogout={handleLogout} onRefresh={async () => { const member = await db.getCurrentUser(); if (member) setCurrentUser(member); await loadAllData(); }} />;
+  }
+
   return (
     <div
       className={`flex min-h-screen transition-colors duration-300 ${darkMode ? 'bg-slate-950 text-slate-100 dark' : 'bg-slate-50 text-slate-800'}`}
@@ -475,7 +448,6 @@ export default function App() {
         setDarkMode={setDarkMode}
         currentUser={currentUser}
         onLogout={handleLogout}
-        onResetDb={() => setShowResetConfirm(true)}
         mobileOpen={mobileOpen}
         setMobileOpen={setMobileOpen}
       />
@@ -538,7 +510,7 @@ export default function App() {
                           onClick={() => {
                             const read = data.notifications.map((n) => ({ ...n, read: true }));
                             setData((p) => ({ ...p, notifications: read }));
-                            db.syncNotifications(read).catch(() => {});
+                            void db.syncNotifications(read, data.notifications).then(loadAllData).catch(handleSyncError);
                           }}
                           className="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 cursor-pointer"
                         >
@@ -599,15 +571,6 @@ export default function App() {
           </div>
         </main>
       </div>
-
-      <ConfirmDialog
-        open={showResetConfirm}
-        onClose={() => setShowResetConfirm(false)}
-        onConfirm={handleResetDb}
-        title={t.resetDb}
-        message={t.resetDbConfirm}
-        confirmLabel="إعادة الضبط"
-      />
     </div>
   );
 }
