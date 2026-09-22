@@ -2,7 +2,7 @@ import {
   LayoutDashboard, ShieldCheck, Users, UsersRound,
   Trophy, Dumbbell, Wallet, ClipboardCheck, CalendarDays,
   BarChart3, Sparkles, Settings as SettingsIcon,
-  LogOut, Moon, Sun, X, Medal, Film, ScrollText, Send,
+  LogOut, Moon, Sun, X, Medal, Star, ScrollText, Send,
   ClipboardList, FileCheck,
 } from 'lucide-react';
 import type { CurrentUser, Lang, Role, ViewId } from '@/types';
@@ -59,7 +59,7 @@ export function Sidebar({
     { id: 'attendance', label: t.attendance, icon: ClipboardCheck, allowedRoles: ['manager', 'coach', 'receptionist'] },
     { id: 'schedules', label: t.schedules, icon: CalendarDays, allowedRoles: ['manager', 'coach'] },
     { id: 'tournaments', label: t.tournaments, icon: Medal, allowedRoles: ['manager', 'coach', 'receptionist'] },
-    { id: 'videos', label: t.videos, icon: Film, allowedRoles: ['manager', 'coach'] },
+    { id: 'evaluations', label: t.evaluations, icon: Star, allowedRoles: ['manager', 'coach'] },
     { id: 'reports', label: t.reports, icon: BarChart3, allowedRoles: ['manager', 'accountant', 'coach', 'receptionist'] },
     { id: 'audit-logs', label: t.auditLogs, icon: ScrollText, allowedRoles: ['manager'] },
 

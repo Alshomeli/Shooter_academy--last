@@ -2,16 +2,16 @@ import { supabase } from '@/lib/supabase';
 import { collectionChanges, type Row } from '@/lib/collection-diff';
 import type {
   Staff, Team, Player, Parent, Subscription, Attendance,
-  Match, Training, Transaction, Tournament, Video,
+  Match, Training, Transaction, Tournament, PlayerEvaluation,
   Settings, AuditLog, Notification, Lang, CurrentUser,
 } from '@/types';
 import {
   mapStaff, mapTeam, mapPlayer, mapParent, mapSubscription, mapAttendance,
-  mapMatch, mapTraining, mapTransaction, mapTournament, mapVideo,
+  mapMatch, mapTraining, mapTransaction, mapTournament, mapEvaluation,
   mapSettings, mapAuditLog, mapNotification,
   staffToRow, teamToRow, playerToRow, parentToRow, subscriptionToRow,
   attendanceToRow, matchToRow, trainingToRow, transactionToRow,
-  tournamentToRow, videoToRow, settingsToRow, notificationToRow,
+  tournamentToRow, settingsToRow, notificationToRow,
 } from '@/lib/db-mappers';
 
 
@@ -209,9 +209,29 @@ export const db = {
   async saveTournament(t: Tournament): Promise<Tournament> { return upsertRow('tournaments', tournamentToRow(t) as unknown as Record<string, unknown>, mapTournament as never); },
   async deleteTournament(id: string): Promise<void> { return deleteRow('tournaments', id); },
 
-  async getVideos(): Promise<Video[]> { return fetchAll('videos', mapVideo as never); },
-  async saveVideo(v: Video): Promise<Video> { return upsertRow('videos', videoToRow(v) as unknown as Record<string, unknown>, mapVideo as never); },
-  async deleteVideo(id: string): Promise<void> { return deleteRow('videos', id); },
+  async getEvaluations(): Promise<PlayerEvaluation[]> {
+    const { data, error } = await supabase.from('player_evaluations').select('*');
+    if (error) throw error;
+    return (data || []).map(r => mapEvaluation(r as never));
+  },
+  async savePlayerEvaluation(ev: { id?: string; playerId: string; evaluationDate: string; periodType: string; technicalScore: number | null; tacticalScore: number | null; physicalScore: number | null; mentalScore: number | null; disciplineScore: number | null; strengths: string; developmentAreas: string; coachNotes: string; coachRecommendation: string }): Promise<string> {
+    const { data, error } = await supabase.rpc('save_player_evaluation', {
+      p_evaluation_id: ev.id ?? null, p_player_id: ev.playerId,
+      p_evaluation_date: ev.evaluationDate, p_period_type: ev.periodType,
+      p_technical_score: ev.technicalScore, p_tactical_score: ev.tacticalScore,
+      p_physical_score: ev.physicalScore, p_mental_score: ev.mentalScore,
+      p_discipline_score: ev.disciplineScore, p_strengths: ev.strengths || null,
+      p_development_areas: ev.developmentAreas || null,
+      p_coach_notes: ev.coachNotes || null, p_coach_recommendation: ev.coachRecommendation || null,
+    });
+    if (error) throw error;
+    return data as string;
+  },
+  async publishPlayerEvaluation(evaluationId: string): Promise<PlayerEvaluation> {
+    const { data, error } = await supabase.rpc('publish_player_evaluation', { p_evaluation_id: evaluationId });
+    if (error) throw error;
+    return mapEvaluation(data as never);
+  },
 
   async getSettings(): Promise<Settings | null> {
     const { data, error } = await supabase.from('academy_settings').select('*').eq('id', 'settings-1').maybeSingle();
@@ -254,7 +274,7 @@ export const db = {
   async syncTrainings(items: Training[], previous: Training[]): Promise<void> { return syncTable('trainings', items, previous, (i) => trainingToRow(i) as unknown as Record<string, unknown>); },
   async syncTransactions(items: Transaction[], previous: Transaction[]): Promise<void> { return syncTable('transactions', items, previous, (i) => transactionToRow(i) as unknown as Record<string, unknown>); },
   async syncTournaments(items: Tournament[], previous: Tournament[]): Promise<void> { return syncTable('tournaments', items, previous, (i) => tournamentToRow(i) as unknown as Record<string, unknown>); },
-  async syncVideos(items: Video[], previous: Video[]): Promise<void> { return syncTable('videos', items, previous, (i) => videoToRow(i) as unknown as Record<string, unknown>); },
+
   async syncNotifications(items: Notification[], previous: Notification[]): Promise<void> { return syncTable('notifications', items, previous, (i) => notificationToRow(i) as unknown as Record<string, unknown>); },
 
   /* ---------- Real-time subscriptions ---------- */

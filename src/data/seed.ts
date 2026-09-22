@@ -1,6 +1,6 @@
 import type {
   Staff, Team, Player, Parent, Subscription, Attendance,
-  Match, Training, Transaction, Tournament, Video, Settings,
+  Match, Training, Transaction, Tournament, Settings,
   AuditLog,
 } from '@/types';
 
@@ -156,21 +156,6 @@ export const SEED_TOURNAMENTS: Tournament[] = [
   { id: 'tour-2', name: 'دوري أبطال أكاديميات المنطقة الوسطى', organizer: 'رابطة الهواة والأكاديميات بالرياض', season: '2026', startDate: '2026-09-10', endDate: '2026-11-20', teamsCount: 12, logoEmoji: '🎖️' },
 ];
 
-export const SEED_VIDEOS: Video[] = [
-  {
-    id: 'video-1',
-    title: 'تحليل تكتيكي لمباراة الهلال الرديف وتحركات المهاجمين',
-    videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-    associatedType: 'match',
-    associatedId: 'match-1',
-    notes: 'ملاحظة تحركات اللاعبين في الثلث الأخير، ودقة التمريرات البينية وسرعة الارتداد من الدفاع للهجوم.',
-    createdAt: '2026-07-16T12:00:00',
-    markers: [
-      { id: 'mark-1', timestamp: '02:15', title: 'الهدف الأول - لاعب 01', notes: 'تمريرة بينية ممتازة وتحرك لكسر التسلل والإنهاء بلمسة واحدة زاحفة على يمين الحارس.', taggedPlayerIds: ['player-1', 'player-3'] },
-      { id: 'mark-2', timestamp: '05:40', title: 'خطأ تمركز في الدفاع وتغطية بطيئة', notes: 'التباعد بين قلبي الدفاع سمح للخصم بالدخول في عمق منطقة الجزاء والتسديد المريح.', taggedPlayerIds: ['player-4'] },
-    ],
-  },
-];
 
 export const SEED_SETTINGS: Settings = {
   id: 'settings-1',

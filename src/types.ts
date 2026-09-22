@@ -144,24 +144,27 @@ export interface Tournament {
   logoEmoji: string;
 }
 
-export interface VideoMarker {
+export interface PlayerEvaluation {
   id: string;
-  timestamp: string;
-  title: string;
-  notes: string;
-  taggedPlayerIds: string[];
-}
-
-export interface Video {
-  version?: number;
-  id: string;
-  title: string;
-  videoUrl: string;
-  associatedType: 'match' | 'training';
-  associatedId: string;
-  notes: string;
+  playerId: string;
+  teamId: string;
+  coachId: string;
+  evaluationDate: string;
+  periodType: 'monthly' | 'quarterly' | 'annual';
+  technicalScore: number | null;
+  tacticalScore: number | null;
+  physicalScore: number | null;
+  mentalScore: number | null;
+  disciplineScore: number | null;
+  overallScore: number | null;
+  strengths: string;
+  developmentAreas: string;
+  coachNotes: string;
+  coachRecommendation: string;
+  status: 'draft' | 'published';
+  publishedAt: string | null;
   createdAt: string;
-  markers: VideoMarker[];
+  updatedAt: string;
 }
 
 export interface AuditLog {
@@ -218,7 +221,7 @@ export type ViewId =
   | 'attendance'
   | 'schedules'
   | 'tournaments'
-  | 'videos'
+  | 'evaluations'
   | 'reports'
   | 'audit-logs'
   | 'mobile'

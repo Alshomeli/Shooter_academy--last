@@ -1,9 +1,9 @@
 import { useState, useMemo, useEffect, useDeferredValue, type FormEvent } from 'react';
 import {
   Users, Plus, Search, Phone, Mail, Edit2, Trash2, Eye,
-  FileText,
+  FileText, Star,
 } from 'lucide-react';
-import type { Player, Parent, Team, Lang, Role } from '@/types';
+import type { Player, Parent, Team, Lang, Role, PlayerEvaluation } from '@/types';
 import { Badge, Modal, ConfirmDialog, PageHeader, EmptyState, FormField, FormError, SaveButton, inputCls } from '@/components/ui';
 import { tr, positionLabel } from '@/lib/i18n';
 import { ContactLinks } from '@/components/ContactLinks';
@@ -15,6 +15,7 @@ interface PlayersProps {
   players: Player[];
   parents: Parent[];
   teams: Team[];
+  evaluations: PlayerEvaluation[];
   onPlayersChange: (p: Player[]) => void;
   activeRole: Role;
   lang: Lang;
@@ -30,7 +31,7 @@ const POSITION_COLORS: Record<string, 'red' | 'blue' | 'emerald' | 'amber'> = {
   'مهاجم': 'red',
 };
 
-export function Players({ players, parents, teams, onPlayersChange, activeRole, lang }: PlayersProps) {
+export function Players({ players, parents, teams, evaluations, onPlayersChange, activeRole, lang }: PlayersProps) {
   const t = tr(lang);
   const isAr = lang === 'ar';
   const [search, setSearch] = useState('');
@@ -218,7 +219,7 @@ export function Players({ players, parents, teams, onPlayersChange, activeRole, 
       {/* View modal */}
       {viewPlayer && (
         <Modal open onClose={() => setViewPlayer(null)} title={isAr ? 'ملف اللاعب' : 'Player Profile'} size="lg">
-          <PlayerDetail player={viewPlayer} team={teams.find((t) => t.id === viewPlayer.teamId)} lang={lang} />
+          <PlayerDetail player={viewPlayer} team={teams.find((t) => t.id === viewPlayer.teamId)} evaluations={evaluations ?? []} lang={lang} />
         </Modal>
       )}
 
@@ -367,9 +368,10 @@ function PlayerForm({ player, parents, teams, players, activeRole, onSave, onClo
   );
 }
 
-function PlayerDetail({ player, team, lang }: { player: Player; team?: Team; lang: Lang }) {
+function PlayerDetail({ player, team, evaluations, lang }: { player: Player; team?: Team; evaluations: PlayerEvaluation[]; lang: Lang }) {
   const t = tr(lang);
   const isAr = lang === 'ar';
+  const playerEvals = useMemo(() => evaluations.filter(e => e.playerId === player.id && e.status === 'published').sort((a, b) => b.evaluationDate.localeCompare(a.evaluationDate)), [evaluations, player.id]);
   return (
     <div className="space-y-5">
       <div className="flex items-center gap-4">
@@ -414,6 +416,38 @@ function PlayerDetail({ player, team, lang }: { player: Player; team?: Team; lan
           </div>
         </div>
       </div>
+
+      {/* Evaluations section */}
+      {playerEvals.length > 0 && (
+        <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-2 mb-3">
+            <Star className="h-4 w-4 text-amber-500" />
+            <h4 className="text-sm font-black text-slate-900 dark:text-white">{t.playerEvaluations}</h4>
+          </div>
+          <div className="space-y-3">
+            {playerEvals.slice(0, 5).map(ev => (
+              <div key={ev.id} className="p-3 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-bold text-slate-500">{ev.evaluationDate} &middot; {ev.periodType === 'monthly' ? t.monthly : ev.periodType === 'quarterly' ? t.quarterly : t.annualPeriod}</span>
+                  {ev.overallScore != null && <span className="text-sm font-black text-emerald-600">{ev.overallScore.toFixed(1)}/10</span>}
+                </div>
+                <div className="grid grid-cols-5 gap-2 text-center text-[10px]">
+                  {[{l: isAr ? 'فني' : 'TEC', v: ev.technicalScore}, {l: isAr ? 'تكت' : 'TAC', v: ev.tacticalScore}, {l: isAr ? 'بدن' : 'PHY', v: ev.physicalScore}, {l: isAr ? 'ذهن' : 'MEN', v: ev.mentalScore}, {l: isAr ? 'انض' : 'DIS', v: ev.disciplineScore}].map(s => (
+                    <div key={s.l}>
+                      <div className={`mx-auto w-8 h-8 rounded-lg flex items-center justify-center font-black text-white text-xs ${
+                        !s.v ? 'bg-slate-300' : s.v >= 8 ? 'bg-emerald-500' : s.v >= 5 ? 'bg-amber-500' : 'bg-red-500'
+                      }`}>{s.v ?? '-'}</div>
+                      <p className="mt-1 font-bold text-slate-400">{s.l}</p>
+                    </div>
+                  ))}
+                </div>
+                {ev.strengths && <p className="mt-2 text-[11px] text-emerald-600 dark:text-emerald-400"><strong>{t.strengths}:</strong> {ev.strengths}</p>}
+                {ev.coachRecommendation && <p className="text-[11px] text-blue-600 dark:text-blue-400"><strong>{t.coachRecommendation}:</strong> {ev.coachRecommendation}</p>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

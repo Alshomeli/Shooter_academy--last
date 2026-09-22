@@ -5,10 +5,11 @@ import { Badge, Modal } from '@/components/ui';
 import { errorMessage, fetchMyApplications } from '@/lib/registration';
 import type { RegistrationApplication } from '@/types';
 import { planLabel } from '@/lib/i18n';
-import type { Attendance, CurrentUser, Lang, Player, Subscription } from '@/types';
+import type { Attendance, CurrentUser, Lang, Player, PlayerEvaluation, Subscription } from '@/types';
+import { tr } from '@/lib/i18n';
 
-export function ParentPortal({ user, players, subscriptions, attendance, lang, setLang, onLogout, onRefresh, openRegistration = false }: {
-  openRegistration?: boolean; user: CurrentUser; players: Player[]; subscriptions: Subscription[]; attendance: Attendance[]; lang: Lang;
+export function ParentPortal({ user, players, subscriptions, attendance, evaluations, lang, setLang, onLogout, onRefresh, openRegistration = false }: {
+  openRegistration?: boolean; user: CurrentUser; players: Player[]; subscriptions: Subscription[]; attendance: Attendance[]; evaluations: PlayerEvaluation[]; lang: Lang;
   setLang: (lang: Lang) => void; onLogout: () => void; onRefresh: () => Promise<void>;
 }) {
   const ar = lang === 'ar';
@@ -42,6 +43,15 @@ export function ParentPortal({ user, players, subscriptions, attendance, lang, s
         <p className="text-sm">{text('الحضور المسجل', 'Recorded attendance')}: {attendance.filter(a => a.playerId === player.id && a.status === 'present').length} / {attendance.filter(a => a.playerId === player.id).length}</p>
         <h4 className="font-bold text-sm">{text('الاشتراكات', 'Subscriptions')}</h4>
         {subscriptions.filter(s => s.playerId === player.id).map(sub => <div key={sub.id} className="flex flex-wrap justify-between gap-2 text-sm border-t dark:border-slate-700 pt-2"><span>{planLabel(sub.planType, lang)} · {sub.amount} {text('د.ب', 'BHD')}</span><Badge color={sub.status === 'paid' ? 'green' : 'amber'}>{sub.status === 'paid' ? text('مدفوع', 'Paid') : text('غير مدفوع', 'Unpaid')}</Badge><span className="w-full text-xs text-slate-500" dir="ltr">{sub.startDate} — {sub.endDate}</span></div>)}
+        {(() => { const t = tr(lang); const pEvals = evaluations.filter(e => e.playerId === player.id && e.status === 'published').sort((a, b) => b.evaluationDate.localeCompare(a.evaluationDate)); return pEvals.length > 0 && <>
+          <h4 className="font-bold text-sm pt-2">{t.playerEvaluations}</h4>
+          {pEvals.slice(0, 3).map(ev => <div key={ev.id} className="border-t dark:border-slate-700 pt-2 space-y-1">
+            <div className="flex justify-between text-xs"><span className="text-slate-500">{ev.evaluationDate} · {ev.periodType === 'monthly' ? t.monthly : ev.periodType === 'quarterly' ? t.quarterly : t.annualPeriod}</span>{ev.overallScore != null && <span className="font-black text-emerald-600">{ev.overallScore.toFixed(1)}/10</span>}</div>
+            <div className="flex gap-1.5 flex-wrap">{[{l: ar ? 'فني' : 'TEC', v: ev.technicalScore}, {l: ar ? 'تكت' : 'TAC', v: ev.tacticalScore}, {l: ar ? 'بدن' : 'PHY', v: ev.physicalScore}, {l: ar ? 'ذهن' : 'MEN', v: ev.mentalScore}, {l: ar ? 'انض' : 'DIS', v: ev.disciplineScore}].map(s => <span key={s.l} className={`inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded ${!s.v ? 'bg-slate-100 dark:bg-slate-800 text-slate-400' : s.v >= 8 ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' : s.v >= 5 ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400' : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'}`}>{s.l} {s.v ?? '-'}</span>)}</div>
+            {ev.strengths && <p className="text-[11px] text-emerald-600 dark:text-emerald-400"><strong>{t.strengths}:</strong> {ev.strengths}</p>}
+            {ev.coachRecommendation && <p className="text-[11px] text-blue-600 dark:text-blue-400"><strong>{t.coachRecommendation}:</strong> {ev.coachRecommendation}</p>}
+          </div>)}
+        </>; })()}
       </article>)}</div>
       <h2 className="text-lg font-bold">{text('طلبات التسجيل', 'Registration applications')}</h2>
       {!ready && !error && <p role="status">{text('جارٍ التحميل…', 'Loading…')}</p>}

@@ -8,7 +8,7 @@ import { ParentPortal } from '@/views/ParentPortal';
 import type {
   CurrentUser, Lang, Role, ViewId,
   Staff as StaffType, Team, Player, Parent, Subscription, Attendance,
-  Match, Training, Transaction, Tournament as TournamentType, Video as VideoType,
+  Match, Training, Transaction, Tournament as TournamentType, PlayerEvaluation,
   Settings as SettingsType, Notification, AuditLog,
 } from '@/types';
 import { Login } from '@/components/Login';
@@ -30,7 +30,7 @@ const MobileView = lazy(() => import('@/views/MobileView').then(m => ({ default:
 const AICenter = lazy(() => import('@/views/AICenter').then(m => ({ default: m.AICenter })));
 const SettingsView = lazy(() => import('@/views/Settings').then(m => ({ default: m.SettingsView })));
 const Tournaments = lazy(() => import('@/views/Tournaments').then(m => ({ default: m.Tournaments })));
-const Videos = lazy(() => import('@/views/Videos').then(m => ({ default: m.Videos })));
+const Evaluations = lazy(() => import('@/views/Evaluations').then(m => ({ default: m.Evaluations })));
 const AuditLogs = lazy(() => import('@/views/AuditLogs').then(m => ({ default: m.AuditLogs })));
 const Messages = lazy(() => import('@/views/Messages').then(m => ({ default: m.Messages })));
 const Registration = lazy(() => import('@/views/Registration').then(m => ({ default: m.Registration })));
@@ -89,7 +89,7 @@ type DataState = {
   trainings: Training[];
   transactions: Transaction[];
   tournaments: TournamentType[];
-  videos: VideoType[];
+  evaluations: PlayerEvaluation[];
   notifications: Notification[];
   auditLogs: AuditLog[];
   loginLogs: AuditLog[];
@@ -98,7 +98,7 @@ type DataState = {
 const EMPTY_DATA: DataState = {
   settings: null, staff: [], teams: [], players: [], parents: [],
   subscriptions: [], attendance: [], matches: [], trainings: [],
-  transactions: [], tournaments: [], videos: [], notifications: [],
+  transactions: [], tournaments: [], evaluations: [], notifications: [],
   auditLogs: [], loginLogs: [],
 };
 
@@ -171,20 +171,20 @@ export default function App() {
       if (currentUser?.registrationOnly) { setData(EMPTY_DATA); return; }
       const [
         settings, staff, teams, players, parents, subscriptions,
-        attendance, matches, trainings, transactions, tournaments, videos, notifications,
+        attendance, matches, trainings, transactions, tournaments, evaluations, notifications,
         auditLogs, loginLogs,
       ] = await Promise.all([
         db.getSettings(),
         parent ? [] : db.getStaff(), parent ? [] : db.getTeams(), db.getPlayers(), db.getParents(),
         role === 'coach' ? [] : db.getSubscriptions(), db.getAttendance(), parent ? [] : db.getMatches(),
         parent ? [] : db.getTrainings(), finance ? db.getTransactions() : [], parent ? [] : db.getTournaments(),
-        parent ? [] : db.getVideos(), db.getNotifications(),
+        db.getEvaluations(), db.getNotifications(),
         manager ? db.getAuditLogs() : [], manager ? db.getLoginAuditLogs() : [],
       ]);
       if (!stillCurrent()) return;
       setData({
         settings, staff, teams, players, parents, subscriptions,
-        attendance, matches, trainings, transactions, tournaments, videos, notifications,
+        attendance, matches, trainings, transactions, tournaments, evaluations, notifications,
         auditLogs, loginLogs,
       });
     } catch (err) {
@@ -203,7 +203,7 @@ export default function App() {
     if (!currentUser) return;
     const tables = [
       'staff', 'teams', 'players', 'parents', 'subscriptions', 'attendance',
-      'matches', 'trainings', 'transactions', 'tournaments', 'videos',
+      'matches', 'trainings', 'transactions', 'tournaments', 'player_evaluations',
       'notifications', 'academy_settings',
     ];
     let debounce: ReturnType<typeof setTimeout> | null = null;
@@ -320,10 +320,7 @@ export default function App() {
     try { await db.syncTournaments(items, data.tournaments); await loadAllData(); }
     catch (error) { handleSyncError(error); throw error; }
   };
-  const saveVideos = async (items: VideoType[]) => {
-    try { await db.syncVideos(items, data.videos); await loadAllData(); }
-    catch (error) { handleSyncError(error); throw error; }
-  };
+
   const t = tr(lang);
 
   const viewTitles: Record<ViewId, string> = {
@@ -337,7 +334,7 @@ export default function App() {
     attendance: t.attendance,
     schedules: t.schedules,
     tournaments: t.tournaments,
-    videos: t.videos,
+    evaluations: t.evaluations,
     reports: t.reports,
     'audit-logs': lang === 'ar' ? 'سجل التدقيق' : 'Audit Log',
     mobile: t.mobile,
@@ -363,7 +360,7 @@ export default function App() {
       case 'approvals':
         return <Approvals teams={data.teams} onRefresh={loadAllData} players={data.players} staff={data.staff} onPlayersChange={savePlayers} onStaffChange={saveStaff} activeRole={activeRole} lang={lang} />;
       case 'players':
-        return <Players players={data.players} parents={data.parents} teams={data.teams} onPlayersChange={savePlayers} activeRole={activeRole} lang={lang} />;
+        return <Players players={data.players} parents={data.parents} teams={data.teams} evaluations={data.evaluations} onPlayersChange={savePlayers} activeRole={activeRole} lang={lang} />;
       case 'parents':
         return <Parents parents={data.parents} players={data.players} teams={data.teams} subscriptions={data.subscriptions} onParentsChange={saveParents} activeRole={activeRole} lang={lang} />;
       case 'teams':
@@ -378,8 +375,8 @@ export default function App() {
         return <Schedules matches={data.matches} trainings={data.trainings} teams={data.teams} players={data.players} onMatchesChange={saveMatches} onTrainingsChange={saveTrainings} activeRole={activeRole} lang={lang} />;
       case 'tournaments':
         return <Tournaments tournaments={data.tournaments} onTournamentsChange={saveTournaments} activeRole={activeRole} lang={lang} />;
-      case 'videos':
-        return <Videos videos={data.videos} matches={data.matches} trainings={data.trainings} players={data.players} onVideosChange={saveVideos} activeRole={activeRole} lang={lang} />;
+      case 'evaluations':
+        return <Evaluations evaluations={data.evaluations} players={data.players} teams={data.teams} staff={data.staff} activeRole={activeRole} lang={lang} onRefresh={loadAllData} />;
       case 'reports':
         return <Reports players={data.players} teams={data.teams} staff={data.staff} matches={data.matches} trainings={data.trainings} transactions={data.transactions} subscriptions={data.subscriptions} attendance={data.attendance} activeRole={activeRole} lang={lang} />;
       case 'audit-logs':
@@ -442,7 +439,7 @@ export default function App() {
 
   if (currentUser.role === 'parent') {
     return <ParentPortal key={currentUser.authUserId} openRegistration={currentTab === 'registration'} user={currentUser} players={data.players} subscriptions={data.subscriptions}
-      attendance={data.attendance} lang={lang} setLang={setLang} onLogout={handleLogout} onRefresh={async () => { const member = await db.getCurrentUser(); if (member) setCurrentUser(member); await loadAllData(); }} />;
+      attendance={data.attendance} evaluations={data.evaluations} lang={lang} setLang={setLang} onLogout={handleLogout} onRefresh={async () => { const member = await db.getCurrentUser(); if (member) setCurrentUser(member); await loadAllData(); }} />;
   }
 
   return (

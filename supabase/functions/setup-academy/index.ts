@@ -154,7 +154,7 @@ Deno.serve(async (req: Request) => {
           email: s.email,
           password,
           email_confirm: true,
-          user_metadata: { name: s.name, role: s.role },
+          user_metadata: { name: s.name },
         });
         if (!error) {
           usersCreated++;

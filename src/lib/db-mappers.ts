@@ -1,6 +1,6 @@
 import type {
   Staff, Team, Player, Parent, Subscription, Attendance,
-  Match, Training, Transaction, Tournament, Video, VideoMarker,
+  Match, Training, Transaction, Tournament, PlayerEvaluation,
   Settings, AuditLog, Notification,
 } from '@/types';
 
@@ -55,10 +55,16 @@ interface TournamentRow {
   id: string; name: string; organizer: string; season: string;
   start_date: string; end_date: string; teams_count: number; logo_emoji: string;
 }
-interface VideoRow {
-  id: string; title: string; video_url: string; associated_type: string;
-  associated_id: string; notes: string; created_at: string;
-  markers: VideoMarker[];
+interface EvaluationRow {
+  id: string; player_id: string; team_id: string | null; coach_id: string | null;
+  evaluation_date: string; period_type: string;
+  technical_score: number | null; tactical_score: number | null;
+  physical_score: number | null; mental_score: number | null;
+  discipline_score: number | null; overall_score: number | null;
+  strengths: string | null; development_areas: string | null;
+  coach_notes: string | null; coach_recommendation: string | null;
+  status: string; published_at: string | null;
+  created_at: string; updated_at: string;
 }
 interface SettingsRow {
   row_version?: number;
@@ -143,11 +149,17 @@ export const mapTournament = (r: TournamentRow): Tournament => ({
   logoEmoji: r.logo_emoji,
 });
 
-export const mapVideo = (r: VideoRow): Video => ({
-  id: r.id, title: r.title, videoUrl: r.video_url,
-  associatedType: r.associated_type as Video['associatedType'],
-  associatedId: r.associated_id, notes: r.notes, createdAt: r.created_at,
-  markers: r.markers ?? [],
+export const mapEvaluation = (r: EvaluationRow): PlayerEvaluation => ({
+  id: r.id, playerId: r.player_id, teamId: r.team_id ?? '',
+  coachId: r.coach_id ?? '', evaluationDate: r.evaluation_date,
+  periodType: r.period_type as PlayerEvaluation['periodType'],
+  technicalScore: r.technical_score, tacticalScore: r.tactical_score,
+  physicalScore: r.physical_score, mentalScore: r.mental_score,
+  disciplineScore: r.discipline_score, overallScore: r.overall_score,
+  strengths: r.strengths ?? '', developmentAreas: r.development_areas ?? '',
+  coachNotes: r.coach_notes ?? '', coachRecommendation: r.coach_recommendation ?? '',
+  status: r.status as PlayerEvaluation['status'],
+  publishedAt: r.published_at, createdAt: r.created_at, updatedAt: r.updated_at,
 });
 
 export const mapSettings = (r: SettingsRow): Settings => ({
@@ -230,11 +242,7 @@ export const tournamentToRow = (t: Tournament): TournamentRow => ({
   logo_emoji: t.logoEmoji,
 });
 
-export const videoToRow = (v: Video): VideoRow => ({
-  id: v.id, title: v.title, video_url: v.videoUrl,
-  associated_type: v.associatedType, associated_id: v.associatedId,
-  notes: v.notes, created_at: v.createdAt, markers: v.markers,
-});
+
 
 export const settingsToRow = (s: Settings): SettingsRow => ({
   id: s.id, name: s.name, logo_url: s.logoUrl, phone: s.phone, email: s.email,
@@ -253,4 +261,4 @@ export const notificationToRow = (n: Notification): NotificationRow => ({
   type: n.type, read: n.read,
 });
 
-export type { StaffRow, TeamRow, PlayerRow, ParentRow, SubscriptionRow, AttendanceRow, MatchRow, TrainingRow, TransactionRow, TournamentRow, VideoRow, SettingsRow, AuditLogRow, NotificationRow };
+export type { StaffRow, TeamRow, PlayerRow, ParentRow, SubscriptionRow, AttendanceRow, MatchRow, TrainingRow, TransactionRow, TournamentRow, EvaluationRow, SettingsRow, AuditLogRow, NotificationRow };
