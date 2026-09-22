@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { LogOut, Plus, RefreshCw } from 'lucide-react';
-import { RegistrationForm } from '@/components/RegistrationForm';
+import { Registration } from '@/views/Registration';
 import { Badge, Modal } from '@/components/ui';
-import { errorMessage, getApplications, registrationStatus, type RegistrationApplication } from '@/lib/registrations';
+import { errorMessage, fetchMyApplications } from '@/lib/registration';
+import type { RegistrationApplication } from '@/types';
 import { planLabel } from '@/lib/i18n';
 import type { Attendance, CurrentUser, Lang, Player, Subscription } from '@/types';
 
-export function ParentPortal({ user, players, subscriptions, attendance, lang, setLang, onLogout, onRefresh }: {
-  user: CurrentUser; players: Player[]; subscriptions: Subscription[]; attendance: Attendance[]; lang: Lang;
+export function ParentPortal({ user, players, subscriptions, attendance, lang, setLang, onLogout, onRefresh, openRegistration = false }: {
+  openRegistration?: boolean; user: CurrentUser; players: Player[]; subscriptions: Subscription[]; attendance: Attendance[]; lang: Lang;
   setLang: (lang: Lang) => void; onLogout: () => void; onRefresh: () => Promise<void>;
 }) {
   const ar = lang === 'ar';
@@ -15,12 +16,19 @@ export function ParentPortal({ user, players, subscriptions, attendance, lang, s
   const [apps, setApps] = useState<RegistrationApplication[]>([]);
   const [error, setError] = useState('');
   const [ready, setReady] = useState(false);
-  const [editor, setEditor] = useState<RegistrationApplication | 'new' | null>(null);
+  const [editor, setEditor] = useState<RegistrationApplication | 'new' | null>(openRegistration ? 'new' : null);
   const load = useCallback(async () => {
-    try { setApps(await getApplications()); setError(''); setReady(true); }
+    try { setApps(await fetchMyApplications()); setError(''); setReady(true); }
     catch (e) { setError(errorMessage(e, lang === 'ar')); }
   }, [lang]);
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    void load();
+    const refreshVisible = () => { if (document.visibilityState === 'visible') void load(); };
+    const timer = setInterval(refreshVisible, 60000);
+    window.addEventListener('focus', refreshVisible);
+    return () => { clearInterval(timer); window.removeEventListener('focus', refreshVisible); };
+  }, [load]);
+  const statusLabel = (status: RegistrationApplication['status']) => ({ draft: text('مسودة', 'Draft'), pending: text('بانتظار المراجعة', 'Pending review'), under_review: text('قيد المراجعة', 'Under review'), needs_info: text('يحتاج استكمال', 'More information needed'), approved: text('مقبول', 'Approved'), rejected: text('مرفوض', 'Rejected') })[status];
   const refresh = async () => { await load(); await onRefresh(); };
   return <main className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 p-4 sm:p-8" dir={ar ? 'rtl' : 'ltr'}>
     <div className="max-w-5xl mx-auto space-y-6">
@@ -36,9 +44,9 @@ export function ParentPortal({ user, players, subscriptions, attendance, lang, s
       </article>)}</div>
       <h2 className="text-lg font-bold">{text('طلبات التسجيل', 'Registration applications')}</h2>
       {!ready && !error && <p role="status">{text('جارٍ التحميل…', 'Loading…')}</p>}
-      {apps.map(app => <article key={app.id} className="bg-white dark:bg-slate-900 rounded-xl border dark:border-slate-700 p-4 space-y-2"><div className="flex justify-between gap-3"><p className="font-bold">{app.children.map(c => c.full_name).join('، ')}</p><Badge>{registrationStatus(app.status, ar)}</Badge></div>{app.review_notes && <p className="text-sm text-amber-700">{app.review_notes}</p>}{['draft', 'needs_info'].includes(app.status) && <button className="text-emerald-700 font-bold text-sm" onClick={() => setEditor(app)}>{text('استكمال الطلب', 'Continue application')}</button>}</article>)}
+      {apps.map(app => <article key={app.id} className="bg-white dark:bg-slate-900 rounded-xl border dark:border-slate-700 p-4 space-y-2"><div className="flex justify-between gap-3"><p className="font-bold">{app.children.map(c => c.fullName).join('، ')}</p><Badge>{statusLabel(app.status)}</Badge></div>{app.reviewNotes && <p className="text-sm text-amber-700">{app.reviewNotes}</p>}{['draft', 'needs_info'].includes(app.status) && <button className="text-emerald-700 font-bold text-sm" onClick={() => setEditor(app)}>{text('استكمال الطلب', 'Continue application')}</button>}</article>)}
       <Modal open={editor !== null} onClose={() => setEditor(null)} title={text('تسجيل الأبناء', 'Children registration')} size="xl">
-        {editor && <RegistrationForm key={editor === 'new' ? 'new' : editor.id} initial={editor === 'new' ? undefined : editor} email={user.email} lang={lang} onSaved={async () => { setEditor(null); await refresh(); }} />}
+        {editor && <Registration key={editor === 'new' ? 'new' : editor.id} initial={editor === 'new' ? undefined : editor} lang={lang} onSaved={refresh} onExit={() => setEditor(null)} />}
       </Modal>
     </div>
   </main>;

@@ -177,7 +177,7 @@ export function SettingsView({ settings, onSettingsChange, activeRole, lang }: S
           subtitle={isAr ? 'القيم الافتراضية المعتمدة للخطط' : 'Default approved plan values'}
         />
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-2">
           <FeeField
             label={t.monthly}
             value={form.subscriptionFeeMonthly}
@@ -191,7 +191,7 @@ export function SettingsView({ settings, onSettingsChange, activeRole, lang }: S
             currency={t.currency}
           />
           <FeeField
-            label={isAr ? 'نصف سنوي' : 'Semi-annual'}
+            label={t.semiAnnual}
             value={form.subscriptionFeeSemiAnnual ?? 0}
             onChange={(v) => set('subscriptionFeeSemiAnnual', v)}
             currency={t.currency}

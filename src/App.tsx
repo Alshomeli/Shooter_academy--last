@@ -33,6 +33,8 @@ const Tournaments = lazy(() => import('@/views/Tournaments').then(m => ({ defaul
 const Videos = lazy(() => import('@/views/Videos').then(m => ({ default: m.Videos })));
 const AuditLogs = lazy(() => import('@/views/AuditLogs').then(m => ({ default: m.AuditLogs })));
 const Messages = lazy(() => import('@/views/Messages').then(m => ({ default: m.Messages })));
+const Registration = lazy(() => import('@/views/Registration').then(m => ({ default: m.Registration })));
+const RegistrationAdmin = lazy(() => import('@/views/RegistrationAdmin').then(m => ({ default: m.RegistrationAdmin })));
 
 /* ── Error Boundary ── */
 interface ErrorBoundaryProps { children: ReactNode; lang: Lang; }
@@ -103,7 +105,12 @@ const EMPTY_DATA: DataState = {
 export default function App() {
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [activeRole, setActiveRole] = useState<Role>('manager');
-  const [currentTab, setCurrentTab] = useState<ViewId>('dashboard');
+  const [currentTab, setCurrentTab] = useState<ViewId>(() => {
+    const params = new URLSearchParams(window.location.search);
+    const view = params.get('view') || window.location.hash.replace('#', '');
+    if (view === 'registration' || view === 'registration-admin') return view as ViewId;
+    return 'dashboard';
+  });
   const [mobileOpen, setMobileOpen] = useState(false);
   const [lang, setLang] = useState<Lang>('ar');
   const [darkMode, setDarkMode] = useState(false);
@@ -258,7 +265,7 @@ export default function App() {
   const handleLogin = (user: CurrentUser) => {
     setCurrentUser(user);
     setActiveRole(user.role);
-    setCurrentTab('dashboard');
+    setCurrentTab(new URLSearchParams(window.location.search).get('view') === 'registration' ? 'registration' : 'dashboard');
   };
 
   const handleLogout = async () => {
@@ -336,6 +343,8 @@ export default function App() {
     mobile: t.mobile,
     'ai-center': t.aiCenter,
     messages: t.messages,
+    registration: t.registration,
+    'registration-admin': t.registrationAdmin,
     settings: t.settings,
   };
 
@@ -383,6 +392,10 @@ export default function App() {
         return <Messages players={data.players} teams={data.teams} subscriptions={data.subscriptions} activeRole={activeRole} lang={lang} />;
       case 'settings':
         return data.settings ? <SettingsView settings={data.settings} onSettingsChange={saveSettings} activeRole={activeRole} lang={lang} /> : null;
+      case 'registration':
+        return <Registration lang={lang} />;
+      case 'registration-admin':
+        return <RegistrationAdmin lang={lang} activeRole={activeRole} teams={data.teams} players={data.players} onRefresh={loadAllData} />;
       default:
         return <Dashboard players={data.players} subscriptions={data.subscriptions} matches={data.matches} transactions={data.transactions} staff={data.staff} teams={data.teams} parents={data.parents} setCurrentTab={setCurrentTab} activeRole={activeRole} lang={lang} />;
     }
@@ -399,7 +412,7 @@ export default function App() {
   }
 
   if (!currentUser || recovery) {
-    return <Login recovery={recovery} onLogin={(user) => { setRecovery(false); handleLogin(user); }} lang={lang} setLang={setLang} />;
+    return <Login registrationEntry={currentTab === 'registration'} recovery={recovery} onLogin={(user) => { setRecovery(false); handleLogin(user); }} lang={lang} setLang={setLang} />;
   }
 
   if (loading) {
@@ -428,7 +441,7 @@ export default function App() {
   }
 
   if (currentUser.role === 'parent') {
-    return <ParentPortal user={currentUser} players={data.players} subscriptions={data.subscriptions}
+    return <ParentPortal key={currentUser.authUserId} openRegistration={currentTab === 'registration'} user={currentUser} players={data.players} subscriptions={data.subscriptions}
       attendance={data.attendance} lang={lang} setLang={setLang} onLogout={handleLogout} onRefresh={async () => { const member = await db.getCurrentUser(); if (member) setCurrentUser(member); await loadAllData(); }} />;
   }
 

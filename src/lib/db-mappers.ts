@@ -61,10 +61,11 @@ interface VideoRow {
   markers: VideoMarker[];
 }
 interface SettingsRow {
-  row_version?: number; subscription_fee_semi_annual?: number;
+  row_version?: number;
   id: string; name: string; logo_url: string; phone: string;
   email: string; address: string; subscription_fee_monthly: number;
-  subscription_fee_quarterly: number; subscription_fee_yearly: number;
+  subscription_fee_quarterly: number; subscription_fee_semi_annual: number;
+  subscription_fee_yearly: number;
 }
 interface AuditLogRow {
   id: string; action: string; timestamp: string; user_role: string;

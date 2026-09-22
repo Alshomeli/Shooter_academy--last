@@ -6,10 +6,10 @@ import { FormField, inputCls } from '@/components/ui';
 import type { CurrentUser, Lang } from '@/types';
 
 type Screen = 'login' | 'register' | 'forgot' | 'reset';
-export function Login({ onLogin, lang, setLang, recovery = false }: {
-  onLogin: (user: CurrentUser) => void; lang: Lang; setLang: (lang: Lang) => void; recovery?: boolean;
+export function Login({ onLogin, lang, setLang, recovery = false, registrationEntry = false }: {
+  onLogin: (user: CurrentUser) => void; lang: Lang; setLang: (lang: Lang) => void; recovery?: boolean; registrationEntry?: boolean;
 }) {
-  const [screen, setScreen] = useState<Screen>(recovery ? 'reset' : 'login');
+  const [screen, setScreen] = useState<Screen>(recovery ? 'reset' : registrationEntry ? 'register' : 'login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');

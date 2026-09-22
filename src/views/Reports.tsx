@@ -1,7 +1,8 @@
-import { useMemo, type ReactNode } from 'react';
+import { getDateRange, type DateRangePreset } from '@/lib/report-dates';
+import { useState, useMemo, type ReactNode } from 'react';
 import {
   BarChart3, Download, TrendingUp, Users, Trophy, Wallet,
-  Activity, Target, Award, Percent, Printer,
+  Activity, Target, Award, Percent, Printer, Calendar,
 } from 'lucide-react';
 import type {
   Player, Team, Staff, Match, Training, Transaction, Subscription,
@@ -91,7 +92,6 @@ const POSITION_COLORS: Record<string, string> = {
     'خط وسط': '#10b981', 'Midfielder': '#10b981',
     'مهاجم': '#ef4444', 'Forward': '#ef4444',
   };
-
 export function Reports({
   players, teams, staff, matches, transactions,
   subscriptions, attendance, lang,
@@ -100,36 +100,58 @@ export function Reports({
   const isAr = lang === 'ar';
   const MONTHS = monthsArray(lang);
 
+  const [datePreset, setDatePreset] = useState<DateRangePreset>('this_year');
+  const [customFrom, setCustomFrom] = useState('');
+  const [customTo, setCustomTo] = useState('');
+
+  const [rangeFrom, rangeTo] = datePreset === 'custom' ? [customFrom, customTo] : getDateRange(datePreset);
+
+  const filteredTransactions = useMemo(() => {
+    if (!rangeFrom && !rangeTo) return transactions;
+    return transactions.filter((tx) => {
+      const d = tx.transactionDate;
+      if (rangeFrom && d < rangeFrom) return false;
+      if (rangeTo && d > rangeTo) return false;
+      return true;
+    });
+  }, [transactions, rangeFrom, rangeTo]);
+
+  const filteredSubscriptions = useMemo(() => {
+    if (!rangeFrom && !rangeTo) return subscriptions;
+    return subscriptions.filter((s) => {
+      if (rangeFrom && s.endDate < rangeFrom) return false;
+      if (rangeTo && s.startDate > rangeTo) return false;
+      return true;
+    });
+  }, [subscriptions, rangeFrom, rangeTo]);
 
 
   /* Financial Summary */
   const financial = useMemo(() => {
-    const revenueTotal = transactions.filter((tx) => tx.type === 'revenue').reduce((s, tx) => s + tx.amount, 0);
-    const expenseTotal = transactions.filter((tx) => tx.type === 'expense').reduce((s, tx) => s + tx.amount, 0);
+    const revenueTotal = filteredTransactions.filter((tx) => tx.type === 'revenue').reduce((s, tx) => s + tx.amount, 0);
+    const expenseTotal = filteredTransactions.filter((tx) => tx.type === 'expense').reduce((s, tx) => s + tx.amount, 0);
     const netProfit = revenueTotal - expenseTotal;
-    const paidSubs = subscriptions.filter((s) => s.status === 'paid').length;
-    const totalSubs = subscriptions.length;
+    const paidSubs = filteredSubscriptions.filter((s) => s.status === 'paid').length;
+    const totalSubs = filteredSubscriptions.length;
     const collectionRate = totalSubs > 0 ? Math.round((paidSubs / totalSubs) * 100) : 0;
 
     const byMonthRev: Record<string, number> = {};
     const byMonthExp: Record<string, number> = {};
-    transactions.forEach((tx) => {
-      const monthIdx = parseInt(tx.transactionDate.substring(5, 7), 10) - 1;
-      const label = MONTHS[monthIdx] || tx.transactionDate.substring(5, 7);
-      if (tx.type === 'revenue') byMonthRev[label] = (byMonthRev[label] || 0) + tx.amount;
-      else byMonthExp[label] = (byMonthExp[label] || 0) + tx.amount;
+    filteredTransactions.forEach((tx) => {
+      const month = tx.transactionDate.slice(0, 7);
+      if (tx.type === 'revenue') byMonthRev[month] = (byMonthRev[month] || 0) + tx.amount;
+      else byMonthExp[month] = (byMonthExp[month] || 0) + tx.amount;
     });
-
-    const activeMonths = MONTHS.filter((m) => byMonthRev[m] || byMonthExp[m]);
-    const months = activeMonths.length > 0 ? activeMonths : MONTHS.slice(0, 6);
+    const months = [...new Set([...Object.keys(byMonthRev), ...Object.keys(byMonthExp)])].sort();
+    const monthLabel = (key: string) => `${MONTHS[Number(key.slice(5)) - 1]} ${key.slice(0, 4)}`;
 
     return {
       revenueTotal, expenseTotal, netProfit, collectionRate, paidSubs, totalSubs,
-      revenueBars: months.map((label) => ({ label, value: byMonthRev[label] || 0, color: '#10b981' })),
-      expenseBars: months.map((label) => ({ label, value: byMonthExp[label] || 0, color: '#ef4444' })),
-      netTrend: months.map((label) => ({ label, value: (byMonthRev[label] || 0) - (byMonthExp[label] || 0) })),
+      revenueBars: months.map((label) => ({ label: monthLabel(label), value: byMonthRev[label] || 0, color: '#10b981' })),
+      expenseBars: months.map((label) => ({ label: monthLabel(label), value: byMonthExp[label] || 0, color: '#ef4444' })),
+      netTrend: months.map((label) => ({ label: monthLabel(label), value: (byMonthRev[label] || 0) - (byMonthExp[label] || 0) })),
     };
-  }, [transactions, subscriptions, MONTHS]);
+  }, [filteredTransactions, filteredSubscriptions, MONTHS]);
 
   /* Performance Analytics */
   const performance = useMemo(() => {
@@ -212,6 +234,38 @@ export function Reports({
           <Printer className="h-4 w-4" /> {t.print}
         </button>
       </PageHeader>
+
+      {/* Date Range Filter */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-4 shadow-sm">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400">
+            <Calendar className="h-4 w-4" />
+            {t.dateRange}
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {([['this_month', t.dateRangeThisMonth], ['last_month', t.dateRangeLastMonth], ['last_3_months', t.dateRangeLast3Months], ['this_year', t.dateRangeThisYear], ['custom', t.dateRangeCustom]] as const).map(([key, label]) => (
+              <button
+                key={key}
+                onClick={() => setDatePreset(key)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                  datePreset === key
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          {datePreset === 'custom' && (
+            <div className="flex items-center gap-2">
+              <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs py-1.5 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50" dir="ltr" />
+              <span className="text-xs text-slate-400">→</span>
+              <input type="date" min={customFrom} value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs py-1.5 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50" dir="ltr" />
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Financial Summary */}
       <SectionCard>

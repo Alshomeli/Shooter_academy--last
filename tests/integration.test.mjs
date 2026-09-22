@@ -38,6 +38,9 @@ before(async () => {
   await db.exec(await read('supabase/migrations/20260915004826_strengthen_linked_transaction_integrity.sql'));
   await db.exec(await read('tests/fixtures/live-rpc.sql'));
   // The existing trigger function is loaded below with the migration replacing its body.
+  await db.exec(await read('supabase/migrations/20260922095412_add_registration_type_to_applications.sql'));
+  // Existing workflow guard and document-promotion trigger; Storage HTTP/RLS is a separate live test.
+  await db.exec((await read('supabase/migrations/20260922092138_tighten_registration_approval_and_promote_documents.sql')).split('create policy')[0]);
   await db.exec(await read('supabase/migrations/20260922110000_repair_application_integration.sql'));
   await db.exec(`create trigger trg_guard_player_sensitive_columns before update on public.players for each row execute function internal.guard_player_sensitive_columns();
     create trigger trg_validate_subscription_state before insert or update on public.subscriptions for each row execute function internal.validate_subscription_state();
@@ -143,10 +146,12 @@ test('parent edits atomically synchronize child contacts and retain private note
 });
 test('draft creation survives retries; other accounts cannot edit it', async () => {
   await role(parent);
-  const data = { fullName: 'Test parent', nationalId: 'TEST-PARENT', phone: '12345678', email: 'parent@example.invalid', requestId: '00000000-0000-4000-8000-000000000050' };
+  const data = { registrationType: 'initial_onboarding', fullName: 'Test parent', nationalId: 'TEST-PARENT', phone: '12345678', email: 'parent@example.invalid', requestId: '00000000-0000-4000-8000-000000000050' };
   const kids = [{ clientKey: 'kid-1', fullName: 'Child one', nationalId: 'TEST-1', birthDate: '2015-01-01' }, { clientKey: 'kid-2', fullName: 'Child two', nationalId: 'TEST-2', birthDate: '2017-01-01' }];
   const create = () => row('select internal.create_registration_draft($1,$2) as data', [JSON.stringify(data), JSON.stringify(kids)]);
   const first = (await create()).data; const second = (await create()).data;
+  assert.equal(first.registrationType, 'initial_onboarding'); assert.equal(second.registrationType, 'initial_onboarding');
+  assert.equal((await row('select registration_type from public.registration_applications where id=$1', [first.applicationId])).registration_type, 'initial_onboarding');
   assert.equal(first.applicationId, second.applicationId); assert.equal(first.children.length, 2);
   await role(outsider);
   await assert.rejects(db.query('select public.update_registration_draft($1,$2,$3)', [first.applicationId, JSON.stringify(data), JSON.stringify(kids)]), /access denied/);
@@ -179,13 +184,16 @@ test('registration: two children, photo requirement, needs-info edit, approval a
   // The manager's regular table grant still hides CPR; the checked RPC can read it.
   await assert.rejects(db.query('select national_id from public.players'), /permission denied/);
   await db.query("select public.review_registration_application($1,'needs_info','Please complete the notes')", [id]);
+  await assert.rejects(db.query('select public.approve_registration_application($1)', [id]), /Only submitted/);
   await role(parent);
-  const parentData = { fullName: 'Test parent', nationalId: 'TEST-PARENT', phone: '12345678', email: 'parent@example.invalid' };
+  const parentData = { registrationType: 'new_application', fullName: 'Test parent', nationalId: 'TEST-PARENT', phone: '12345678', email: 'parent@example.invalid' };
   const payload = children.map((child, i) => ({ childId: child.id, fullName: `Child ${i + 1}`, nationalId: `TEST-${i + 1}`, birthDate: '2015-01-01', notes: 'Test-only note' }));
   await db.query('select public.update_registration_draft($1,$2,$3)', [id, JSON.stringify(parentData), JSON.stringify(payload)]);
+  assert.equal((await row('select registration_type from public.registration_applications where id=$1', [id])).registration_type, 'new_application');
   await db.query('select public.submit_registration_application($1)', [id]);
   await role(manager);
   const approved = (await row('select public.approve_registration_application($1) as data', [id])).data;
+  assert.equal((await row('select count(*)::int as n from public.player_documents where player_id = any($1)', [approved.players.map(p => p.playerId)])).n, 2);
   assert.equal(approved.players.length, 2); assert.equal(approved.parentId, 'parent');
   await assert.rejects(db.query('select public.approve_registration_application($1)', [id]), /Only submitted/);
   await db.exec("insert into public.teams(id,name,coach_id) values ('team','Test team','manager')");

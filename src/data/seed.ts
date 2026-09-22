@@ -181,6 +181,7 @@ export const SEED_SETTINGS: Settings = {
   address: 'مملكة البحرين، المنامة، ضاحية السيف - مجمع الملاعب الحديثة',
   subscriptionFeeMonthly: 35,
   subscriptionFeeQuarterly: 90,
+  subscriptionFeeSemiAnnual: 170,
   subscriptionFeeYearly: 320,
 };
 

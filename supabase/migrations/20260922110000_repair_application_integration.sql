@@ -516,12 +516,14 @@ declare
   v_parent_cpr text := trim(coalesce(p_parent->>'nationalId',''));
   v_parent_phone text := trim(coalesce(p_parent->>'phone',''));
   v_parent_email text := lower(trim(coalesce(p_parent->>'email','')));
+  v_registration_type text := coalesce(nullif(trim(p_parent->>'registrationType'),''),'new_application');
 begin
   if v_uid is null then raise exception 'Authentication required' using errcode='42501'; end if;
 
   select lower(u.email) into v_auth_email from auth.users u where u.id = v_uid;
   if v_auth_email is null then raise exception 'Authenticated email is required'; end if;
   if v_parent_email <> v_auth_email then raise exception 'Registration email must match the authenticated account email'; end if;
+  if v_registration_type not in ('initial_onboarding','new_application') then raise exception 'Invalid registration type'; end if;
   if length(v_parent_name) < 2 then raise exception 'Parent name is required'; end if;
   if v_parent_cpr = '' then raise exception 'Parent CPR is required'; end if;
   if v_parent_phone = '' then raise exception 'Parent phone is required'; end if;
@@ -531,7 +533,7 @@ begin
     perform pg_advisory_xact_lock(hashtextextended(v_uid::text || v_request_id::text, 0));
     select id into v_existing from public.registration_applications where applicant_user_id = v_uid and request_id = v_request_id;
     if found then
-      return jsonb_build_object('applicationId',v_existing,'children',(
+      return jsonb_build_object('applicationId',v_existing,'status',(select status from public.registration_applications where id=v_existing),'registrationType',(select registration_type from public.registration_applications where id=v_existing),'children',(
         select coalesce(jsonb_agg(jsonb_build_object('clientKey',client_key,'childId',id,'fullName',full_name)),'[]')
         from public.registration_children where application_id=v_existing));
     end if;
@@ -539,7 +541,7 @@ begin
   insert into public.registration_applications(
     id, request_id, applicant_user_id, parent_full_name, parent_national_id, parent_phone,
     parent_whatsapp, parent_email, parent_nationality, parent_occupation,
-    parent_workplace, parent_address, parent_notes, status, submitted_at
+    parent_workplace, parent_address, parent_notes, status, submitted_at, registration_type
   ) values (
     v_app_id, v_request_id, v_uid, v_parent_name, v_parent_cpr, v_parent_phone,
     nullif(trim(coalesce(p_parent->>'whatsapp','')),''), v_parent_email,
@@ -548,7 +550,7 @@ begin
     nullif(trim(coalesce(p_parent->>'workplace','')),''),
     nullif(trim(coalesce(p_parent->>'address','')),''),
     nullif(trim(coalesce(p_parent->>'notes','')),''),
-    'draft', null
+    'draft', null, v_registration_type
   );
 
   for v_child in select value from jsonb_array_elements(p_children)
@@ -572,7 +574,7 @@ begin
     );
   end loop;
 
-  return jsonb_build_object('applicationId',v_app_id,'status','draft','children',v_children_result);
+  return jsonb_build_object('applicationId',v_app_id,'status','draft','registrationType',v_registration_type,'children',v_children_result);
 end;
 $$;
 
@@ -654,7 +656,8 @@ begin
   if (select count(distinct x->>'childId') from jsonb_array_elements(p_children) x) <> jsonb_array_length(p_children) then
     raise exception 'Duplicate child ID';
   end if;
-  update public.registration_applications set parent_full_name=trim(p_parent->>'fullName'),
+  update public.registration_applications set registration_type=coalesce(nullif(trim(p_parent->>'registrationType'),''),a.registration_type),
+    parent_full_name=trim(p_parent->>'fullName'),
     parent_national_id=trim(p_parent->>'nationalId'), parent_phone=trim(p_parent->>'phone'),
     parent_whatsapp=nullif(trim(p_parent->>'whatsapp'),''), parent_email=lower(trim(p_parent->>'email')),
     parent_nationality=p_parent->>'nationality', parent_occupation=p_parent->>'occupation',

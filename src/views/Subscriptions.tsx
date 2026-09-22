@@ -1,5 +1,6 @@
+import { getLifecycleStatus, type LifecycleStatus } from '@/lib/report-dates';
 import { calcEndDate } from '@/lib/subscription-dates';
-import { errorMessage } from '@/lib/registrations';
+import { errorMessage } from '@/lib/registration';
 import { useState, useMemo, useDeferredValue, type FormEvent } from 'react';
 import {
   Wallet, Plus, Search, CheckCircle, Clock, TrendingUp, TrendingDown,
@@ -37,8 +38,8 @@ const DEFAULT_PLAN_AMOUNTS: Record<Subscription['planType'], number> = {
 function getPlanAmounts(settings: Settings | null): Record<Subscription['planType'], number> {
   if (!settings) return DEFAULT_PLAN_AMOUNTS;
   return {
-    monthly: settings.subscriptionFeeMonthly || DEFAULT_PLAN_AMOUNTS.monthly,
-    quarterly: settings.subscriptionFeeQuarterly || DEFAULT_PLAN_AMOUNTS.quarterly,
+    monthly: settings.subscriptionFeeMonthly ?? DEFAULT_PLAN_AMOUNTS.monthly,
+    quarterly: settings.subscriptionFeeQuarterly ?? DEFAULT_PLAN_AMOUNTS.quarterly,
     annual: settings.subscriptionFeeYearly ?? DEFAULT_PLAN_AMOUNTS.annual,
     semi_annual: settings.subscriptionFeeSemiAnnual ?? DEFAULT_PLAN_AMOUNTS.semi_annual,
   };
@@ -60,6 +61,13 @@ const CATEGORY_COLORS: Record<string, 'emerald' | 'blue' | 'amber' | 'slate'> = 
 };
 
 const todayISO = () => new Date().toISOString().substring(0, 10);
+
+const LIFECYCLE_BADGE: Record<LifecycleStatus, { color: 'emerald' | 'amber' | 'red' | 'blue'; key: 'subActive' | 'subExpiring' | 'subExpired' | 'subFuture' }> = {
+  active:   { color: 'emerald', key: 'subActive' },
+  expiring: { color: 'amber',   key: 'subExpiring' },
+  expired:  { color: 'red',     key: 'subExpired' },
+  future:   { color: 'blue',    key: 'subFuture' },
+};
 
 
 /* ----------------------------- Main ----------------------------- */
@@ -356,7 +364,7 @@ export function Subscriptions({
                       </div>
 
                       {/* Status */}
-                      <div className="min-w-24">
+                      <div className="min-w-24 flex flex-wrap gap-1.5">
                         <Badge color={isPaid ? 'emerald' : 'amber'}>
                           {isPaid ? (
                             <>
@@ -368,6 +376,7 @@ export function Subscriptions({
                             </>
                           )}
                         </Badge>
+                        {(() => { const lc = getLifecycleStatus(sub); const cfg = LIFECYCLE_BADGE[lc]; return <Badge color={cfg.color}>{t[cfg.key]}</Badge>; })()}
                       </div>
 
                       {/* Payment method */}

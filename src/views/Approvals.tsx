@@ -1,4 +1,4 @@
-import { RegistrationReview } from '@/views/RegistrationReview';
+import { RegistrationAdmin } from '@/views/RegistrationAdmin';
 import { useState } from 'react';
 import {
   ShieldCheck, CheckCircle, XCircle, Clock, UserPlus, Search, AlertCircle, Loader2,
@@ -82,7 +82,7 @@ export function Approvals({ players, teams, onRefresh, staff, onStaffChange, act
         subtitle={isAr ? 'مراجعة وقبول طلبات تسجيل المستخدمين الجدد' : 'Review and approve new user registrations'}
       />
 
-      <RegistrationReview players={players} teams={teams} onRefresh={onRefresh} lang={lang} />
+      <RegistrationAdmin players={players} teams={teams} onRefresh={onRefresh} activeRole={activeRole} lang={lang} />
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-4 shadow-sm">
