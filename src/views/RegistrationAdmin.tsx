@@ -325,7 +325,9 @@ export function RegistrationAdmin({ lang, activeRole, teams, players, onRefresh 
         onClose={() => setDeleteAppId(null)}
         onConfirm={handleDeleteApp}
         title={t.regDeleteApp}
-        message={t.regDeleteAppConfirm}
+        message={deleteAppId && apps.find(a => a.id === deleteAppId)?.status === 'approved'
+          ? (isAr ? 'هذا الطلب تمت الموافقة عليه مسبقاً. سيتم حذف سجل طلب التسجيل فقط. هل أنت متأكد؟' : 'This application has already been approved. Only the registration record will be deleted. Are you sure?')
+          : t.regDeleteAppConfirm}
         confirmLabel={t.delete}
       />
     </div>
@@ -546,18 +548,16 @@ function AppDetail({
           </div>
         </div>
       )}
-      {/* Delete button for draft / needs_info / rejected */}
-      {(app.status === 'draft' || app.status === 'needs_info' || app.status === 'rejected') && (
-        <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
-          <button
-            onClick={onDelete}
-            disabled={actionLoading}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-sm font-bold shadow-sm transition cursor-pointer disabled:opacity-50"
-          >
-            <Trash2 className="h-4 w-4" /> {t.regDeleteApp}
-          </button>
-        </div>
-      )}
+      {/* Delete button — manager may delete any application regardless of status */}
+      <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
+        <button
+          onClick={onDelete}
+          disabled={actionLoading}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-sm font-bold shadow-sm transition cursor-pointer disabled:opacity-50"
+        >
+          <Trash2 className="h-4 w-4" /> {t.regDeleteApp}
+        </button>
+      </div>
     </div>
   );
 }

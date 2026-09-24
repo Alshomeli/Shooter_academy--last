@@ -161,7 +161,22 @@ export async function getSignedUrl(storagePath: string): Promise<string> {
   return data.signedUrl;
 }
 
+async function removeApplicationFiles(appId: string, childId?: string): Promise<void> {
+  let query = supabase
+    .from('registration_documents')
+    .select('storage_path')
+    .eq('application_id', appId);
+  if (childId) query = query.eq('child_id', childId);
+  const { data, error } = await query;
+  if (error) throw error;
+  const paths = (data || []).map((d: { storage_path: string | null }) => d.storage_path).filter((p): p is string => !!p);
+  if (paths.length === 0) return;
+  const { error: removeError } = await supabase.storage.from('player-documents').remove(paths);
+  if (removeError) throw removeError;
+}
+
 export async function deleteRegistrationApplication(appId: string) {
+  await removeApplicationFiles(appId);
   const { error } = await supabase.rpc('delete_registration_application', { p_application_id: appId });
   if (error) throw error;
 }
@@ -183,6 +198,7 @@ export async function addRegistrationChild(appId: string, child: RegistrationChi
 }
 
 export async function deleteRegistrationChild(appId: string, childId: string): Promise<void> {
+  await removeApplicationFiles(appId, childId);
   const { error } = await supabase.rpc('delete_registration_child', { p_application_id: appId, p_child_id: childId });
   if (error) throw error;
 }
