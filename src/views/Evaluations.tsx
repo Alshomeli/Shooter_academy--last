@@ -48,7 +48,7 @@ function EvalCard({ ev, player, coach, lang, onEdit }: {
         </div>
         <div className="flex items-center gap-2">
           {ev.overallScore != null && (
-            <span className="text-lg font-black text-emerald-600">{ev.overallScore.toFixed(1)}</span>
+            <span className="text-lg font-black text-emerald-600">{ev.overallScore.toFixed(1)}<span className="text-xs text-slate-400">/5</span></span>
           )}
           <Badge variant={ev.status === 'published' ? 'emerald' : 'amber'}>{ev.status === 'published' ? t.publishedStatus : t.draft}</Badge>
         </div>
