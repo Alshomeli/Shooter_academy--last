@@ -28,6 +28,7 @@ export function Teams({ teams, staff, players, onTeamsChange, onRefresh, activeR
   const [showAdd, setShowAdd] = useState(false);
   const [editTeam, setEditTeam] = useState<Team | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState('');
 
   const canEdit = activeRole === 'manager' || activeRole === 'coach';
 
@@ -45,11 +46,15 @@ export function Teams({ teams, staff, players, onTeamsChange, onRefresh, activeR
   };
 
   const handleDelete = async () => {
-    if (deleteId) {
+    if (!deleteId) return;
+    setDeleteError('');
+    try {
       await db.deleteTeam(deleteId);
       await onRefresh();
+      setDeleteId(null);
+    } catch (e) {
+      setDeleteError(e instanceof Error ? e.message : String(e));
     }
-    setDeleteId(null);
   };
 
   return (
@@ -192,6 +197,8 @@ export function Teams({ teams, staff, players, onTeamsChange, onRefresh, activeR
           lang={lang}
         />
       )}
+
+      {deleteError && <p role="alert" className="text-sm font-bold text-red-600">{deleteError}</p>}
 
       <ConfirmDialog
         open={!!deleteId}

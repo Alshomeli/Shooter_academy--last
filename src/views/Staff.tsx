@@ -1,4 +1,4 @@
-import { useState, useMemo, useDeferredValue, type FormEvent } from 'react';
+import { useState, useMemo, useDeferredValue, useEffect, type FormEvent } from 'react';
 import {
   Dumbbell, Plus, Search, Edit2, Trash2, Eye, Mail, Phone, Award, Star,
   Briefcase, Calendar,
@@ -7,6 +7,7 @@ import type { Staff, Team, Player, Lang, Role } from '@/types';
 import { db } from '@/lib/store';
 import { Badge, Modal, ConfirmDialog, PageHeader, EmptyState, SaveButton } from '@/components/ui';
 import { tr, roleLabel } from '@/lib/i18n';
+import { supabase } from '@/lib/supabase';
 import { ContactLinks } from '@/components/ContactLinks';
 
 interface StaffProps {
@@ -45,6 +46,12 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [showReassign, setShowReassign] = useState(false);
   const [reassignCoachId, setReassignCoachId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState('');
+  const [authUserId, setAuthUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => setAuthUserId(user?.id ?? null)).catch(() => setAuthUserId(null));
+  }, []);
 
   const canManage = activeRole === 'manager';
   const canSeeSalary = activeRole === 'manager' || activeRole === 'accountant';
@@ -84,16 +91,26 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
 
   const handleDelete = async () => {
     if (!deleteId) return;
-    await db.deleteStaff(deleteId, reassignCoachId);
-    await onRefresh();
-    setDeleteId(null);
-    setShowReassign(false);
-    setReassignCoachId(null);
+    setDeleteError('');
+    try {
+      await db.deleteStaff(deleteId, showReassign ? reassignCoachId : null);
+      await onRefresh();
+      setDeleteId(null);
+      setShowReassign(false);
+      setReassignCoachId(null);
+    } catch (e) {
+      setDeleteError(e instanceof Error ? e.message : String(e));
+    }
   };
 
   const initiateDelete = (id: string) => {
     const member = staff.find((s) => s.id === id);
+    if (authUserId && member?.userId && member.userId === authUserId) {
+      setDeleteError(isAr ? 'لا يمكن حذف حسابك الخاص أثناء استخدامك للنظام.' : 'You cannot delete your own account while signed in.');
+      return;
+    }
     const memberTeams = teams.filter((tm) => tm.coachId === id);
+    setDeleteError('');
     setDeleteId(id);
     if (member?.role === 'coach' && memberTeams.length > 0) {
       setReassignCoachId(null);
@@ -299,18 +316,21 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
         </Modal>
       )}
 
+      {deleteError && <p role="alert" className="text-sm font-bold text-red-600">{deleteError}</p>}
+
       {/* Delete confirmation — coach reassignment or simple */}
       {deleteId && showReassign ? (
         <Modal open onClose={() => { setDeleteId(null); setShowReassign(false); }} title={t.reassignCoach} size="sm">
           <div className="space-y-4">
             <p className="text-sm text-slate-600 dark:text-slate-400">{t.reassignCoachDesc}</p>
+            {deleteError && <p role="alert" className="text-sm text-red-600">{deleteError}</p>}
             <select
               value={reassignCoachId ?? ''}
               onChange={(e) => setReassignCoachId(e.target.value || null)}
               className="w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-800 dark:text-white"
             >
               <option value="">{t.noReplacement}</option>
-              {staff.filter((s) => s.role === 'coach' && s.id !== deleteId).map((s) => (
+              {staff.filter((s) => s.role === 'coach' && s.status === 'active' && s.id !== deleteId).map((s) => (
                 <option key={s.id} value={s.id}>{s.name}</option>
               ))}
             </select>
@@ -318,7 +338,11 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
               <button onClick={() => { setDeleteId(null); setShowReassign(false); }} className="px-4 py-2 text-sm rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition cursor-pointer">
                 {t.cancel}
               </button>
-              <button onClick={handleDelete} className="px-4 py-2 text-sm rounded-lg bg-red-600 text-white hover:bg-red-500 transition cursor-pointer font-bold">
+              <button
+                onClick={handleDelete}
+                disabled={!reassignCoachId}
+                className="px-4 py-2 text-sm rounded-lg bg-red-600 text-white hover:bg-red-500 transition cursor-pointer font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+              >
                 {t.delete}
               </button>
             </div>
