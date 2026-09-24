@@ -1,4 +1,3 @@
-import { RegistrationAdmin } from '@/views/RegistrationAdmin';
 import { useState } from 'react';
 import {
   ShieldCheck, CheckCircle, XCircle, Clock, UserPlus, Search, AlertCircle, Loader2,
@@ -18,7 +17,7 @@ interface ApprovalsProps {
   lang: Lang;
 }
 
-export function Approvals({ players, teams, onRefresh, staff, onStaffChange, activeRole, lang }: ApprovalsProps) {
+export function Approvals({ staff, onStaffChange, activeRole, lang }: ApprovalsProps) {
   const t = tr(lang);
   const isAr = lang === 'ar';
   const isRtl = isAr;
@@ -78,11 +77,10 @@ export function Approvals({ players, teams, onRefresh, staff, onStaffChange, act
   return (
     <div className="space-y-5 text-right" dir={isRtl ? 'rtl' : 'ltr'}>
       <PageHeader
-        title={t.approvals}
-        subtitle={isAr ? 'مراجعة وقبول طلبات تسجيل المستخدمين الجدد' : 'Review and approve new user registrations'}
+        title={isAr ? 'الموافقات' : 'Approvals'}
+        subtitle={isAr ? 'مراجعة وقبول حسابات الموظفين الجدد' : 'Review and approve new staff accounts'}
       />
 
-      <RegistrationAdmin players={players} teams={teams} onRefresh={onRefresh} activeRole={activeRole} lang={lang} />
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-4 shadow-sm">
