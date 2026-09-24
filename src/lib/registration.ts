@@ -161,6 +161,22 @@ export async function getSignedUrl(storagePath: string): Promise<string> {
   return data.signedUrl;
 }
 
+export async function deleteRegistrationApplication(appId: string) {
+  const { error } = await supabase.rpc('delete_registration_application', { p_app_id: appId });
+  if (error) throw error;
+}
+
+export async function addRegistrationChild(appId: string, child: { full_name: string; date_of_birth: string; gender: string; school_name: string }) {
+  const { data, error } = await supabase.rpc('add_registration_child', { p_app_id: appId, p_full_name: child.full_name, p_date_of_birth: child.date_of_birth, p_gender: child.gender, p_school_name: child.school_name });
+  if (error) throw error;
+  return data as string;
+}
+
+export async function deleteRegistrationChild(childId: string) {
+  const { error } = await supabase.rpc('delete_registration_child', { p_child_id: childId });
+  if (error) throw error;
+}
+
 export function errorMessage(error: unknown, ar: boolean) {
   const message = error && typeof error === 'object' && 'message' in error ? String(error.message) : '';
   return `${ar ? 'تعذر إتمام العملية.' : 'Unable to complete this action.'} ${message}`;

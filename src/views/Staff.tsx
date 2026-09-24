@@ -4,6 +4,7 @@ import {
   Briefcase, Calendar,
 } from 'lucide-react';
 import type { Staff, Team, Player, Lang, Role } from '@/types';
+import { db } from '@/lib/store';
 import { Badge, Modal, ConfirmDialog, PageHeader, EmptyState, SaveButton } from '@/components/ui';
 import { tr, roleLabel } from '@/lib/i18n';
 import { ContactLinks } from '@/components/ContactLinks';
@@ -13,6 +14,7 @@ interface StaffProps {
   teams: Team[];
   players: Player[];
   onStaffChange: (s: Staff[]) => void;
+  onRefresh: () => Promise<void>;
   activeRole: Role;
   lang: Lang;
 }
@@ -24,7 +26,7 @@ const ROLE_COLORS: Record<string, 'emerald' | 'blue' | 'amber' | 'slate'> = {
   receptionist: 'slate',
 };
 
-export function StaffView({ staff, teams, players, onStaffChange, activeRole, lang }: StaffProps) {
+export function StaffView({ staff, teams, players, onStaffChange, onRefresh, activeRole, lang }: StaffProps) {
   const t = tr(lang);
   const isAr = lang === 'ar';
   const ROLE_FILTERS: Array<{ value: string; label: string }> = [
@@ -41,6 +43,8 @@ export function StaffView({ staff, teams, players, onStaffChange, activeRole, la
   const [editMember, setEditMember] = useState<Staff | null>(null);
   const [viewMember, setViewMember] = useState<Staff | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [showReassign, setShowReassign] = useState(false);
+  const [reassignCoachId, setReassignCoachId] = useState<string | null>(null);
 
   const canManage = activeRole === 'manager';
   const canSeeSalary = activeRole === 'manager' || activeRole === 'accountant';
@@ -79,8 +83,24 @@ export function StaffView({ staff, teams, players, onStaffChange, activeRole, la
   };
 
   const handleDelete = async () => {
-    if (deleteId) await onStaffChange(staff.filter((s) => s.id !== deleteId));
+    if (!deleteId) return;
+    await db.deleteStaff(deleteId, reassignCoachId);
+    await onRefresh();
     setDeleteId(null);
+    setShowReassign(false);
+    setReassignCoachId(null);
+  };
+
+  const initiateDelete = (id: string) => {
+    const member = staff.find((s) => s.id === id);
+    const memberTeams = teams.filter((tm) => tm.coachId === id);
+    setDeleteId(id);
+    if (member?.role === 'coach' && memberTeams.length > 0) {
+      setReassignCoachId(null);
+      setShowReassign(true);
+    } else {
+      setShowReassign(false);
+    }
   };
 
   return (
@@ -239,7 +259,7 @@ export function StaffView({ staff, teams, players, onStaffChange, activeRole, la
                         <Edit2 className="h-3.5 w-3.5" /> {t.edit}
                       </button>
                       <button
-                        onClick={() => setDeleteId(s.id)}
+                        onClick={() => initiateDelete(s.id)}
                         className="flex items-center justify-center gap-1 py-1.5 px-2.5 rounded-lg text-[11px] font-bold text-red-600 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 transition cursor-pointer"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -279,15 +299,41 @@ export function StaffView({ staff, teams, players, onStaffChange, activeRole, la
         </Modal>
       )}
 
-      {/* Delete confirmation */}
-      <ConfirmDialog
-        open={!!deleteId}
-        onClose={() => setDeleteId(null)}
-        onConfirm={handleDelete}
-        title={t.deleteStaff}
-        message={t.deleteStaffConfirm}
-        confirmLabel={t.delete}
-      />
+      {/* Delete confirmation — coach reassignment or simple */}
+      {deleteId && showReassign ? (
+        <Modal open onClose={() => { setDeleteId(null); setShowReassign(false); }} title={t.reassignCoach} size="sm">
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600 dark:text-slate-400">{t.reassignCoachDesc}</p>
+            <select
+              value={reassignCoachId ?? ''}
+              onChange={(e) => setReassignCoachId(e.target.value || null)}
+              className="w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-800 dark:text-white"
+            >
+              <option value="">{t.noReplacement}</option>
+              {staff.filter((s) => s.role === 'coach' && s.id !== deleteId).map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => { setDeleteId(null); setShowReassign(false); }} className="px-4 py-2 text-sm rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition cursor-pointer">
+                {t.cancel}
+              </button>
+              <button onClick={handleDelete} className="px-4 py-2 text-sm rounded-lg bg-red-600 text-white hover:bg-red-500 transition cursor-pointer font-bold">
+                {t.delete}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      ) : (
+        <ConfirmDialog
+          open={!!deleteId && !showReassign}
+          onClose={() => setDeleteId(null)}
+          onConfirm={handleDelete}
+          title={t.deleteStaff}
+          message={t.deleteStaffConfirm}
+          confirmLabel={t.delete}
+        />
+      )}
     </div>
   );
 }

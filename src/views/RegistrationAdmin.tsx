@@ -2,14 +2,14 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   ClipboardList, Search, Eye, Clock, CheckCircle2, XCircle,
   AlertTriangle, ChevronRight, ChevronLeft, Loader2, Users,
-  FileText, Camera, User, Shield, Trophy, Info,
+  FileText, Camera, User, Shield, Trophy, Info, Trash2,
 } from 'lucide-react';
 import type { Lang, Role, Team, Player, RegistrationApplication, RegistrationStatus } from '@/types';
 import { Badge, Modal, ConfirmDialog, PageHeader, EmptyState, StatCard } from '@/components/ui';
 import { tr } from '@/lib/i18n';
 import {
   fetchAllApplications, reviewApplication, approveApplication,
-  finalizePlayer, getSignedUrl, errorMessage,
+  finalizePlayer, getSignedUrl, errorMessage, deleteRegistrationApplication,
 } from '@/lib/registration';
 
 interface Props {
@@ -46,6 +46,7 @@ export function RegistrationAdmin({ lang, activeRole, teams, players, onRefresh 
   const [dateTo, setDateTo] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const [confirmAction, setConfirmAction] = useState<{ type: string; id: string } | null>(null);
+  const [deleteAppId, setDeleteAppId] = useState<string | null>(null);
   const [reviewNotes, setReviewNotes] = useState('');
 
   // Assignment state
@@ -157,6 +158,19 @@ export function RegistrationAdmin({ lang, activeRole, teams, players, onRefresh 
       ...prev,
       [playerId]: { ...prev[playerId], [field]: value } as typeof prev[string],
     }));
+  };
+
+  const handleDeleteApp = async () => {
+    if (!deleteAppId || actionLoading || activeRole !== 'manager') return;
+    setActionLoading(true); setError('');
+    try {
+      await deleteRegistrationApplication(deleteAppId);
+      if (selectedApp?.id === deleteAppId) setSelectedApp(null);
+      setDeleteAppId(null);
+      await loadApps();
+      await onRefresh();
+    } catch (e) { setError(errorMessage(e, isAr)); }
+    finally { setActionLoading(false); }
   };
 
   /* ---- Guard ---- */
@@ -282,6 +296,7 @@ export function RegistrationAdmin({ lang, activeRole, teams, players, onRefresh 
                 void handleAction(type, selectedApp.id).catch(() => {});
               }
             }}
+            onDelete={() => setDeleteAppId(selectedApp.id)}
             onFinalize={handleFinalize}
             onAssignChange={setAssign}
           />
@@ -305,6 +320,14 @@ export function RegistrationAdmin({ lang, activeRole, teams, players, onRefresh 
         message={t.regRejectConfirm}
         confirmLabel={t.regReject}
       />
+      <ConfirmDialog
+        open={!!deleteAppId}
+        onClose={() => setDeleteAppId(null)}
+        onConfirm={handleDeleteApp}
+        title={t.regDeleteApp}
+        message={t.regDeleteAppConfirm}
+        confirmLabel={t.delete}
+      />
     </div>
   );
 }
@@ -315,7 +338,7 @@ export function RegistrationAdmin({ lang, activeRole, teams, players, onRefresh 
 
 function AppDetail({
   app, lang, teams, players, photoUrls, assignData, actionLoading, reviewNotes, setReviewNotes,
-  onAction, onFinalize, onAssignChange,
+  onAction, onDelete, onFinalize, onAssignChange,
 }: {
   app: RegistrationApplication;
   lang: Lang;
@@ -327,6 +350,7 @@ function AppDetail({
   reviewNotes: string;
   setReviewNotes: (v: string) => void;
   onAction: (type: string) => void;
+  onDelete: () => void;
   onFinalize: (playerId: string) => void;
   onAssignChange: (playerId: string, field: string, value: string | number) => void;
 }) {
@@ -520,6 +544,18 @@ function AppDetail({
               {t.regReject}
             </ActionBtn>
           </div>
+        </div>
+      )}
+      {/* Delete button for draft / needs_info / rejected */}
+      {(app.status === 'draft' || app.status === 'needs_info' || app.status === 'rejected') && (
+        <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
+          <button
+            onClick={onDelete}
+            disabled={actionLoading}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-sm font-bold shadow-sm transition cursor-pointer disabled:opacity-50"
+          >
+            <Trash2 className="h-4 w-4" /> {t.regDeleteApp}
+          </button>
         </div>
       )}
     </div>

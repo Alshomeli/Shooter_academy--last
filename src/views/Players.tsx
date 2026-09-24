@@ -428,14 +428,14 @@ function PlayerDetail({ player, team, evaluations, lang }: { player: Player; tea
             {playerEvals.slice(0, 5).map(ev => (
               <div key={ev.id} className="p-3 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-bold text-slate-500">{ev.evaluationDate} &middot; {ev.periodType === 'monthly' ? t.monthly : ev.periodType === 'quarterly' ? t.quarterly : t.annualPeriod}</span>
-                  {ev.overallScore != null && <span className="text-sm font-black text-emerald-600">{ev.overallScore.toFixed(1)}/10</span>}
+                  <span className="text-xs font-bold text-slate-500">{ev.evaluationDate} &middot; {ev.periodType === 'monthly' ? t.monthly : ev.periodType === 'quarterly' ? t.quarterly : t.customPeriod}</span>
+                  {ev.overallScore != null && <span className="text-sm font-black text-emerald-600">{ev.overallScore.toFixed(1)}/5</span>}
                 </div>
                 <div className="grid grid-cols-5 gap-2 text-center text-[10px]">
                   {[{l: isAr ? 'فني' : 'TEC', v: ev.technicalScore}, {l: isAr ? 'تكت' : 'TAC', v: ev.tacticalScore}, {l: isAr ? 'بدن' : 'PHY', v: ev.physicalScore}, {l: isAr ? 'ذهن' : 'MEN', v: ev.mentalScore}, {l: isAr ? 'انض' : 'DIS', v: ev.disciplineScore}].map(s => (
                     <div key={s.l}>
                       <div className={`mx-auto w-8 h-8 rounded-lg flex items-center justify-center font-black text-white text-xs ${
-                        !s.v ? 'bg-slate-300' : s.v >= 8 ? 'bg-emerald-500' : s.v >= 5 ? 'bg-amber-500' : 'bg-red-500'
+                        !s.v ? 'bg-slate-300' : s.v >= 4 ? 'bg-emerald-500' : s.v >= 3 ? 'bg-amber-500' : 'bg-red-500'
                       }`}>{s.v ?? '-'}</div>
                       <p className="mt-1 font-bold text-slate-400">{s.l}</p>
                     </div>

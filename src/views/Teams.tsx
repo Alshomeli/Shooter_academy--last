@@ -3,6 +3,7 @@ import {
   Trophy, Plus, Edit2, Trash2, Users, Calendar, Clock, MapPin, Phone,
 } from 'lucide-react';
 import type { Team, Staff, Player, Lang, Role } from '@/types';
+import { db } from '@/lib/store';
 import { Badge, Modal, ConfirmDialog, PageHeader, EmptyState, SaveButton } from '@/components/ui';
 import { tr, dayLabel } from '@/lib/i18n';
 
@@ -11,6 +12,7 @@ interface TeamsProps {
   staff: Staff[];
   players: Player[];
   onTeamsChange: (t: Team[]) => void;
+  onRefresh: () => Promise<void>;
   activeRole: Role;
   lang: Lang;
 }
@@ -20,7 +22,7 @@ const WEEK_DAYS = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأر
 const inputCls =
   'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-800 dark:text-white';
 
-export function Teams({ teams, staff, players, onTeamsChange, activeRole, lang }: TeamsProps) {
+export function Teams({ teams, staff, players, onTeamsChange, onRefresh, activeRole, lang }: TeamsProps) {
   const t = tr(lang);
   const isAr = lang === 'ar';
   const [showAdd, setShowAdd] = useState(false);
@@ -43,7 +45,10 @@ export function Teams({ teams, staff, players, onTeamsChange, activeRole, lang }
   };
 
   const handleDelete = async () => {
-    if (deleteId) await onTeamsChange(teams.filter((tm) => tm.id !== deleteId));
+    if (deleteId) {
+      await db.deleteTeam(deleteId);
+      await onRefresh();
+    }
     setDeleteId(null);
   };
 
@@ -159,12 +164,14 @@ export function Teams({ teams, staff, players, onTeamsChange, activeRole, lang }
                     >
                       <Edit2 className="h-3.5 w-3.5" /> {t.edit}
                     </button>
+                    {activeRole === 'manager' && (
                     <button
                       onClick={() => setDeleteId(tm.id)}
                       className="flex items-center justify-center gap-1 py-1.5 px-2.5 rounded-lg text-[11px] font-bold text-red-600 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 transition cursor-pointer"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
+                    )}
                   </div>
                 )}
               </div>

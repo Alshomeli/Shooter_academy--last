@@ -171,11 +171,17 @@ export const db = {
     return rows.map((r) => (mapStaff as never as (x: Record<string, unknown>) => Staff)(r));
   },
   async saveStaff(s: Staff): Promise<Staff> { return upsertRow('staff', staffToRow(s) as unknown as Record<string, unknown>, mapStaff as never); },
-  async deleteStaff(id: string): Promise<void> { return deleteRow('staff', id); },
+  async deleteStaff(id: string, reassignCoachId?: string | null): Promise<void> {
+    const { error } = await supabase.rpc('delete_staff_member_safely', { p_staff_id: id, p_reassign_coach_id: reassignCoachId ?? null });
+    if (error) throw error;
+  },
 
   async getTeams(): Promise<Team[]> { return fetchAll('teams', mapTeam as never); },
   async saveTeam(t: Team): Promise<Team> { return upsertRow('teams', teamToRow(t) as unknown as Record<string, unknown>, mapTeam as never); },
-  async deleteTeam(id: string): Promise<void> { return deleteRow('teams', id); },
+  async deleteTeam(id: string): Promise<void> {
+    const { error } = await supabase.rpc('delete_team_safely', { p_team_id: id });
+    if (error) throw error;
+  },
 
   async getPlayers(): Promise<Player[]> { return fetchPlayerRows(); },
   async savePlayer(p: Player): Promise<Player> { return upsertRow('players', playerToRow(p) as unknown as Record<string, unknown>, mapPlayer as never); },

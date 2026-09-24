@@ -51,6 +51,7 @@ export function Sidebar({
   const navItems: NavItem[] = [
     { id: 'dashboard', label: t.dashboard, icon: LayoutDashboard, allowedRoles: ['manager', 'accountant', 'coach', 'receptionist'] },
     { id: 'approvals', label: t.approvals, icon: ShieldCheck, allowedRoles: ['manager'] },
+    { id: 'registration-admin', label: t.registrationAdmin, icon: FileCheck, allowedRoles: ['manager'] },
     { id: 'players', label: t.players, icon: Users, allowedRoles: ['manager', 'receptionist', 'coach'] },
     { id: 'parents', label: t.parents, icon: UsersRound, allowedRoles: ['manager', 'receptionist', 'coach', 'accountant'] },
     { id: 'teams', label: t.teams, icon: Trophy, allowedRoles: ['manager', 'coach', 'receptionist'] },
@@ -66,7 +67,6 @@ export function Sidebar({
     { id: 'messages', label: t.messages, icon: Send, allowedRoles: ['manager', 'coach', 'receptionist', 'accountant'] },
     { id: 'ai-center', label: t.aiCenter, icon: Sparkles, allowedRoles: ['manager', 'accountant', 'coach', 'receptionist'] },
     { id: 'registration', label: t.registration, icon: ClipboardList, allowedRoles: ['parent'] },
-    { id: 'registration-admin', label: t.registrationAdmin, icon: FileCheck, allowedRoles: ['manager'] },
     { id: 'settings', label: t.settings, icon: SettingsIcon, allowedRoles: ['manager'] },
   ];
 

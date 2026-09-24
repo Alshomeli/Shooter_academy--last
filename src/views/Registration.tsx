@@ -9,11 +9,12 @@ import type {
   RegistrationParentInput, RegistrationApplication,
 } from '@/types';
 import { tr } from '@/lib/i18n';
-import { Badge } from '@/components/ui';
+import { Badge, ConfirmDialog } from '@/components/ui';
 import { supabase } from '@/lib/supabase';
 import {
   createDraft, updateDraft, uploadRegistrationFile, registerDocument,
   submitApplication, fetchMyApplications, getSignedUrl, errorMessage,
+  addRegistrationChild, deleteRegistrationChild, deleteRegistrationApplication,
 } from '@/lib/registration';
 import { completeRegistrationUpload, registrationFilePath, type PendingUpload } from '@/lib/registration-upload';
 import { compressImage, formatBytes } from '@/lib/image-compress';
@@ -257,8 +258,30 @@ export function Registration({ lang, initial, onSaved, onExit, onBusyChange }: P
     const doc: ExtraDoc = { id: crypto.randomUUID(), childId: childKey, docType, file, fileName: file.name, uploading: false, uploaded: false };
     setExtraDocs(prev => [...prev, doc]); void uploadExtraDoc(doc.id, doc);
   };
-  const addChild = () => { if (!draftId) setChildren(prev => [...prev, blankChild()]); };
-  const removeChild = (key: string) => { if (!draftId && children.length > 1) setChildren(prev => prev.filter(c => c._key !== key)); };
+  const addChild = async () => {
+    const child = blankChild();
+    if (!draftId) { setChildren(prev => [...prev, child]); return; }
+    try {
+      const { id: serverId } = await addRegistrationChild(draftId, {
+        full_name: '', date_of_birth: '', gender: '', school_name: '',
+      });
+      setChildIdMap(prev => ({ ...prev, [child._key]: serverId }));
+      setChildren(prev => [...prev, child]);
+    } catch (e) { setDraftError(errorMessage(e, isAr)); }
+  };
+  const removeChild = async (key: string) => {
+    if (children.length <= 1) return;
+    if (!draftId) { setChildren(prev => prev.filter(c => c._key !== key)); return; }
+    const serverId = childIdMap[key];
+    if (!serverId) { setChildren(prev => prev.filter(c => c._key !== key)); return; }
+    try {
+      await deleteRegistrationChild(serverId);
+      setChildIdMap(prev => { const next = { ...prev }; delete next[key]; return next; });
+      setChildren(prev => prev.filter(c => c._key !== key));
+      setChildPhotos(prev => { const next = { ...prev }; delete next[key]; return next; });
+      setExtraDocs(prev => prev.filter(d => d.childId !== key));
+    } catch (e) { setDraftError(errorMessage(e, isAr)); }
+  };
   const updateChild = (key: string, field: string, value: string) => setChildren(prev => prev.map(c => c._key === key ? { ...c, [field]: value } : c));
   const docTypeLabel = (dt: string) => ({ parent_cpr: t.regDocParentCpr, player_cpr: t.regDocPlayerCpr, passport: t.regDocPassport,
     birth_certificate: t.regDocBirthCert, medical_report: t.regDocMedical, other: t.regDocOther } as Record<string, string>)[dt] || dt;
@@ -279,7 +302,13 @@ export function Registration({ lang, initial, onSaved, onExit, onBusyChange }: P
 
   /* ---- Existing application status ---- */
   if (existingApp) {
-    return <ExistingAppStatus app={existingApp} lang={lang} onContinue={() => setResumeApp(existingApp)} />;
+    return <ExistingAppStatus app={existingApp} lang={lang} onContinue={() => setResumeApp(existingApp)} onDelete={async () => {
+      try {
+        await deleteRegistrationApplication(existingApp.id);
+        setExistingApp(null);
+        await onSaved?.().catch(() => {});
+      } catch (e) { setLoadError(errorMessage(e, isAr)); }
+    }} />;
   }
 
   return (
@@ -392,11 +421,9 @@ export function Registration({ lang, initial, onSaved, onExit, onBusyChange }: P
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-black text-slate-900 dark:text-white">{t.regStepChildren}</h2>
-              {!draftId && (
-                <button onClick={addChild} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition cursor-pointer">
+              <button onClick={addChild} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition cursor-pointer">
                   {t.regAddChild}
                 </button>
-              )}
             </div>
             {errors._children && <p className="text-xs text-red-500 font-bold">{errors._children}</p>}
             {children.map((child, idx) => (
@@ -405,7 +432,7 @@ export function Registration({ lang, initial, onSaved, onExit, onBusyChange }: P
                   <span className="text-sm font-black text-slate-700 dark:text-slate-200">
                     {isAr ? `اللاعب ${idx + 1}` : `Player ${idx + 1}`}
                   </span>
-                  {children.length > 1 && !draftId && (
+                  {children.length > 1 && (
                     <button onClick={() => removeChild(child._key)} className="flex items-center gap-1 text-xs font-bold text-red-500 hover:text-red-400 cursor-pointer">
                       <Trash2 className="h-3.5 w-3.5" /> {t.regRemoveChild}
                     </button>
@@ -688,9 +715,12 @@ function Dt({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ExistingAppStatus({ app, lang, onContinue }: { app: RegistrationApplication; lang: Lang; onContinue: () => void }) {
+function ExistingAppStatus({ app, lang, onContinue, onDelete }: { app: RegistrationApplication; lang: Lang; onContinue: () => void; onDelete: () => Promise<void> }) {
   const t = tr(lang);
   const isAr = lang === 'ar';
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const canDelete = ['draft', 'needs_info', 'rejected'].includes(app.status);
   const statusMap: Record<string, { label: string; color: 'slate' | 'amber' | 'blue' | 'emerald' | 'red' }> = {
     draft: { label: t.regStatusDraft, color: 'slate' },
     pending: { label: t.regStatusPending, color: 'amber' },
@@ -719,7 +749,13 @@ function ExistingAppStatus({ app, lang, onContinue }: { app: RegistrationApplica
             <span className="font-bold">{t.regReviewNotes}:</span> {app.reviewNotes}
           </div>
         )}
+        {canDelete && (
+          <button onClick={() => setConfirmDelete(true)} disabled={deleting} className="flex items-center gap-1.5 mx-auto px-4 py-2 rounded-lg text-xs font-bold text-red-600 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 transition cursor-pointer disabled:opacity-50">
+            <Trash2 className="h-3.5 w-3.5" /> {t.regDeleteApp}
+          </button>
+        )}
       </div>
+      <ConfirmDialog open={confirmDelete} onClose={() => setConfirmDelete(false)} title={t.regDeleteApp} message={t.regDeleteAppParentConfirm} confirmLabel={t.delete} cancelLabel={t.cancel} onConfirm={async () => { setDeleting(true); setConfirmDelete(false); await onDelete(); setDeleting(false); }} />
     </div>
   );
 }

@@ -15,12 +15,12 @@ interface Props {
   onRefresh: () => Promise<void>;
 }
 
-const PERIOD_OPTS = ['monthly', 'quarterly', 'annual'] as const;
+const PERIOD_OPTS = ['monthly', 'quarterly', 'custom'] as const;
 
-function ScoreBar({ label, value, max = 10 }: { label: string; value: number | null; max?: number }) {
+function ScoreBar({ label, value, max = 5 }: { label: string; value: number | null; max?: number }) {
   const pct = value ? (value / max) * 100 : 0;
   const color = !value ? 'bg-slate-300 dark:bg-slate-700'
-    : value >= 8 ? 'bg-emerald-500' : value >= 5 ? 'bg-amber-500' : 'bg-red-500';
+    : value >= 4 ? 'bg-emerald-500' : value >= 3 ? 'bg-amber-500' : 'bg-red-500';
   return (
     <div className="flex items-center gap-3">
       <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 w-28 shrink-0 text-start">{label}</span>
@@ -37,7 +37,7 @@ function EvalCard({ ev, player, coach, lang, onEdit }: {
 }) {
   const t = tr(lang);
   const isAr = lang === 'ar';
-  const periodLabel = ev.periodType === 'monthly' ? t.monthly : ev.periodType === 'quarterly' ? t.quarterly : t.annualPeriod;
+  const periodLabel = ev.periodType === 'monthly' ? t.monthly : ev.periodType === 'quarterly' ? t.quarterly : t.customPeriod;
   return (
     <div className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900/60 hover:shadow-lg transition-shadow">
       <div className="flex items-start justify-between mb-3">
@@ -149,8 +149,8 @@ export function Evaluations({ evaluations, players, teams, staff, activeRole, la
     if (!form.playerId) { setError(isAr ? 'يرجى اختيار اللاعب' : 'Please select a player'); return; }
     if (publish) {
       const scores = [form.technicalScore, form.tacticalScore, form.physicalScore, form.mentalScore, form.disciplineScore];
-      if (scores.some(s => s === null || s < 1 || s > 10)) {
-        setError(isAr ? 'يجب تعبئة جميع الدرجات (1-10) قبل النشر' : 'All scores (1-10) required before publishing');
+      if (scores.some(s => s === null || s < 1 || s > 5)) {
+        setError(isAr ? 'يجب تعبئة جميع الدرجات (1-5) قبل النشر' : 'All scores (1-5) required before publishing');
         return;
       }
     }
@@ -166,7 +166,7 @@ export function Evaluations({ evaluations, players, teams, staff, activeRole, la
   };
 
   const setScore = (field: 'technicalScore' | 'tacticalScore' | 'physicalScore' | 'mentalScore' | 'disciplineScore', raw: string) => {
-    const n = raw === '' ? null : Math.max(1, Math.min(10, parseInt(raw, 10) || 1));
+    const n = raw === '' ? null : Math.max(1, Math.min(5, parseInt(raw, 10) || 1));
     setForm(prev => ({ ...prev, [field]: n }));
   };
 
@@ -201,7 +201,7 @@ export function Evaluations({ evaluations, players, teams, staff, activeRole, la
             <FormField label={t.periodType} required>
               <select value={form.periodType} onChange={e => setForm(prev => ({ ...prev, periodType: e.target.value }))} className={inputCls}>
                 {PERIOD_OPTS.map(p => (
-                  <option key={p} value={p}>{p === 'monthly' ? t.monthly : p === 'quarterly' ? t.quarterly : t.annualPeriod}</option>
+                  <option key={p} value={p}>{p === 'monthly' ? t.monthly : p === 'quarterly' ? t.quarterly : t.customPeriod}</option>
                 ))}
               </select>
             </FormField>
@@ -227,10 +227,10 @@ export function Evaluations({ evaluations, players, teams, staff, activeRole, la
             ] as const).map(([field, label]) => (
               <div key={field} className="flex items-center gap-3">
                 <label className="text-xs font-bold text-slate-600 dark:text-slate-300 w-32 shrink-0">{label}</label>
-                <input type="range" min="1" max="10" value={form[field] ?? 5}
+                <input type="range" min="1" max="5" value={form[field] ?? 3}
                   onChange={e => setScore(field, e.target.value)}
                   className="flex-1 accent-emerald-600" />
-                <input type="number" min="1" max="10" value={form[field] ?? ''}
+                <input type="number" min="1" max="5" value={form[field] ?? ''}
                   onChange={e => setScore(field, e.target.value)}
                   className="w-14 text-center text-sm font-bold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 py-1"
                   placeholder="-" />
@@ -311,7 +311,7 @@ export function Evaluations({ evaluations, players, teams, staff, activeRole, la
           <option value="">{t.all}</option>
           <option value="monthly">{t.monthly}</option>
           <option value="quarterly">{t.quarterly}</option>
-          <option value="annual">{t.annualPeriod}</option>
+          <option value="custom">{t.customPeriod}</option>
         </select>
         {(filterTeam || filterStatus || filterPeriod || searchQ) && (
           <button onClick={() => { setFilterTeam(''); setFilterStatus(''); setFilterPeriod(''); setSearchQ(''); }}

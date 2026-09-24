@@ -150,7 +150,7 @@ export interface PlayerEvaluation {
   teamId: string;
   coachId: string;
   evaluationDate: string;
-  periodType: 'monthly' | 'quarterly' | 'annual';
+  periodType: 'monthly' | 'quarterly' | 'custom';
   technicalScore: number | null;
   tacticalScore: number | null;
   physicalScore: number | null;

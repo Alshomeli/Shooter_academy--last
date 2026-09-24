@@ -122,12 +122,14 @@ export function Tournaments({ tournaments, onTournamentsChange, activeRole, lang
                     >
                       <Edit2 className="h-3.5 w-3.5" /> {t.edit}
                     </button>
+                    {activeRole === 'manager' && (
                     <button
                       onClick={() => setDeleteId(tn.id)}
                       className="flex items-center justify-center gap-1 py-1.5 px-2.5 rounded-lg text-[11px] font-bold text-red-600 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 transition cursor-pointer"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
+                    )}
                   </div>
                 )}
               </div>

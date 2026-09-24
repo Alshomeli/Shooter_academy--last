@@ -262,6 +262,9 @@ export const t = {
     editStaff: 'تعديل بيانات الموظف',
     deleteStaff: 'حذف الموظف',
     deleteStaffConfirm: 'هل أنت متأكد من حذف هذا الموظف؟',
+    reassignCoach: 'اختر مدرب بديل',
+    reassignCoachDesc: 'هذا الموظف مدرب لفرق. اختر مدرب بديل أو اترك بدون مدرب.',
+    noReplacement: 'بدون مدرب بديل',
     // Players
     playerManagement: 'إدارة اللاعبين',
     searchPlayers: 'ابحث باسم اللاعب...',
@@ -299,7 +302,7 @@ export const t = {
     addTeam: 'إضافة فريق',
     editTeam: 'تعديل بيانات الفريق',
     deleteTeam: 'حذف الفريق',
-    deleteTeamConfirm: 'هل أنت متأكد من حذف هذا الفريق؟',
+    deleteTeamConfirm: 'هل أنت متأكد من حذف هذا الفريق؟ سيتم نقل اللاعبين بدون فريق.',
     // Attendance
     attendanceTracking: 'سجل الحضور والغياب',
     sessionDate: 'تاريخ الجلسة',
@@ -357,8 +360,8 @@ export const t = {
     publishConfirm: 'هل تريد نشر هذا التقييم؟ لا يمكن التعديل بعد النشر.',
     noEvaluations: 'لا توجد تقييمات',
     noEvaluationsHint: 'أضف تقييماً جديداً للاعب',
-    scoreRange: 'الدرجة من 1 إلى 10',
-    annualPeriod: 'سنوي',
+    scoreRange: 'الدرجة من 1 إلى 5',
+    customPeriod: 'مخصص',
     playerEvaluations: 'تقييمات اللاعب',
     // Messages
     messagesCenter: 'مركز الرسائل',
@@ -486,6 +489,9 @@ export const t = {
     regApplicationDetails: 'تفاصيل الطلب',
     regCreatedAt: 'تاريخ الطلب',
     regChildCount: 'عدد الأبناء',
+    regDeleteApp: 'حذف الطلب',
+    regDeleteAppConfirm: 'هل أنت متأكد من حذف هذا الطلب؟ لا يمكن التراجع.',
+    regDeleteAppParentConfirm: 'هل أنت متأكد من حذف طلب التسجيل؟ سيتم حذف جميع بيانات الأبناء والمستندات.',
     // Subscription lifecycle
     subActive: 'ساري',
     subExpiring: 'ينتهي قريباً',
@@ -792,6 +798,9 @@ export const t = {
     editStaff: 'Edit Staff',
     deleteStaff: 'Delete Staff',
     deleteStaffConfirm: 'Are you sure you want to delete this staff member?',
+    reassignCoach: 'Select Replacement Coach',
+    reassignCoachDesc: 'This staff member coaches teams. Select a replacement coach or leave without a coach.',
+    noReplacement: 'No replacement coach',
     // Players
     playerManagement: 'Player Management',
     searchPlayers: 'Search by player name...',
@@ -829,7 +838,7 @@ export const t = {
     addTeam: 'Add Team',
     editTeam: 'Edit Team',
     deleteTeam: 'Delete Team',
-    deleteTeamConfirm: 'Are you sure you want to delete this team?',
+    deleteTeamConfirm: 'Are you sure you want to delete this team? Players will be unassigned.',
     // Attendance
     attendanceTracking: 'Attendance Tracking',
     sessionDate: 'Session Date',
@@ -887,8 +896,8 @@ export const t = {
     publishConfirm: 'Publish this evaluation? It cannot be edited after publishing.',
     noEvaluations: 'No evaluations',
     noEvaluationsHint: 'Add a new player evaluation',
-    scoreRange: 'Score from 1 to 10',
-    annualPeriod: 'Annual',
+    scoreRange: 'Score from 1 to 5',
+    customPeriod: 'Custom',
     playerEvaluations: 'Player Evaluations',
     // Messages
     messagesCenter: 'Messages Center',
@@ -1016,6 +1025,9 @@ export const t = {
     regApplicationDetails: 'Application Details',
     regCreatedAt: 'Application Date',
     regChildCount: 'Children',
+    regDeleteApp: 'Delete Application',
+    regDeleteAppConfirm: 'Are you sure you want to delete this application? This cannot be undone.',
+    regDeleteAppParentConfirm: 'Are you sure you want to delete your registration? All children data and documents will be removed.',
     // Subscription lifecycle
     subActive: 'Active',
     subExpiring: 'Expiring Soon',

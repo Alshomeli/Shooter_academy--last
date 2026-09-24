@@ -207,7 +207,7 @@ export function AttendanceView({ players, teams, attendance, onAttendanceChange,
                   <th className="text-right py-3 px-4">{t.sessionType}</th>
                   <th className="text-right py-3 px-4">{t.status}</th>
                   <th className="text-right py-3 px-4">{t.notes}</th>
-                  {canEdit && <th className="text-center py-3 px-4">{t.actions}</th>}
+                  {activeRole === 'manager' && <th className="text-center py-3 px-4">{t.actions}</th>}
                 </tr>
               </thead>
               <tbody>
@@ -251,7 +251,7 @@ export function AttendanceView({ players, teams, attendance, onAttendanceChange,
                           {a.notes || '—'}
                         </span>
                       </td>
-                      {canEdit && (
+                      {activeRole === 'manager' && (
                         <td className="py-3 px-4 text-center">
                           <button
                             onClick={() => setDeleteId(a.id)}
