@@ -166,14 +166,24 @@ export async function deleteRegistrationApplication(appId: string) {
   if (error) throw error;
 }
 
-export async function addRegistrationChild(appId: string, child: { full_name: string; date_of_birth: string; gender: string; school_name: string }) {
-  const { data, error } = await supabase.rpc('add_registration_child', { p_app_id: appId, p_full_name: child.full_name, p_date_of_birth: child.date_of_birth, p_gender: child.gender, p_school_name: child.school_name });
+export async function addRegistrationChild(appId: string, child: RegistrationChildInput): Promise<{ childId: string; clientKey: string | null; fullName: string }> {
+  const { data, error } = await supabase.rpc('add_registration_child', {
+    p_application_id: appId,
+    p_child: {
+      clientKey: child.clientKey,
+      fullName: child.fullName,
+      nationalId: child.nationalId,
+      birthDate: child.birthDate,
+      bloodType: child.bloodType ?? '',
+      notes: child.notes ?? '',
+    },
+  });
   if (error) throw error;
-  return data as string;
+  return data as { childId: string; clientKey: string | null; fullName: string };
 }
 
-export async function deleteRegistrationChild(childId: string) {
-  const { error } = await supabase.rpc('delete_registration_child', { p_child_id: childId });
+export async function deleteRegistrationChild(appId: string, childId: string): Promise<void> {
+  const { error } = await supabase.rpc('delete_registration_child', { p_application_id: appId, p_child_id: childId });
   if (error) throw error;
 }
 

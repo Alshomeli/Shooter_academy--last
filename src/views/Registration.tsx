@@ -163,9 +163,24 @@ export function Registration({ lang, initial, onSaved, onExit, onBusyChange }: P
     return false;
   };
   const saveDraft = async () => {
+    if (draftId) {
+      // New rows added after the draft exists are inserted one by one,
+      // because update_registration_draft requires every existing child to stay in the payload.
+      const newRows = children.filter(c => !childIdMap[c._key]);
+      const map = { ...childIdMap };
+      for (const c of newRows) {
+        const { _key, ...row } = c;
+        const saved = await addRegistrationChild(draftId, row);
+        map[_key] = saved.childId;
+      }
+      setChildIdMap(map);
+      const payload = children.map(({ _key, ...c }) => ({ ...c, childId: map[_key] || c.childId }));
+      const parentPayload = { ...parent, registrationType: regType as RegistrationType, requestId };
+      await updateDraft(draftId, parentPayload, payload);
+      return;
+    }
     const payload = children.map(({ _key, ...c }) => ({ ...c, childId: childIdMap[_key] || c.childId }));
     const parentPayload = { ...parent, registrationType: regType as RegistrationType, requestId };
-    if (draftId) { await updateDraft(draftId, parentPayload, payload); return; }
     const result = await createDraft(parentPayload, payload);
     const map: Record<string, string> = {};
     for (const c of children) {
@@ -258,24 +273,20 @@ export function Registration({ lang, initial, onSaved, onExit, onBusyChange }: P
     const doc: ExtraDoc = { id: crypto.randomUUID(), childId: childKey, docType, file, fileName: file.name, uploading: false, uploaded: false };
     setExtraDocs(prev => [...prev, doc]); void uploadExtraDoc(doc.id, doc);
   };
-  const addChild = async () => {
-    const child = blankChild();
-    if (!draftId) { setChildren(prev => [...prev, child]); return; }
-    try {
-      const serverId = await addRegistrationChild(draftId, {
-        full_name: '', date_of_birth: '', gender: '', school_name: '',
-      });
-      setChildIdMap(prev => ({ ...prev, [child._key]: serverId }));
-      setChildren(prev => [...prev, child]);
-    } catch (e) { setDraftError(errorMessage(e, isAr)); }
+  const addChild = () => {
+    if (draftCreating || submitting || filesBusy) return;
+    setChildren(prev => [...prev, blankChild()]);
   };
   const removeChild = async (key: string) => {
-    if (children.length <= 1) return;
-    if (!draftId) { setChildren(prev => prev.filter(c => c._key !== key)); return; }
+    if (children.length <= 1 || draftCreating || submitting || filesBusy) return;
     const serverId = childIdMap[key];
-    if (!serverId) { setChildren(prev => prev.filter(c => c._key !== key)); return; }
+    if (!serverId) {
+      setChildren(prev => prev.filter(c => c._key !== key));
+      return;
+    }
+    if (!draftId) return;
     try {
-      await deleteRegistrationChild(serverId);
+      await deleteRegistrationChild(draftId, serverId);
       setChildIdMap(prev => { const next = { ...prev }; delete next[key]; return next; });
       setChildren(prev => prev.filter(c => c._key !== key));
       setChildPhotos(prev => { const next = { ...prev }; delete next[key]; return next; });
