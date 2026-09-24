@@ -262,7 +262,7 @@ export function Registration({ lang, initial, onSaved, onExit, onBusyChange }: P
     const child = blankChild();
     if (!draftId) { setChildren(prev => [...prev, child]); return; }
     try {
-      const { id: serverId } = await addRegistrationChild(draftId, {
+      const serverId = await addRegistrationChild(draftId, {
         full_name: '', date_of_birth: '', gender: '', school_name: '',
       });
       setChildIdMap(prev => ({ ...prev, [child._key]: serverId }));

@@ -162,7 +162,7 @@ export async function getSignedUrl(storagePath: string): Promise<string> {
 }
 
 export async function deleteRegistrationApplication(appId: string) {
-  const { error } = await supabase.rpc('delete_registration_application', { p_app_id: appId });
+  const { error } = await supabase.rpc('delete_registration_application', { p_application_id: appId });
   if (error) throw error;
 }
 
