@@ -57,13 +57,13 @@ const PERSONAS: Persona[] = [
   { id: 'financial', name: 'المستشار المالي', tagline: 'الإيرادات والمصروفات والأرباح', icon: TrendingUp, color: 'blue',
     welcome: 'أهلًا! أنا المستشار المالي. سأقوم بحساب الإيرادات والمصروفات وصافي الربح، وتحليل الاشتراكات المدفوعة والمتأخرة. كيف يمكنني مساعدتك؟' },
   { id: 'players', name: 'خبير اللاعبين', tagline: 'إحصاءات اللاعبين والمراكز', icon: Users, color: 'amber',
-    welcome: 'سلام! أنا خبير اللاعبين. أستطيع تزويدك بإحصاءات اللاعبين، توزيع المراكز، الاشتراكات غير المدفوعة، واللاعبين المميزين.' },
+    welcome: 'سلام! أنا خبير اللاعبين. أستطيع تزويدك بإحصاءات اللاعبين، توزيع المراكز، وحالة تقييمات الأداء. لا أرتب اللاعبين إلا اعتمادًا على تقييمات فعلية مسجلة.' },
   { id: 'matches', name: 'مخطط المباريات', tagline: 'النتائج والمباريات القادمة', icon: Trophy, color: 'red',
     welcome: 'مرحبًا! أنا مخطط المباريات. سأعرض لك معدل الفوز، سجل النتائج، والمباريات المجدولة القادمة.' },
   { id: 'documents', name: 'مدير المستندات', tagline: 'تحليل ملفات اللاعبين', icon: FileText, color: 'amber',
     welcome: 'مرحبًا! أنا مدير مستندات اللاعبين. أستطيع تحليل الملفات المرفوعة، تحديد اللاعبين الناقصين للمستندات، وتقديم توصيات.' },
   { id: 'training', name: 'مخطط التدريبات', tagline: 'اقتراح أنواع الحصص التدريبية', icon: Zap, color: 'teal',
-    welcome: 'مرحبًا! أنا مخطط التدريبات الذكي. أستطيع اقتراح أنواع حصص تدريبية، تمارين تكتيكية وبدنية، وخطط جلسات مخصصة. جرّب: "اقترح تدريب لفريق U-12".' },
+    welcome: 'مرحبًا! أنا مخطط التدريبات. أستطيع عرض الجلسات التدريبية المسجلة ومواعيدها ومددها وأهدافها من بيانات النظام.' },
   { id: 'nutrition', name: 'مستشار التغذية', tagline: 'خطط غذائية للاعبين والفرق', icon: Apple, color: 'rose',
     welcome: 'مرحبًا! أنا مستشار التغذية الرياضية. أستطيع وضع خطط غذائية حسب العمر والفئة، نصائح للترطيب، ونظام غذائي لزيادة الكتلة العضلية.' },
   { id: 'scout', name: 'كشاف المواهب', tagline: 'اكتشاف وتقييم اللاعبين', icon: Search, color: 'cyan',
@@ -88,15 +88,15 @@ const PERSONA_COLORS: Record<Persona['color'], {
   rose: { ring: 'ring-rose-500/30', bg: 'bg-rose-50 dark:bg-rose-900/20', text: 'text-rose-600 dark:text-rose-400', iconBg: 'from-rose-500 to-rose-600', border: 'border-slate-200 dark:border-slate-800', activeBorder: 'border-rose-500', activeShadow: 'shadow-rose-200/50' },
 };
 
-const LIVE_AI_PERSONAS = new Set<PersonaId>(['financial', 'operations', 'documents', 'communication']);
+const LIVE_AI_PERSONAS = new Set<PersonaId>(['financial', 'operations', 'documents', 'communication', 'players', 'training', 'matches']);
 
 const SUGGESTIONS: Record<PersonaId, string[]> = {
   technical: ['حلل أداء الفرق', 'توصيات لتحسين الحضور', 'تقرير شامل'],
   financial: ['تقرير مالي سريع', 'تحليل الاشتراكات المتأخرة', 'توقعات مالية'],
-  players: ['أفضل اللاعبين', 'توزيع المراكز', 'الاشتراكات المتأخرة'],
+  players: ['حالة تقييمات اللاعبين', 'توزيع المراكز', 'الاشتراكات المتأخرة'],
   matches: ['معدل الفوز', 'المباريات القادمة', 'خطة استعداد للمباراة'],
   documents: ['تحليل المستندات', 'اللاعبون الناقصون', 'تقرير المستندات'],
-  training: ['اقترح تدريب لفريق', 'أنواع التدريب', 'تمارين لياقة بدنية'],
+  training: ['الجلسات التدريبية المسجلة', 'مواعيد التدريبات', 'أهداف الجلسات'],
   nutrition: ['خطة غذائية لفريق', 'نظام ما قبل المباراة', 'نصائح الترطيب'],
   scout: ['اكتشاف مواهب', 'قارن لاعبين', 'تقييم المراكز'],
   operations: ['تحليل الجدول', 'استخدام الملاعب', 'التعارضات'],
@@ -181,10 +181,8 @@ function generateResponse(personaId: PersonaId, q: string, c: AIContext, teams: 
     }
 
     case 'players': {
-      if (/(أفضل|مميز|نجم|نجوم|top)/.test(q)) {
-        const top = [...players].filter((p) => p.status === 'active').sort((a, b) => a.jerseyNumber - b.jerseyNumber).slice(0, 5);
-        if (!top.length) return 'لا يوجد لاعبون نشطون حاليًا.';
-        return `🌟 أبرز اللاعبين النشطين:\n${top.map((p, i) => `${i + 1}. ${p.name} — رقم ${p.jerseyNumber} · ${p.position}`).join('\n')}`;
+      if (/(تقييم|تقييمات|أداء|أفضل|مميز|نجم|نجوم|top|ranking|rank)/.test(q)) {
+        return 'بيانات تقييمات الأداء غير محمّلة في الرد المحلي، لذلك لا يمكن ترتيب اللاعبين أو تحديد الأفضل اعتمادًا على رقم القميص أو حالة النشاط. يجب الاعتماد على تقييمات فعلية مسجلة في النظام.';
       }
       if (/(مركز|مراكز|توزيع|position)/.test(q)) {
         const list = Object.entries(c.positionCounts).sort((a, b) => b[1] - a[1]).map(([pos, count]) => `• ${pos}: ${count} لاعب`).join('\n');
@@ -238,7 +236,20 @@ function generateResponse(personaId: PersonaId, q: string, c: AIContext, teams: 
         `• بمستندات: ${withDocs} · بدون: ${without}`, `اسألني عن "تقرير المستندات" أو "اللاعبون الناقصون".`].join('\n');
     }
 
-    case 'training': return generateTrainingPlan(q, teams);
+    case 'training': {
+      if (/(مسجل|مسجلة|حالي|حاليًا|موجود|موجودة|جلسات|مواعيد|أهداف|stored|recorded|current|sessions|schedule)/.test(q)) {
+        if (!c.trainings.length) return 'لا توجد جلسات تدريبية مسجلة حاليًا في النظام. لذلك لا توجد مواعيد أو أهداف تدريب لعرضها.';
+        const sessions = [...c.trainings]
+          .sort((a, b) => a.sessionDate.localeCompare(b.sessionDate))
+          .map((session, i) => {
+            const team = teams.find((t) => t.id === session.teamId);
+            const objectives = session.objectives?.trim() ? ` · الأهداف: ${session.objectives}` : ' · بدون أهداف مسجلة';
+            return `${i + 1}. ${session.title || 'جلسة تدريب'} — ${session.sessionDate} · ${session.durationMinutes} دقيقة${team ? ` · ${team.name}` : ''}${objectives}`;
+          });
+        return [`الجلسات التدريبية المسجلة: ${c.trainings.length}`, ...sessions].join('\n');
+      }
+      return 'هذا المساعد مخصص لعرض بيانات الجلسات التدريبية المسجلة. اكتب مثلًا: "هل توجد جلسات تدريبية مسجلة حاليًا؟"';
+    }
     case 'nutrition': return generateNutritionAdvice(q, teams);
     case 'communication': return generateCommunicationTemplate(q, c.unpaidSubs, players, c.scheduled, currency);
     case 'scout': {
@@ -499,8 +510,8 @@ function AIInsights({ players, subscriptions, transactions, matches, trainings, 
         <div><h3 className="text-sm font-black text-slate-900 dark:text-white">رؤى ذكية فورية</h3><p className="text-[11px] text-slate-400">تحليل آلي لبيانات الأكاديمية</p></div>
       </div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-        <InsightCard icon={TrendingUp} label="صافي الربح" value={`${insights.net >= 0 ? '+' : ''}${insights.net.toLocaleString()}`} unit={currency} color={insights.net >= 0 ? 'emerald' : 'red'} />
-        <InsightCard icon={Target} label="نسبة التحصيل" value={`${insights.collectionRate}%`} color={insights.collectionRate >= 70 ? 'emerald' : 'amber'} />
+        <InsightCard icon={TrendingUp} label="صافي الحركة المالية" value={`${insights.net >= 0 ? '+' : ''}${insights.net.toLocaleString()}`} unit={currency} color={insights.net >= 0 ? 'emerald' : 'red'} />
+        <InsightCard icon={Target} label="نسبة الاشتراكات المدفوعة" value={`${insights.collectionRate}%`} color={insights.collectionRate >= 70 ? 'emerald' : 'amber'} />
         <InsightCard icon={Trophy} label="معدل الفوز" value={`${insights.winRate}%`} color={insights.winRate >= 50 ? 'emerald' : 'amber'} />
         <InsightCard icon={FileText} label="تغطية المستندات" value={`${insights.docCoverage}%`} color={insights.docCoverage >= 70 ? 'emerald' : 'blue'} />
       </div>
