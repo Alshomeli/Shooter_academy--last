@@ -88,15 +88,15 @@ const PERSONA_COLORS: Record<Persona['color'], {
   rose: { ring: 'ring-rose-500/30', bg: 'bg-rose-50 dark:bg-rose-900/20', text: 'text-rose-600 dark:text-rose-400', iconBg: 'from-rose-500 to-rose-600', border: 'border-slate-200 dark:border-slate-800', activeBorder: 'border-rose-500', activeShadow: 'shadow-rose-200/50' },
 };
 
-const LIVE_AI_PERSONAS = new Set<PersonaId>(['financial', 'operations', 'documents', 'communication']);
+const LIVE_AI_PERSONAS = new Set<PersonaId>(['financial', 'operations', 'documents', 'communication', 'players', 'training', 'matches']);
 
 const SUGGESTIONS: Record<PersonaId, string[]> = {
   technical: ['حلل أداء الفرق', 'توصيات لتحسين الحضور', 'تقرير شامل'],
   financial: ['تقرير مالي سريع', 'تحليل الاشتراكات المتأخرة', 'توقعات مالية'],
-  players: ['أفضل اللاعبين', 'توزيع المراكز', 'الاشتراكات المتأخرة'],
+  players: ['حالة تقييمات اللاعبين', 'توزيع المراكز', 'الاشتراكات المتأخرة'],
   matches: ['معدل الفوز', 'المباريات القادمة', 'خطة استعداد للمباراة'],
   documents: ['تحليل المستندات', 'اللاعبون الناقصون', 'تقرير المستندات'],
-  training: ['اقترح تدريب لفريق', 'أنواع التدريب', 'تمارين لياقة بدنية'],
+  training: ['الجلسات المسجلة', 'مواعيد التدريبات', 'أهداف الجلسات'],
   nutrition: ['خطة غذائية لفريق', 'نظام ما قبل المباراة', 'نصائح الترطيب'],
   scout: ['اكتشاف مواهب', 'قارن لاعبين', 'تقييم المراكز'],
   operations: ['تحليل الجدول', 'استخدام الملاعب', 'التعارضات'],
