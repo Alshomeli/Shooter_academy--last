@@ -55,19 +55,13 @@ function getPublishableKey(): string {
   return legacy;
 }
 
-function extractResponseText(payload: any): string {
-  if (typeof payload?.output_text === "string" && payload.output_text.trim()) {
-    return payload.output_text.trim();
-  }
-
-  const output = Array.isArray(payload?.output) ? payload.output : [];
-  for (const item of output) {
-    const content = Array.isArray(item?.content) ? item.content : [];
-    for (const part of content) {
-      if (typeof part?.text === "string" && part.text.trim()) return part.text.trim();
-    }
-  }
-  return "";
+function extractGeminiText(payload: any): string {
+  const parts = payload?.candidates?.[0]?.content?.parts;
+  if (!Array.isArray(parts)) return "";
+  return parts
+    .map((part: any) => (typeof part?.text === "string" ? part.text : ""))
+    .join("")
+    .trim();
 }
 
 Deno.serve(async (req: Request) => {
@@ -128,8 +122,7 @@ Deno.serve(async (req: Request) => {
     return json({ error: "staff_access_required" }, 403, origin);
   }
 
-  const allowedRoles = personaRoles[persona];
-  if (!allowedRoles.includes(member.role)) {
+  if (!personaRoles[persona].includes(member.role)) {
     return json({ error: "insufficient_role" }, 403, origin);
   }
 
@@ -191,7 +184,9 @@ Deno.serve(async (req: Request) => {
     },
     registrations: {
       total: registrations.length,
-      pending: registrations.filter((x: any) => ["submitted", "under_review"].includes(x.status)).length,
+      pending: registrations.filter((x: any) =>
+        ["submitted", "under_review"].includes(x.status)
+      ).length,
       needsInfo: registrations.filter((x: any) => x.status === "needs_info").length,
     },
     documents: {
@@ -199,63 +194,65 @@ Deno.serve(async (req: Request) => {
     },
   };
 
-  const openAiKey = Deno.env.get("OPENAI_API_KEY");
-  if (!openAiKey) {
+  const geminiKey = Deno.env.get("GEMINI_API_KEY");
+  if (!geminiKey) {
     return json(
       {
         error: "ai_provider_not_configured",
         setupRequired: true,
-        provider: "openai",
+        provider: "gemini",
       },
       503,
       origin,
     );
   }
 
-  const model = Deno.env.get("OPENAI_MODEL") || "gpt-5.6-luna";
+  const model = Deno.env.get("GEMINI_MODEL") || "gemini-2.5-flash";
 
   const systemPrompt = lang === "ar"
-    ? `أنت مساعد إداري لمنصة أكاديمية. مهمتك تحليل بيانات تشغيلية ومالية وإدارية فقط.
-اعتمد حصراً على الملخص الرقمي المرسل مع السؤال. لا تخترع أرقاماً أو حقائق غير موجودة.
-لا تطلب أو تعرض بيانات شخصية حساسة، ولا تحاول كشف أسماء أو هويات أو ملاحظات خاصة.
-لا تقدم إرشادات عن الأسلحة أو استخدامها أو التدريب عليها أو أي نشاط خطير. إذا طُلب ذلك، وضّح أن هذا المساعد مخصص للإدارة فقط.
-اجعل الرد عملياً ومختصراً وبالعربية، مع نقاط واضحة عند الحاجة.`
+    ? `أنت مساعد إداري لمنصة أكاديمية. حلل البيانات التشغيلية والمالية والإدارية فقط.
+اعتمد حصراً على الملخص الرقمي المرسل ولا تخترع أرقاماً.
+لا تطلب أو تعرض بيانات شخصية حساسة.
+لا تقدم إرشادات عن الأسلحة أو استخدامها أو التدريب عليها أو أي نشاط خطير.
+اجعل الرد عملياً ومختصراً وبالعربية.`
     : `You are an administrative assistant for an academy platform. Only provide operational, financial, document, and communications analysis.
-Use only the aggregated snapshot supplied with the question. Do not invent figures.
-Do not request or expose sensitive personal information.
-Do not provide guidance about weapons, weapon use, weapon training, or dangerous activities. If asked, state that this assistant is limited to administration.
+Use only the aggregated snapshot supplied; do not invent figures or expose sensitive personal data.
+Do not provide guidance about weapons, weapon use, weapon training, or dangerous activities.
 Keep responses concise and actionable.`;
 
-  const userPrompt = JSON.stringify({
-    persona,
-    question,
-    snapshot,
-  });
-
-  const response = await fetch("https://api.openai.com/v1/responses", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${openAiKey}`,
-      "Content-Type": "application/json",
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+    {
+      method: "POST",
+      headers: {
+        "x-goog-api-key": geminiKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: systemPrompt }] },
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: JSON.stringify({ persona, question, snapshot }) }],
+          },
+        ],
+        generationConfig: { maxOutputTokens: 700 },
+      }),
     },
-    body: JSON.stringify({
-      model,
-      input: [
-        { role: "system", content: [{ type: "input_text", text: systemPrompt }] },
-        { role: "user", content: [{ type: "input_text", text: userPrompt }] },
-      ],
-      max_output_tokens: 700,
-    }),
-  });
+  );
 
   const payload = await response.json();
 
   if (!response.ok) {
-    console.error("OpenAI request failed", response.status, payload?.error?.type || "unknown");
+    console.error(
+      "Gemini request failed",
+      response.status,
+      payload?.error?.status || "unknown",
+    );
     return json({ error: "ai_provider_error" }, 502, origin);
   }
 
-  const reply = extractResponseText(payload);
+  const reply = extractGeminiText(payload);
   if (!reply) {
     return json({ error: "empty_ai_response" }, 502, origin);
   }
@@ -263,7 +260,7 @@ Keep responses concise and actionable.`;
   return json(
     {
       reply,
-      provider: "openai",
+      provider: "gemini",
       model,
       generatedAt: new Date().toISOString(),
     },
