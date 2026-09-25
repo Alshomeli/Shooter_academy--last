@@ -9,6 +9,7 @@ import { PageHeader } from '@/components/ui';
 import { tr } from '@/lib/i18n';
 import { fetchAllPlayerFiles, type UploadedFile } from '@/lib/uploads';
 import type { AIContext } from '@/views/ai-context';
+import { askManagementAI, type ManagementAIPersona } from '@/lib/ai-assistant';
 import {
   generateTrainingPlan, generateNutritionAdvice, generateCommunicationTemplate,
   generatePlayerComparison, generateTalentScouting, generatePositionEvaluation,
@@ -86,6 +87,8 @@ const PERSONA_COLORS: Record<Persona['color'], {
   orange: { ring: 'ring-orange-500/30', bg: 'bg-orange-50 dark:bg-orange-900/20', text: 'text-orange-600 dark:text-orange-400', iconBg: 'from-orange-500 to-orange-600', border: 'border-slate-200 dark:border-slate-800', activeBorder: 'border-orange-500', activeShadow: 'shadow-orange-200/50' },
   rose: { ring: 'ring-rose-500/30', bg: 'bg-rose-50 dark:bg-rose-900/20', text: 'text-rose-600 dark:text-rose-400', iconBg: 'from-rose-500 to-rose-600', border: 'border-slate-200 dark:border-slate-800', activeBorder: 'border-rose-500', activeShadow: 'shadow-rose-200/50' },
 };
+
+const LIVE_AI_PERSONAS = new Set<PersonaId>(['financial', 'operations', 'documents', 'communication']);
 
 const SUGGESTIONS: Record<PersonaId, string[]> = {
   technical: ['حلل أداء الفرق', 'توصيات لتحسين الحضور', 'تقرير شامل'],
@@ -297,18 +300,37 @@ export function AICenter({ players, subscriptions, transactions, staff, teams, m
   const ctx = useMemo(() => buildContext(players, subscriptions, transactions, staff, teams, matches, trainings, tournaments, parents, attendance, documents, t.currency),
     [players, subscriptions, transactions, staff, teams, matches, trainings, tournaments, parents, attendance, documents, t.currency]);
 
-  const handleSend = (text?: string) => {
+  const handleSend = async (text?: string) => {
     const content = (text ?? input).trim();
     if (!content || isTyping) return;
+
     setMessages((prev) => [...prev, { id: uid(), role: 'user', text: content }]);
     setInput('');
     setIsTyping(true);
-    const reply = generateResponse(activePersona, content, ctx, teams, players);
-    const delay = 600 + Math.min(reply.length * 4, 900);
-    window.setTimeout(() => {
+
+    try {
+      if (LIVE_AI_PERSONAS.has(activePersona)) {
+        const result = await askManagementAI(
+          activePersona as ManagementAIPersona,
+          content,
+          lang,
+        );
+        setMessages((prev) => [...prev, { id: uid(), role: 'ai', text: result.reply }]);
+        return;
+      }
+
+      const reply = generateResponse(activePersona, content, ctx, teams, players);
       setMessages((prev) => [...prev, { id: uid(), role: 'ai', text: reply }]);
+    } catch (error) {
+      console.error('AI assistant request failed', error);
+      const fallback = generateResponse(activePersona, content, ctx, teams, players);
+      const notice = lang === 'ar'
+        ? 'تعذر الاتصال بخدمة الذكاء الاصطناعي الآن. هذه إجابة محلية من بيانات النظام:\n\n'
+        : 'The AI service is unavailable right now. Here is a local response from system data:\n\n';
+      setMessages((prev) => [...prev, { id: uid(), role: 'ai', text: notice + fallback }]);
+    } finally {
       setIsTyping(false);
-    }, delay);
+    }
   };
 
   const handleClear = () => { setMessages([{ id: uid(), role: 'ai', text: persona.welcome }]); setInput(''); };
