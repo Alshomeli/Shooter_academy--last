@@ -187,18 +187,18 @@ export function Evaluations({ evaluations, players, teams, staff, activeRole, la
           {error && <div className="p-3 rounded-xl bg-red-50 dark:bg-red-950/30 text-red-600 text-xs font-bold">{error}</div>}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <FormField label={t.selectPlayer} required>
+            <FormField label={`${t.selectPlayer} *`}>
               <select value={form.playerId} onChange={e => setForm(prev => ({ ...prev, playerId: e.target.value }))}
-                className={inputCls} disabled={!!form.id}>
+                className={inputCls} disabled={!!form.id} required>
                 <option value="">{t.selectPlayer}</option>
                 {activePlayers.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
             </FormField>
-            <FormField label={t.evaluationDate} required>
+            <FormField label={`${t.evaluationDate} *`}>
               <input type="date" value={form.evaluationDate} onChange={e => setForm(prev => ({ ...prev, evaluationDate: e.target.value }))}
-                className={inputCls} />
+                className={inputCls} required />
             </FormField>
-            <FormField label={t.periodType} required>
+            <FormField label={`${t.periodType} *`}>
               <select value={form.periodType} onChange={e => setForm(prev => ({ ...prev, periodType: e.target.value }))} className={inputCls}>
                 {PERIOD_OPTS.map(p => (
                   <option key={p} value={p}>{p === 'monthly' ? t.monthly : p === 'quarterly' ? t.quarterly : t.customPeriod}</option>
