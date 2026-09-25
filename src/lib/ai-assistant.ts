@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase';
 
-export type ManagementAIPersona = 'financial' | 'operations' | 'documents' | 'communication';
+export type ManagementAIPersona = 'financial' | 'operations' | 'documents' | 'communication' | 'players' | 'training' | 'matches';
 
 interface ManagementAIResponse {
   reply: string;
