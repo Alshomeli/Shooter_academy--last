@@ -1,5 +1,5 @@
 import { useState, useMemo, type FormEvent } from 'react';
-import { Plus, Search, Save, Send, X, Star, ChevronLeft, Filter } from 'lucide-react';
+import { Plus, Search, Save, Send, X, Star, ChevronLeft } from 'lucide-react';
 import type { Player, Team, Staff, PlayerEvaluation, Role, Lang } from '@/types';
 import { tr } from '@/lib/i18n';
 import { db } from '@/lib/store';
@@ -50,7 +50,7 @@ function EvalCard({ ev, player, coach, lang, onEdit }: {
           {ev.overallScore != null && (
             <span className="text-lg font-black text-emerald-600">{ev.overallScore.toFixed(1)}<span className="text-xs text-slate-400">/5</span></span>
           )}
-          <Badge variant={ev.status === 'published' ? 'emerald' : 'amber'}>{ev.status === 'published' ? t.publishedStatus : t.draft}</Badge>
+          <Badge color={ev.status === 'published' ? 'emerald' : 'amber'}>{ev.status === 'published' ? t.publishedStatus : t.draft}</Badge>
         </div>
       </div>
       <div className="space-y-1.5">
@@ -187,18 +187,18 @@ export function Evaluations({ evaluations, players, teams, staff, activeRole, la
           {error && <div className="p-3 rounded-xl bg-red-50 dark:bg-red-950/30 text-red-600 text-xs font-bold">{error}</div>}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <FormField label={t.selectPlayer} required>
+            <FormField label={`${t.selectPlayer} *`}>
               <select value={form.playerId} onChange={e => setForm(prev => ({ ...prev, playerId: e.target.value }))}
-                className={inputCls} disabled={!!form.id}>
+                className={inputCls} disabled={!!form.id} required>
                 <option value="">{t.selectPlayer}</option>
                 {activePlayers.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
             </FormField>
-            <FormField label={t.evaluationDate} required>
+            <FormField label={`${t.evaluationDate} *`}>
               <input type="date" value={form.evaluationDate} onChange={e => setForm(prev => ({ ...prev, evaluationDate: e.target.value }))}
-                className={inputCls} />
+                className={inputCls} required />
             </FormField>
-            <FormField label={t.periodType} required>
+            <FormField label={`${t.periodType} *`}>
               <select value={form.periodType} onChange={e => setForm(prev => ({ ...prev, periodType: e.target.value }))} className={inputCls}>
                 {PERIOD_OPTS.map(p => (
                   <option key={p} value={p}>{p === 'monthly' ? t.monthly : p === 'quarterly' ? t.quarterly : t.customPeriod}</option>
@@ -288,8 +288,14 @@ export function Evaluations({ evaluations, players, teams, staff, activeRole, la
 
   return (
     <div className="space-y-6">
-      <PageHeader title={t.evaluationsManagement} icon={Star}
-        action={canEdit ? { label: t.addEvaluation, icon: Plus, onClick: openNew } : undefined} />
+      <PageHeader title={t.evaluationsManagement}>
+        {canEdit && (
+          <button type="button" onClick={openNew}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-500 transition cursor-pointer">
+            <Plus className="h-4 w-4" /> {t.addEvaluation}
+          </button>
+        )}
+      </PageHeader>
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3 items-center">
@@ -322,12 +328,12 @@ export function Evaluations({ evaluations, players, teams, staff, activeRole, la
       </div>
 
       {filtered.length === 0 ? (
-        <EmptyState icon={Star} title={t.noEvaluations} description={t.noEvaluationsHint} />
+        <EmptyState icon={<Star className="h-8 w-8" />} title={t.noEvaluations} subtitle={t.noEvaluationsHint} />
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {filtered.map(ev => (
             <EvalCard key={ev.id} ev={ev} player={players.find(p => p.id === ev.playerId)}
-              coach={staff.find(s => s.authUserId === ev.coachId)} lang={lang}
+              coach={staff.find(s => s.userId === ev.coachId)} lang={lang}
               onEdit={canEdit ? () => openEdit(ev) : undefined} />
           ))}
         </div>

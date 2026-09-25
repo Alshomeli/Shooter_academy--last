@@ -177,7 +177,7 @@ export function AuditLogs({ auditLogs, loginLogs, activeRole, lang }: AuditLogsP
               <thead>
                 <tr className="bg-slate-50 dark:bg-slate-800/50">
                   <th className="text-right px-4 py-3 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    {t.timestamp}
+                    {isAr ? 'الوقت' : 'Timestamp'}
                   </th>
                   <th className="text-right px-4 py-3 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     {t.userName}
