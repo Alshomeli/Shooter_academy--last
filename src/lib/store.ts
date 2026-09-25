@@ -72,7 +72,8 @@ async function fetchStaffRows(): Promise<Record<string, unknown>[]> {
   const { data, error } = await supabase.from('staff').select(TABLE_PUBLIC_COLUMNS.staff);
   if (error) throw error;
   const rows = (data || []) as unknown as Record<string, unknown>[];
-  const { data: privateRows } = await supabase.rpc('get_staff_private');
+  const { data: privateRows, error: privateError } = await supabase.rpc('get_staff_private');
+  if (privateError) throw privateError;
   const byId = new Map<string, { salary?: number; national_id?: string | null }>();
   for (const p of (privateRows || []) as { id: string; salary: number; national_id: string | null }[]) {
     byId.set(p.id, { salary: Number(p.salary) || 0, national_id: p.national_id });
@@ -88,7 +89,8 @@ async function fetchParentRows(): Promise<Parent[]> {
   const { data, error } = await supabase.from('parents').select(TABLE_PUBLIC_COLUMNS.parents);
   if (error) throw error;
   const rows = (data || []) as unknown as Record<string, unknown>[];
-  const { data: privateRows } = await supabase.rpc('get_parent_private');
+  const { data: privateRows, error: privateError } = await supabase.rpc('get_parent_private');
+  if (privateError) throw privateError;
   const byId = new Map<string, { national_id?: string | null }>();
   for (const p of (privateRows || []) as { id: string; national_id: string | null }[]) {
     byId.set(p.id, { national_id: p.national_id });
@@ -103,7 +105,8 @@ async function fetchPlayerRows(): Promise<Player[]> {
   const { data, error } = await supabase.from('players').select(TABLE_PUBLIC_COLUMNS.players);
   if (error) throw error;
   const rows = (data || []) as unknown as Record<string, unknown>[];
-  const { data: privateRows } = await supabase.rpc('get_player_private');
+  const { data: privateRows, error: privateError } = await supabase.rpc('get_player_private');
+  if (privateError) throw privateError;
   const byId = new Map<string, { notes?: string | null }>();
   for (const p of (privateRows || []) as { id: string; notes: string | null }[]) {
     byId.set(p.id, { notes: p.notes });
