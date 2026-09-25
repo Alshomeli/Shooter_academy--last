@@ -88,7 +88,15 @@ const PERSONA_COLORS: Record<Persona['color'], {
   rose: { ring: 'ring-rose-500/30', bg: 'bg-rose-50 dark:bg-rose-900/20', text: 'text-rose-600 dark:text-rose-400', iconBg: 'from-rose-500 to-rose-600', border: 'border-slate-200 dark:border-slate-800', activeBorder: 'border-rose-500', activeShadow: 'shadow-rose-200/50' },
 };
 
-const LIVE_AI_PERSONAS = new Set<PersonaId>(['financial', 'operations', 'documents', 'communication']);
+const LIVE_AI_PERSONAS = new Set<PersonaId>([
+  'financial',
+  'operations',
+  'documents',
+  'communication',
+  'players',
+  'training',
+  'matches',
+]);
 
 const SUGGESTIONS: Record<PersonaId, string[]> = {
   technical: ['حلل أداء الفرق', 'توصيات لتحسين الحضور', 'تقرير شامل'],
@@ -499,8 +507,8 @@ function AIInsights({ players, subscriptions, transactions, matches, trainings, 
         <div><h3 className="text-sm font-black text-slate-900 dark:text-white">رؤى ذكية فورية</h3><p className="text-[11px] text-slate-400">تحليل آلي لبيانات الأكاديمية</p></div>
       </div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-        <InsightCard icon={TrendingUp} label="صافي الربح" value={`${insights.net >= 0 ? '+' : ''}${insights.net.toLocaleString()}`} unit={currency} color={insights.net >= 0 ? 'emerald' : 'red'} />
-        <InsightCard icon={Target} label="نسبة التحصيل" value={`${insights.collectionRate}%`} color={insights.collectionRate >= 70 ? 'emerald' : 'amber'} />
+        <InsightCard icon={TrendingUp} label="صافي الحركة المالية" value={`${insights.net >= 0 ? '+' : ''}${insights.net.toLocaleString()}`} unit={currency} color={insights.net >= 0 ? 'emerald' : 'red'} />
+        <InsightCard icon={Target} label="نسبة الاشتراكات المدفوعة" value={`${insights.collectionRate}%`} color={insights.collectionRate >= 70 ? 'emerald' : 'amber'} />
         <InsightCard icon={Trophy} label="معدل الفوز" value={`${insights.winRate}%`} color={insights.winRate >= 50 ? 'emerald' : 'amber'} />
         <InsightCard icon={FileText} label="تغطية المستندات" value={`${insights.docCoverage}%`} color={insights.docCoverage >= 70 ? 'emerald' : 'blue'} />
       </div>
