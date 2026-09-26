@@ -48,3 +48,31 @@ html {
 @media print {
   .no-print { display: none !important; }
 }
+
+
+@media print {
+  @page { size: A4; margin: 12mm; }
+
+  body.receipt-printing * {
+    visibility: hidden !important;
+  }
+
+  body.receipt-printing .receipt-print-root,
+  body.receipt-printing .receipt-print-root * {
+    visibility: visible !important;
+  }
+
+  body.receipt-printing .receipt-print-root {
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+
+  body.receipt-printing .receipt-no-print {
+    display: none !important;
+  }
+}
