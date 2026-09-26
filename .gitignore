@@ -24,3 +24,6 @@ dist-ssr
 
 # Supabase CLI cache
 supabase/.temp/
+
+# Vite generated timestamp configs
+vite.config.ts.timestamp-*.mjs
