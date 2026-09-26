@@ -3,6 +3,7 @@ import {
   Users, Plus, Search, Phone, Mail, Edit2, Trash2, Eye,
   FileText, Star, TrendingUp,
 } from 'lucide-react';
+import { evaluationFrameworkScores } from '@/lib/evaluation-scores';
 import type { Player, Parent, Team, Lang, Role, PlayerEvaluation } from '@/types';
 import { Badge, Modal, ConfirmDialog, PageHeader, EmptyState, FormField, FormError, SaveButton, inputCls } from '@/components/ui';
 import { tr, positionLabel } from '@/lib/i18n';
@@ -382,11 +383,10 @@ function PlayerDetail({ player, team, evaluations, lang }: { player: Player; tea
       firstDate: first.evaluationDate,
       latestDate: latest.evaluationDate,
       overall: delta(latest.overallScore, first.overallScore),
-      technical: delta(latest.technicalScore, first.technicalScore),
-      tactical: delta(latest.tacticalScore, first.tacticalScore),
-      physical: delta(latest.physicalScore, first.physicalScore),
-      mental: delta(latest.mentalScore, first.mentalScore),
-      discipline: delta(latest.disciplineScore, first.disciplineScore),
+      technical: delta(evaluationFrameworkScores(latest).technical, evaluationFrameworkScores(first).technical),
+      tactical: delta(evaluationFrameworkScores(latest).tactical, evaluationFrameworkScores(first).tactical),
+      physical: delta(evaluationFrameworkScores(latest).physical, evaluationFrameworkScores(first).physical),
+      psychosocial: delta(evaluationFrameworkScores(latest).psychosocial, evaluationFrameworkScores(first).psychosocial),
     };
   }, [playerEvals]);
   return (
@@ -451,8 +451,7 @@ function PlayerDetail({ player, team, evaluations, lang }: { player: Player; tea
                 { label: isAr ? 'فني' : 'Technical', value: progress.technical },
                 { label: isAr ? 'تكتيكي' : 'Tactical', value: progress.tactical },
                 { label: isAr ? 'بدني' : 'Physical', value: progress.physical },
-                { label: isAr ? 'ذهني' : 'Mental', value: progress.mental },
-                { label: isAr ? 'انضباط' : 'Discipline', value: progress.discipline },
+                { label: isAr ? 'نفسي واجتماعي' : 'Psychosocial', value: progress.psychosocial },
               ].map(item => (
                 <div key={item.label} className="p-2 rounded-lg bg-white/80 dark:bg-slate-900/70">
                   <p className="text-[10px] font-bold text-slate-400">{item.label}</p>
