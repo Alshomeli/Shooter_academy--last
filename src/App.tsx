@@ -126,6 +126,8 @@ export default function App() {
   const dataRef = useRef(data);
   dataRef.current = data;
   const loadSequence = useRef(0);
+  const loadInFlight = useRef<Promise<void> | null>(null);
+  const refreshQueued = useRef(false);
   const userRef = useRef(currentUser?.authUserId);
   userRef.current = currentUser?.authUserId;
 
@@ -158,9 +160,14 @@ export default function App() {
 
   const loadAllData = useCallback(async () => {
     if (!currentUser) return;
+    if (loadInFlight.current) {
+      refreshQueued.current = true;
+      return loadInFlight.current;
+    }
     const request = ++loadSequence.current;
     const userId = currentUser.authUserId;
     const stillCurrent = () => request === loadSequence.current && userRef.current === userId;
+    const run = (async () => {
     try {
       if (!dataRef.current.settings && !currentUser?.registrationOnly) setLoading(true);
       setLoadError(null);
@@ -192,7 +199,15 @@ export default function App() {
       if (stillCurrent()) setLoadError('تعذر تحميل البيانات. يرجى المحاولة مرة أخرى. / Could not load your data. Please try again.');
     } finally {
       if (stillCurrent()) setLoading(false);
+      loadInFlight.current = null;
+      if (refreshQueued.current && userRef.current === userId) {
+        refreshQueued.current = false;
+        window.setTimeout(() => { void loadAllData(); }, 0);
+      }
     }
+    })();
+    loadInFlight.current = run;
+    return run;
   }, [currentUser]);
 
   useEffect(() => {
@@ -225,7 +240,7 @@ export default function App() {
     let debounce: ReturnType<typeof setTimeout> | null = null;
     const handleChange = () => {
       if (debounce) clearTimeout(debounce);
-      debounce = setTimeout(() => loadAllData(), 300);
+      debounce = setTimeout(() => void loadAllData(), 500);
     };
     const channels = tables.map((t) => db.subscribe(t, handleChange));
     const refreshVisible = () => { if (document.visibilityState === 'visible') void loadAllData(); };
