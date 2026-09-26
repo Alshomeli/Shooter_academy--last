@@ -384,7 +384,7 @@ export default function App() {
       case 'mobile':
         return <MobileView players={data.players} teams={data.teams} staff={data.staff} subscriptions={data.subscriptions} transactions={data.transactions} trainings={data.trainings} matches={data.matches} activeRole={activeRole} lang={lang} />;
       case 'ai-center':
-        return <AICenter players={data.players} subscriptions={data.subscriptions} transactions={data.transactions} staff={data.staff} teams={data.teams} matches={data.matches} trainings={data.trainings} tournaments={data.tournaments} parents={data.parents} attendance={data.attendance} evaluations={data.evaluations} activeRole={activeRole} lang={lang} />;
+        return <AICenter players={data.players} subscriptions={data.subscriptions} transactions={data.transactions} staff={data.staff} teams={data.teams} matches={data.matches} trainings={data.trainings} tournaments={data.tournaments} parents={data.parents} attendance={data.attendance} evaluations={data.evaluations} activeRole={activeRole} lang={lang} onRefresh={loadAllData} />;
       case 'messages':
         return <Messages players={data.players} teams={data.teams} subscriptions={data.subscriptions} activeRole={activeRole} lang={lang} />;
       case 'settings':
