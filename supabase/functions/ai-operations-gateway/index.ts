@@ -2,7 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 
 type Operation = "approve_registration" | "review_registration" | "record_subscription_payment" | "record_attendance" | "publish_player_evaluation" | "create_subscription";
-type Mode = "prepare" | "execute" | "cancel" | "history";
+type Mode = "prepare" | "execute" | "cancel" | "history" | "snapshot";
 
 const OP_ROLES: Record<Operation, string[]> = {
   approve_registration: ["manager"],
@@ -113,7 +113,33 @@ Deno.serve(async (req) => {
     .eq("status", "executing")
     .lt("execution_started_at", staleExecutionIso);
 
-  const mode: Mode = body.mode === "execute" ? "execute" : body.mode === "cancel" ? "cancel" : body.mode === "history" ? "history" : "prepare";
+  const mode: Mode = body.mode === "execute" ? "execute" : body.mode === "cancel" ? "cancel" : body.mode === "history" ? "history" : body.mode === "snapshot" ? "snapshot" : "prepare";
+
+  if (mode === "snapshot") {
+    const [unpaidRes, playersRes, draftEvalRes, registrationsRes] = await Promise.all([
+      userClient.from("subscriptions").select("id", { count: "exact", head: true }).eq("status", "unpaid"),
+      userClient.from("players").select("id", { count: "exact", head: true }).eq("status", "active"),
+      userClient.from("player_evaluations").select("id", { count: "exact", head: true }).eq("status", "draft"),
+      userClient.from("registration_applications").select("id", { count: "exact", head: true }).in("status", ["pending", "under_review", "needs_info"]),
+    ]);
+
+    const sourceError = [unpaidRes.error, playersRes.error, draftEvalRes.error, registrationsRes.error].find(Boolean);
+    if (sourceError) {
+      console.error("AI operations snapshot failed", sourceError.code);
+      return reply(origin, 500, { error: "snapshot_failed" });
+    }
+
+    return reply(origin, 200, {
+      generatedAt: nowIso,
+      role: staff.role,
+      snapshot: {
+        unpaidSubscriptions: unpaidRes.count || 0,
+        activePlayers: playersRes.count || 0,
+        draftEvaluations: draftEvalRes.count || 0,
+        applicationsNeedingAction: registrationsRes.count || 0,
+      },
+    });
+  }
 
   if (mode === "history") {
     const { data: actions, error: historyError } = await serverClient
