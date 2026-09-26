@@ -161,6 +161,11 @@ export interface PlayerEvaluation {
   developmentAreas: string;
   coachNotes: string;
   coachRecommendation: string;
+  detailedScores: Record<string, number | null>;
+  developmentPriorities: string[];
+  trainingAction: string;
+  reassessmentDate: string | null;
+  finalRecommendation: string;
   status: 'draft' | 'published';
   publishedAt: string | null;
   createdAt: string;
