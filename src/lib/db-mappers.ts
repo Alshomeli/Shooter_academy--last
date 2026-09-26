@@ -63,6 +63,8 @@ interface EvaluationRow {
   discipline_score: number | null; overall_score: number | null;
   strengths: string | null; development_areas: string | null;
   coach_notes: string | null; coach_recommendation: string | null;
+  detailed_scores: Record<string, number | null> | null; development_priorities: string[] | null;
+  training_action: string | null; reassessment_date: string | null; final_recommendation: string | null;
   status: string; published_at: string | null;
   created_at: string; updated_at: string;
 }
@@ -158,6 +160,9 @@ export const mapEvaluation = (r: EvaluationRow): PlayerEvaluation => ({
   disciplineScore: r.discipline_score, overallScore: r.overall_score,
   strengths: r.strengths ?? '', developmentAreas: r.development_areas ?? '',
   coachNotes: r.coach_notes ?? '', coachRecommendation: r.coach_recommendation ?? '',
+  detailedScores: r.detailed_scores ?? {}, developmentPriorities: r.development_priorities ?? [],
+  trainingAction: r.training_action ?? '', reassessmentDate: r.reassessment_date,
+  finalRecommendation: r.final_recommendation ?? '',
   status: r.status as PlayerEvaluation['status'],
   publishedAt: r.published_at, createdAt: r.created_at, updatedAt: r.updated_at,
 });
