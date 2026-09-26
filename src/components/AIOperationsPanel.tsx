@@ -113,11 +113,6 @@ export function AIOperationsPanel({ activeRole, lang, subscriptions, players, ev
     void loadSnapshot();
   }, [loadApps, loadHistory, loadSnapshot]);
 
-  const resetPrepared = () => {
-    setPrepared(null);
-    setError('');
-  };
-
   const preparePayment = async () => {
     if (!selectedSubscriptionId || busy) return;
     setBusy(true); setError(''); setMessage('');

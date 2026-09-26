@@ -13,7 +13,7 @@ import { fetchAllPlayerFiles, type UploadedFile } from '@/lib/uploads';
 import type { AIContext } from '@/views/ai-context';
 import { askManagementAI, type ManagementAIPersona } from '@/lib/ai-assistant';
 import {
-  generateTrainingPlan, generateNutritionAdvice, generateCommunicationTemplate,
+  generateNutritionAdvice, generateCommunicationTemplate,
   generatePositionEvaluation,
   generateScheduleConflicts, generateMatchPrep, generateFullReport, fmt,
 } from '@/lib/ai-generators';
