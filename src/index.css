@@ -46,5 +46,37 @@ html {
 }
 
 @media print {
-  .no-print { display: none !important; }
+  @page { size: A4; margin: 12mm; }
+
+  body * {
+    visibility: hidden !important;
+  }
+
+  .receipt-print-root,
+  .receipt-print-root * {
+    visibility: visible !important;
+  }
+
+  .receipt-print-root {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-height: 100vh !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .receipt-modal-shell {
+    position: static !important;
+    padding: 0 !important;
+    background: white !important;
+    overflow: visible !important;
+  }
+
+  .no-print,
+  .receipt-actions {
+    display: none !important;
+  }
 }
