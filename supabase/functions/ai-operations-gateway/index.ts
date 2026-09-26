@@ -200,7 +200,15 @@ Deno.serve(async (req) => {
 
   if (mode === "cancel") {
     if (action.status !== "pending") return reply(origin, 409, { error: "action_not_pending" });
-    await serverClient.from("ai_action_requests").update({ status: "cancelled" }).eq("id", action.id);
+    const { data: cancelled, error: cancelError } = await serverClient
+      .from("ai_action_requests")
+      .update({ status: "cancelled" })
+      .eq("id", action.id)
+      .eq("status", "pending")
+      .select("id")
+      .maybeSingle();
+    if (cancelError) return reply(origin, 500, { error: "cancel_failed" });
+    if (!cancelled) return reply(origin, 409, { error: "action_not_pending" });
     return reply(origin, 200, { requestId: action.id, status: "cancelled" });
   }
 
@@ -210,6 +218,19 @@ Deno.serve(async (req) => {
     await serverClient.from("ai_action_requests").update({ status: "expired" }).eq("id", action.id);
     return reply(origin, 410, { error: "action_expired" });
   }
+
+  const { data: claimed, error: claimError } = await serverClient
+    .from("ai_action_requests")
+    .update({ status: "executing" })
+    .eq("id", action.id)
+    .eq("status", "pending")
+    .select("id")
+    .maybeSingle();
+  if (claimError) {
+    console.error("AI action claim failed", claimError.code);
+    return reply(origin, 500, { error: "claim_failed" });
+  }
+  if (!claimed) return reply(origin, 409, { error: "action_not_pending" });
 
   const op = action.operation as Operation;
   const p = action.payload as Record<string, unknown>;
@@ -251,7 +272,8 @@ Deno.serve(async (req) => {
     await serverClient
       .from("ai_action_requests")
       .update({ status: "executed", result: sanitizedResult, executed_at: new Date().toISOString() })
-      .eq("id", action.id);
+      .eq("id", action.id)
+      .eq("status", "executing");
 
     await userClient.rpc("record_audit_log", {
       p_action: "AI_ACTION_EXECUTED",
@@ -270,7 +292,8 @@ Deno.serve(async (req) => {
     await serverClient
       .from("ai_action_requests")
       .update({ status: "failed", error_code: code })
-      .eq("id", action.id);
+      .eq("id", action.id)
+      .eq("status", "executing");
     return reply(origin, 409, { error: "operation_failed", code });
   }
 });
