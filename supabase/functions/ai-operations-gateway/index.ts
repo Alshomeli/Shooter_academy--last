@@ -84,9 +84,40 @@ Deno.serve(async (req) => {
     .maybeSingle();
   if (staffError || !staff || staff.status !== "active") return reply(origin, 403, { error: "active_staff_required" });
 
+  const nowIso = new Date().toISOString();
+  const staleExecutionIso = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+
+  await serverClient
+    .from("ai_action_requests")
+    .update({ status: "expired" })
+    .eq("user_id", userData.user.id)
+    .eq("status", "pending")
+    .lt("expires_at", nowIso);
+
+  await serverClient
+    .from("ai_action_requests")
+    .update({ status: "failed", error_code: "execution_timeout", execution_started_at: null })
+    .eq("user_id", userData.user.id)
+    .eq("status", "executing")
+    .lt("execution_started_at", staleExecutionIso);
+
   const mode: Mode = body.mode === "execute" ? "execute" : body.mode === "cancel" ? "cancel" : "prepare";
 
   if (mode === "prepare") {
+    const oneMinuteAgo = new Date(Date.now() - 60_000).toISOString();
+    const { count: recentCount, error: rateError } = await serverClient
+      .from("ai_action_requests")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userData.user.id)
+      .gte("created_at", oneMinuteAgo);
+    if (rateError) {
+      console.error("AI action rate check failed", rateError.code);
+      return reply(origin, 500, { error: "rate_check_failed" });
+    }
+    if ((recentCount || 0) >= 10) {
+      return reply(origin, 429, { error: "too_many_requests" });
+    }
+
     const operation = body.operation;
     if (!operation || !OP_ROLES[operation]) return reply(origin, 400, { error: "unsupported_operation" });
     if (!OP_ROLES[operation].includes(staff.role)) return reply(origin, 403, { error: "insufficient_role" });
@@ -221,7 +252,7 @@ Deno.serve(async (req) => {
 
   const { data: claimed, error: claimError } = await serverClient
     .from("ai_action_requests")
-    .update({ status: "executing" })
+    .update({ status: "executing", execution_started_at: new Date().toISOString(), error_code: null })
     .eq("id", action.id)
     .eq("status", "pending")
     .select("id")
@@ -271,14 +302,15 @@ Deno.serve(async (req) => {
 
     await serverClient
       .from("ai_action_requests")
-      .update({ status: "executed", result: sanitizedResult, executed_at: new Date().toISOString() })
+      .update({ status: "executed", result: sanitizedResult, executed_at: new Date().toISOString(), execution_started_at: null })
       .eq("id", action.id)
       .eq("status", "executing");
 
-    await userClient.rpc("record_audit_log", {
+    const { error: auditError } = await userClient.rpc("record_audit_log", {
       p_action: "AI_ACTION_EXECUTED",
       p_details: JSON.stringify({ requestId: action.id, operation: op }),
-    }).catch(() => undefined);
+    });
+    if (auditError) console.error("AI action audit log failed", auditError.code);
 
     return reply(origin, 200, {
       requestId: action.id,
@@ -291,7 +323,7 @@ Deno.serve(async (req) => {
     console.error("AI action execution failed", op, code);
     await serverClient
       .from("ai_action_requests")
-      .update({ status: "failed", error_code: code })
+      .update({ status: "failed", error_code: code, execution_started_at: null })
       .eq("id", action.id)
       .eq("status", "executing");
     return reply(origin, 409, { error: "operation_failed", code });
