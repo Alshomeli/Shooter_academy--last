@@ -13,7 +13,7 @@ import type { AIContext } from '@/views/ai-context';
 import { askManagementAI, type ManagementAIPersona } from '@/lib/ai-assistant';
 import {
   generateTrainingPlan, generateNutritionAdvice, generateCommunicationTemplate,
-  generatePlayerComparison, generateTalentScouting, generatePositionEvaluation,
+  generatePositionEvaluation,
   generateScheduleConflicts, generateMatchPrep, generateFullReport, fmt,
 } from '@/lib/ai-generators';
 
@@ -69,8 +69,8 @@ const PERSONAS: Persona[] = [
     welcome: 'مرحبًا! أنا مخطط التدريبات. أستطيع عرض الجلسات التدريبية المسجلة ومواعيدها ومددها وأهدافها من بيانات النظام.' },
   { id: 'nutrition', name: 'مستشار التغذية', tagline: 'خطط غذائية للاعبين والفرق', icon: Apple, color: 'rose',
     welcome: 'مرحبًا! أنا مستشار التغذية الرياضية. أستطيع وضع خطط غذائية حسب العمر والفئة، نصائح للترطيب، ونظام غذائي لزيادة الكتلة العضلية.' },
-  { id: 'scout', name: 'كشاف المواهب', tagline: 'اكتشاف وتقييم اللاعبين', icon: Search, color: 'cyan',
-    welcome: 'مرحبًا! أنا كشاف المواهب الذكي. أستطيع تحليل اللاعبين حسب المركز والعمر، اكتشاف المواهب الواعدة، ومقارنة اللاعبين.' },
+  { id: 'scout', name: 'محلل التطور', tagline: 'قراءة التقييمات وخطط التطوير', icon: Search, color: 'cyan',
+    welcome: 'مرحبًا! أنا محلل التطور. أعتمد على التقييمات المنشورة وخطط التطوير لمتابعة التقدم، ولا أرتب اللاعبين أو أصف لاعبًا بأنه الأفضل.' },
   { id: 'operations', name: 'مدير العمليات', tagline: 'إدارة الجداول والموارد', icon: ClipboardList, color: 'orange',
     welcome: 'مرحبًا! أنا مدير العمليات. أستطيع تحليل استخدام الملاعب، توزيع الجداول التدريبية، وتحديد التعارضات في المواعيد.' },
   { id: 'communication', name: 'مسؤول التواصل', tagline: 'قوالب رسائل لأولياء الأمور', icon: MessageSquare, color: 'blue',
@@ -101,7 +101,7 @@ const SUGGESTIONS: Record<PersonaId, string[]> = {
   documents: ['تحليل المستندات', 'اللاعبون الناقصون', 'تقرير المستندات'],
   training: ['الجلسات التدريبية المسجلة', 'مواعيد التدريبات', 'أهداف الجلسات'],
   nutrition: ['خطة غذائية لفريق', 'نظام ما قبل المباراة', 'نصائح الترطيب'],
-  scout: ['اكتشاف مواهب', 'قارن لاعبين', 'تقييم المراكز'],
+  scout: ['ملخص التقييمات المنشورة', 'متابعة التطور الفردي', 'تقييم تغطية المراكز'],
   operations: ['تحليل الجدول', 'استخدام الملاعب', 'التعارضات'],
   communication: ['رسالة تذكير اشتراك', 'دعوة مباراة', 'تقرير حضور لولي الأمر'],
 };
@@ -274,10 +274,33 @@ function generateResponse(personaId: PersonaId, q: string, c: AIContext, teams: 
     case 'nutrition': return generateNutritionAdvice(q, teams);
     case 'communication': return generateCommunicationTemplate(q, c.unpaidSubs, players, c.scheduled, currency);
     case 'scout': {
-      if (/(قارن|مقارنة|compare)/.test(q)) return generatePlayerComparison(q, players);
-      if (/(اكتشاف|مواهب|talent|scout|discover)/.test(q)) return generateTalentScouting(c, players);
-      if (/(تقييم|مراكز|evaluate|positions)/.test(q)) return generatePositionEvaluation(c, players);
-      return [`أنا كشاف المواهب. أستطيع:`, `• اكتشاف المواهب الواعدة`, `• مقارنة لاعبين: "قارن [اسم 1] و [اسم 2]"`, `• تقييم توزيع المراكز`, `اسألني عن "اكتشاف مواهب" أو "تقييم المراكز".`].join('\n');
+      if (/(مركز|مراكز|position|positions|تغطية)/.test(q)) return generatePositionEvaluation(c, players);
+      const published = evaluations
+        .filter((ev) => ev.status === 'published')
+        .sort((a, b) => a.evaluationDate.localeCompare(b.evaluationDate));
+      if (!published.length) {
+        return 'لا توجد تقييمات منشورة حاليًا. لا يمكن استنتاج تطور أو موهبة من العمر أو رقم القميص أو المركز وحدها.';
+      }
+      const byPlayer = new Map<string, PlayerEvaluation[]>();
+      published.forEach((ev) => byPlayer.set(ev.playerId, [...(byPlayer.get(ev.playerId) || []), ev]));
+      const histories = Array.from(byPlayer.values()).filter((items) => items.length >= 2);
+      const latest = Array.from(byPlayer.values()).map((items) => items[items.length - 1]);
+      const today = new Date().toISOString().slice(0, 10);
+      const due = latest.filter((ev) => ev.reassessmentDate && ev.reassessmentDate <= today).length;
+      const plans = latest.filter((ev) => ev.developmentPriorities?.length || ev.trainingAction || ev.reassessmentDate).length;
+      const comparisonRequested = /(قارن|مقارنة|compare|أفضل|best|موهبة|talent)/.test(q);
+      return [
+        '📈 تحليل التطور من التقييمات المنشورة:',
+        `• التقييمات المنشورة: ${published.length}`,
+        `• لاعبون لديهم تقييم منشور: ${byPlayer.size}`,
+        `• لاعبون لديهم تقييمان أو أكثر لمتابعة التطور: ${histories.length}`,
+        `• أحدث التقييمات التي تحتوي خطة تطوير: ${plans} من ${latest.length}`,
+        `• إعادة تقييم مستحقة: ${due}`,
+        '',
+        comparisonRequested
+          ? 'لا يتم ترتيب اللاعبين أو وصف أحد بأنه الأفضل أو كموهبة مؤكدة. المقارنة المعتمدة هي تطور كل لاعب مع سجله السابق فقط.'
+          : 'التحليل يركز على التطور الفردي وخطط المتابعة، وليس على ترتيب اللاعبين.',
+      ].join('\n');
     }
     case 'operations': {
       if (/(ملعب|pitch|استخدام)/.test(q)) {
