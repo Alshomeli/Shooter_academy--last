@@ -34,6 +34,7 @@ function errorText(error: unknown, ar: boolean) {
 export function AIOperationsPanel({ activeRole, lang, subscriptions, players, evaluations, trainings, onCompleted }: Props) {
   const ar = lang === 'ar';
   const canPayment = activeRole === 'manager' || activeRole === 'accountant';
+  const canCreateSubscription = activeRole === 'manager' || activeRole === 'accountant' || activeRole === 'receptionist';
   const canRegistration = activeRole === 'manager';
   const canAttendance = activeRole === 'manager' || activeRole === 'coach';
   const canPublishEvaluation = activeRole === 'manager' || activeRole === 'coach';
@@ -52,6 +53,9 @@ export function AIOperationsPanel({ activeRole, lang, subscriptions, players, ev
   const [attendanceNotes, setAttendanceNotes] = useState('');
   const [attendanceTrainingId, setAttendanceTrainingId] = useState('');
   const [selectedEvaluationId, setSelectedEvaluationId] = useState('');
+  const [newSubPlayerId, setNewSubPlayerId] = useState('');
+  const [newSubPlanType, setNewSubPlanType] = useState<Subscription['planType']>('monthly');
+  const [newSubStartDate, setNewSubStartDate] = useState(new Date().toISOString().slice(0, 10));
   const [prepared, setPrepared] = useState<PreparedAIAction | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
@@ -148,6 +152,22 @@ export function AIOperationsPanel({ activeRole, lang, subscriptions, players, ev
     }
   };
 
+  const prepareSubscriptionCreate = async () => {
+    if (!newSubPlayerId || !newSubStartDate || busy) return;
+    setBusy(true); setError(''); setMessage('');
+    try {
+      setPrepared(await prepareAIAction('create_subscription', {
+        playerId: newSubPlayerId,
+        planType: newSubPlanType,
+        startDate: newSubStartDate,
+      }));
+    } catch (e) {
+      setError(errorText(e, ar));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const prepareEvaluationPublish = async () => {
     if (!selectedEvaluationId || busy) return;
     setBusy(true); setError(''); setMessage('');
@@ -191,7 +211,7 @@ export function AIOperationsPanel({ activeRole, lang, subscriptions, players, ev
     }
   };
 
-  if (!canPayment && !canRegistration && !canAttendance && !canPublishEvaluation) return null;
+  if (!canPayment && !canCreateSubscription && !canRegistration && !canAttendance && !canPublishEvaluation) return null;
 
   return (
     <section className="rounded-2xl border border-violet-200 dark:border-violet-900/50 bg-violet-50/40 dark:bg-violet-950/10 p-4 sm:p-5">
@@ -261,6 +281,37 @@ export function AIOperationsPanel({ activeRole, lang, subscriptions, players, ev
                 <button onClick={() => void preparePayment()} disabled={!selectedSubscriptionId || busy}
                   className="w-full rounded-xl bg-violet-600 px-4 py-2 text-xs font-black text-white disabled:opacity-50">
                   {busy ? (ar ? 'جارٍ التجهيز...' : 'Preparing...') : (ar ? 'معاينة العملية' : 'Preview action')}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {canCreateSubscription && (
+            <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <CreditCard className="h-4 w-4 text-blue-600" />
+                <h4 className="text-xs font-black text-slate-800 dark:text-white">{ar ? 'إنشاء اشتراك جديد' : 'Create subscription'}</h4>
+              </div>
+              <div className="space-y-3">
+                <select value={newSubPlayerId} onChange={(e) => setNewSubPlayerId(e.target.value)} className={inputCls}>
+                  <option value="">{ar ? 'اختر اللاعب' : 'Select player'}</option>
+                  {players.filter((p) => p.status === 'active').map((player) => (
+                    <option key={player.id} value={player.id}>{player.name}</option>
+                  ))}
+                </select>
+                <select value={newSubPlanType} onChange={(e) => setNewSubPlanType(e.target.value as Subscription['planType'])} className={inputCls}>
+                  <option value="monthly">{ar ? 'شهري' : 'Monthly'}</option>
+                  <option value="quarterly">{ar ? 'ربع سنوي' : 'Quarterly'}</option>
+                  <option value="semi_annual">{ar ? 'نصف سنوي' : 'Semi-annual'}</option>
+                  <option value="annual">{ar ? 'سنوي' : 'Annual'}</option>
+                </select>
+                <input type="date" value={newSubStartDate} onChange={(e) => setNewSubStartDate(e.target.value)} className={inputCls} />
+                <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                  {ar ? 'السعر وتاريخ الانتهاء يحسبهما النظام من إعدادات الأكاديمية، ويبدأ الاشتراك كغير مدفوع.' : 'Price and end date are derived from academy settings; the subscription starts unpaid.'}
+                </p>
+                <button onClick={() => void prepareSubscriptionCreate()} disabled={!newSubPlayerId || !newSubStartDate || busy}
+                  className="w-full rounded-xl bg-violet-600 px-4 py-2 text-xs font-black text-white disabled:opacity-50">
+                  {busy ? (ar ? 'جارٍ التجهيز...' : 'Preparing...') : (ar ? 'معاينة الاشتراك' : 'Preview subscription')}
                 </button>
               </div>
             </div>
@@ -399,6 +450,18 @@ function Preview({ action, lang, players }: { action: PreparedAIAction; lang: La
         <Item label={ar ? 'المبلغ' : 'Amount'} value={`${Number(p.amount || 0).toFixed(3)} ${String(p.currency || 'BHD')}`} />
         <Item label={ar ? 'طريقة الدفع' : 'Payment method'} value={String(p.paymentMethod || '—')} />
         <Item label={ar ? 'الفترة' : 'Period'} value={`${String(period.start || '—')} → ${String(period.end || '—')}`} />
+      </dl>
+    );
+  }
+  if (action.operation === 'create_subscription') {
+    const player = players.find((item) => item.id === String(p.playerId || ''));
+    return (
+      <dl className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-700 dark:text-slate-300">
+        <Item label={ar ? 'اللاعب' : 'Player'} value={player?.name || String(p.playerName || p.playerId || '—')} />
+        <Item label={ar ? 'الخطة' : 'Plan'} value={String(p.planType || '—')} />
+        <Item label={ar ? 'المبلغ' : 'Amount'} value={`${Number(p.amount || 0).toFixed(3)} ${String(p.currency || 'BHD')}`} />
+        <Item label={ar ? 'الفترة' : 'Period'} value={`${String(p.startDate || '—')} → ${String(p.endDate || '—')}`} />
+        <Item label={ar ? 'الحالة بعد الإنشاء' : 'New status'} value={ar ? 'غير مدفوع' : 'Unpaid'} />
       </dl>
     );
   }
