@@ -29,6 +29,11 @@ paths:
       responses:
         '200':
           description: Successful gateway response
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/SnapshotResponse'
         '400':
           description: Invalid request or explicit confirmation missing
         '401':
@@ -100,3 +105,25 @@ components:
       properties:
         mode:
           const: snapshot
+
+    SnapshotResponse:
+      type: object
+      required: [generatedAt, role, snapshot]
+      properties:
+        generatedAt:
+          type: string
+          format: date-time
+        role:
+          type: string
+        snapshot:
+          type: object
+          required: [unpaidSubscriptions, activePlayers, draftEvaluations, applicationsNeedingAction]
+          properties:
+            unpaidSubscriptions:
+              type: [integer, 'null']
+            activePlayers:
+              type: integer
+            draftEvaluations:
+              type: [integer, 'null']
+            applicationsNeedingAction:
+              type: [integer, 'null']
