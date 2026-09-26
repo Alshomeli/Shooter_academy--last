@@ -128,7 +128,16 @@ Deno.serve(async (req) => {
       return reply(origin, 500, { error: "history_failed" });
     }
 
-    return reply(origin, 200, { actions: actions || [] });
+    return reply(origin, 200, {
+      actions: (actions || []).map((action) => ({
+        requestId: action.id,
+        operation: action.operation,
+        status: action.status,
+        createdAt: action.created_at,
+        executedAt: action.executed_at || null,
+        errorCode: action.error_code || null,
+      })),
+    });
   }
 
   if (mode === "prepare") {
