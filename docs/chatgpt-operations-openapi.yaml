@@ -25,6 +25,7 @@ paths:
                 - $ref: '#/components/schemas/ExecuteRequest'
                 - $ref: '#/components/schemas/CancelRequest'
                 - $ref: '#/components/schemas/HistoryRequest'
+                - $ref: '#/components/schemas/SnapshotRequest'
       responses:
         '200':
           description: Successful gateway response
@@ -93,3 +94,9 @@ components:
       properties:
         mode:
           const: history
+    SnapshotRequest:
+      type: object
+      required: [mode]
+      properties:
+        mode:
+          const: snapshot
