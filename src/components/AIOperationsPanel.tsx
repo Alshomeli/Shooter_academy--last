@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { CalendarCheck2, CheckCircle2, ClipboardCheck, CreditCard, Loader2, ShieldCheck, XCircle } from 'lucide-react';
-import type { Lang, Player, RegistrationApplication, Role, Subscription } from '@/types';
+import { CalendarCheck2, CheckCircle2, ClipboardCheck, CreditCard, FileCheck2, Loader2, ShieldCheck, XCircle } from 'lucide-react';
+import type { Lang, Player, PlayerEvaluation, RegistrationApplication, Role, Subscription } from '@/types';
 import { fetchAllApplications } from '@/lib/registration';
 import { paymentMethodLabel } from '@/lib/i18n';
 import {
@@ -16,6 +16,7 @@ interface Props {
   lang: Lang;
   subscriptions: Subscription[];
   players: Player[];
+  evaluations: PlayerEvaluation[];
   onCompleted: () => Promise<void>;
 }
 
@@ -29,11 +30,12 @@ function errorText(error: unknown, ar: boolean) {
   return ar ? `تعذر إتمام العملية: ${message}` : `Unable to complete the action: ${message}`;
 }
 
-export function AIOperationsPanel({ activeRole, lang, subscriptions, players, onCompleted }: Props) {
+export function AIOperationsPanel({ activeRole, lang, subscriptions, players, evaluations, onCompleted }: Props) {
   const ar = lang === 'ar';
   const canPayment = activeRole === 'manager' || activeRole === 'accountant';
   const canRegistration = activeRole === 'manager';
   const canAttendance = activeRole === 'manager' || activeRole === 'coach';
+  const canPublishEvaluation = activeRole === 'manager' || activeRole === 'coach';
 
   const [apps, setApps] = useState<RegistrationApplication[]>([]);
   const [loadingApps, setLoadingApps] = useState(false);
@@ -47,6 +49,7 @@ export function AIOperationsPanel({ activeRole, lang, subscriptions, players, on
   const [attendanceType, setAttendanceType] = useState<'training' | 'match'>('training');
   const [attendanceStatus, setAttendanceStatus] = useState<'present' | 'absent' | 'excused'>('present');
   const [attendanceNotes, setAttendanceNotes] = useState('');
+  const [selectedEvaluationId, setSelectedEvaluationId] = useState('');
   const [prepared, setPrepared] = useState<PreparedAIAction | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
@@ -56,6 +59,10 @@ export function AIOperationsPanel({ activeRole, lang, subscriptions, players, on
   const actionableApps = useMemo(
     () => apps.filter((a) => ['pending', 'under_review', 'needs_info'].includes(a.status)),
     [apps],
+  );
+  const draftEvaluations = useMemo(
+    () => evaluations.filter((evaluation) => evaluation.status === 'draft'),
+    [evaluations],
   );
 
   const loadApps = useCallback(async () => {
@@ -138,6 +145,20 @@ export function AIOperationsPanel({ activeRole, lang, subscriptions, players, on
     }
   };
 
+  const prepareEvaluationPublish = async () => {
+    if (!selectedEvaluationId || busy) return;
+    setBusy(true); setError(''); setMessage('');
+    try {
+      setPrepared(await prepareAIAction('publish_player_evaluation', {
+        evaluationId: selectedEvaluationId,
+      }));
+    } catch (e) {
+      setError(errorText(e, ar));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const confirmPrepared = async () => {
     if (!prepared || busy) return;
     setBusy(true); setError('');
@@ -167,7 +188,7 @@ export function AIOperationsPanel({ activeRole, lang, subscriptions, players, on
     }
   };
 
-  if (!canPayment && !canRegistration && !canAttendance) return null;
+  if (!canPayment && !canRegistration && !canAttendance && !canPublishEvaluation) return null;
 
   return (
     <section className="rounded-2xl border border-violet-200 dark:border-violet-900/50 bg-violet-50/40 dark:bg-violet-950/10 p-4 sm:p-5">
@@ -307,6 +328,35 @@ export function AIOperationsPanel({ activeRole, lang, subscriptions, players, on
               </div>
             </div>
           )}
+
+          {canPublishEvaluation && (
+            <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <FileCheck2 className="h-4 w-4 text-emerald-600" />
+                <h4 className="text-xs font-black text-slate-800 dark:text-white">{ar ? 'نشر تقييم لاعب' : 'Publish player evaluation'}</h4>
+              </div>
+              <div className="space-y-3">
+                <select value={selectedEvaluationId} onChange={(e) => setSelectedEvaluationId(e.target.value)} className={inputCls}>
+                  <option value="">{ar ? 'اختر تقييماً مسودة' : 'Select a draft evaluation'}</option>
+                  {draftEvaluations.map((evaluation) => {
+                    const player = players.find((p) => p.id === evaluation.playerId);
+                    return (
+                      <option key={evaluation.id} value={evaluation.id}>
+                        {player?.name || evaluation.playerId} — {evaluation.evaluationDate}
+                      </option>
+                    );
+                  })}
+                </select>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                  {ar ? 'سيتم التحقق من اكتمال الدرجات والصلاحيات قبل تجهيز النشر.' : 'Scores and permissions are validated before publishing is prepared.'}
+                </p>
+                <button onClick={() => void prepareEvaluationPublish()} disabled={!selectedEvaluationId || busy}
+                  className="w-full rounded-xl bg-violet-600 px-4 py-2 text-xs font-black text-white disabled:opacity-50">
+                  {busy ? (ar ? 'جارٍ التجهيز...' : 'Preparing...') : (ar ? 'معاينة النشر' : 'Preview publish')}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </section>
@@ -340,6 +390,17 @@ function Preview({ action, lang, players }: { action: PreparedAIAction; lang: La
         <Item label={ar ? 'التاريخ' : 'Date'} value={String(p.sessionDate || '—')} />
         <Item label={ar ? 'النوع' : 'Type'} value={p.sessionType === 'match' ? (ar ? 'مباراة' : 'Match') : (ar ? 'تدريب' : 'Training')} />
         <Item label={ar ? 'الحالة' : 'Status'} value={statusLabel} />
+      </dl>
+    );
+  }
+  if (action.operation === 'publish_player_evaluation') {
+    const player = players.find((item) => item.id === String(p.playerId || ''));
+    return (
+      <dl className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-700 dark:text-slate-300">
+        <Item label={ar ? 'اللاعب' : 'Player'} value={player?.name || String(p.playerId || '—')} />
+        <Item label={ar ? 'تاريخ التقييم' : 'Evaluation date'} value={String(p.evaluationDate || '—')} />
+        <Item label={ar ? 'الحالة الحالية' : 'Current status'} value={String(p.currentStatus || '—')} />
+        <Item label={ar ? 'بعد التأكيد' : 'After confirmation'} value={ar ? 'منشور' : 'Published'} />
       </dl>
     );
   }
