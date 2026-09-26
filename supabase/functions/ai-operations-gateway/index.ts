@@ -1,7 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 
-type Operation = "approve_registration" | "review_registration" | "record_subscription_payment" | "record_attendance" | "publish_player_evaluation";
+type Operation = "approve_registration" | "review_registration" | "record_subscription_payment" | "record_attendance" | "publish_player_evaluation" | "create_subscription";
 type Mode = "prepare" | "execute" | "cancel";
 
 const OP_ROLES: Record<Operation, string[]> = {
@@ -10,6 +10,7 @@ const OP_ROLES: Record<Operation, string[]> = {
   record_subscription_payment: ["manager", "accountant"],
   record_attendance: ["manager", "coach"],
   publish_player_evaluation: ["manager", "coach"],
+  create_subscription: ["manager", "accountant", "receptionist"],
 };
 
 const cors = (origin: string | null) => ({
@@ -45,6 +46,15 @@ function publicKey(): string {
 
 function cleanText(value: unknown, max = 500): string {
   return String(value ?? "").trim().slice(0, max);
+}
+
+function addCalendarMonthsIso(dateText: string, months: number): string | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateText)) return null;
+  const [year, month, day] = dateText.split("-").map(Number);
+  const target = new Date(Date.UTC(year, month - 1 + months, 1));
+  const lastDay = new Date(Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0)).getUTCDate();
+  target.setUTCDate(Math.min(day, lastDay));
+  return target.toISOString().slice(0, 10);
 }
 
 Deno.serve(async (req) => {
@@ -189,6 +199,51 @@ Deno.serve(async (req) => {
         currentStatus: subscription.status,
         paymentMethod,
         period: { start: subscription.start_date, end: subscription.end_date },
+      };
+    } else if (operation === "create_subscription") {
+      const playerId = cleanText(params.playerId, 100);
+      const planType = cleanText(params.planType, 30);
+      const startDate = cleanText(params.startDate, 20);
+      if (!playerId || !/^\d{4}-\d{2}-\d{2}$/.test(startDate)) {
+        return reply(origin, 400, { error: "player_and_valid_start_date_required" });
+      }
+      if (!["monthly", "quarterly", "semi_annual", "annual"].includes(planType)) {
+        return reply(origin, 400, { error: "invalid_plan_type" });
+      }
+
+      const [{ data: player, error: playerError }, { data: settings, error: settingsError }] = await Promise.all([
+        userClient.from("players").select("id,name,status").eq("id", playerId).maybeSingle(),
+        userClient.from("academy_settings")
+          .select("subscription_fee_monthly,subscription_fee_quarterly,subscription_fee_semi_annual,subscription_fee_yearly")
+          .order("id")
+          .limit(1)
+          .maybeSingle(),
+      ]);
+      if (playerError || !player) return reply(origin, 404, { error: "player_not_found" });
+      if (player.status !== "active") return reply(origin, 409, { error: "player_not_active" });
+      if (settingsError || !settings) return reply(origin, 500, { error: "academy_settings_unavailable" });
+
+      const amountByPlan: Record<string, number> = {
+        monthly: Number(settings.subscription_fee_monthly) || 0,
+        quarterly: Number(settings.subscription_fee_quarterly) || 0,
+        semi_annual: Number(settings.subscription_fee_semi_annual) || 0,
+        annual: Number(settings.subscription_fee_yearly) || 0,
+      };
+      const monthsByPlan: Record<string, number> = { monthly: 1, quarterly: 3, semi_annual: 6, annual: 12 };
+      const amount = amountByPlan[planType];
+      const endDate = addCalendarMonthsIso(startDate, monthsByPlan[planType]);
+      if (!amount || amount <= 0 || !endDate) return reply(origin, 409, { error: "subscription_plan_not_configured" });
+
+      normalized = { playerId, planType, startDate };
+      preview = {
+        playerId,
+        playerName: player.name,
+        planType,
+        amount,
+        currency: "BHD",
+        startDate,
+        endDate,
+        newStatus: "unpaid",
       };
     } else if (operation === "publish_player_evaluation") {
       const evaluationId = cleanText(params.evaluationId, 64);
@@ -390,7 +445,7 @@ Deno.serve(async (req) => {
         sessionType: p.sessionType,
         status: p.status,
       };
-    } else {
+    } else if (op === "publish_player_evaluation") {
       const { data, error } = await userClient.rpc("publish_player_evaluation", {
         p_evaluation_id: String(p.evaluationId),
       });
@@ -400,6 +455,22 @@ Deno.serve(async (req) => {
         playerId: data?.player_id ?? null,
         status: data?.status ?? "published",
         publishedAt: data?.published_at ?? null,
+      };
+    } else {
+      const { data, error } = await userClient.rpc("create_subscription_entry", {
+        p_player_id: String(p.playerId),
+        p_plan_type: String(p.planType),
+        p_start_date: String(p.startDate),
+      });
+      if (error) throw error;
+      sanitizedResult = {
+        subscriptionId: data?.id ?? null,
+        playerId: data?.player_id ?? p.playerId,
+        planType: data?.plan_type ?? p.planType,
+        amount: Number(data?.amount ?? 0),
+        startDate: data?.start_date ?? p.startDate,
+        endDate: data?.end_date ?? null,
+        status: data?.status ?? "unpaid",
       };
     }
 
