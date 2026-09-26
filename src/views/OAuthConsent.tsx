@@ -13,6 +13,7 @@ type AuthDetails = {
 };
 
 const authBaseUrl = import.meta.env.VITE_SUPABASE_URL?.replace(/\/$/, '') + '/auth/v1';
+const authApiKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 async function oauthRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const { data: sessionData } = await supabase.auth.getSession();
@@ -23,6 +24,7 @@ async function oauthRequest<T>(path: string, init?: RequestInit): Promise<T> {
     ...init,
     headers: {
       'Authorization': `Bearer ${token}`,
+      'apikey': authApiKey,
       'Content-Type': 'application/json',
       ...(init?.headers || {}),
     },
