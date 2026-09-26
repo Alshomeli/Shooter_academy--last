@@ -226,9 +226,25 @@ export function Evaluations({ evaluations, players, teams, staff, activeRole, la
   );
 
   const progressEvaluations = useMemo(
-    () => publishedEvaluations.filter(ev => ev.playerId === progressPlayerId).slice(-6),
+    () => publishedEvaluations.filter(ev => ev.playerId === progressPlayerId),
     [publishedEvaluations, progressPlayerId],
   );
+
+  const progressSummary = useMemo(() => {
+    if (progressEvaluations.length < 2) return null;
+    const first = frameworkScores(progressEvaluations[0]);
+    const latest = frameworkScores(progressEvaluations[progressEvaluations.length - 1]);
+    const overallFirst = progressEvaluations[0].overallScore;
+    const overallLatest = progressEvaluations[progressEvaluations.length - 1].overallScore;
+    return {
+      firstDate: progressEvaluations[0].evaluationDate,
+      latestDate: progressEvaluations[progressEvaluations.length - 1].evaluationDate,
+      reviewCount: progressEvaluations.length,
+      first,
+      latest,
+      overallDelta: overallFirst != null && overallLatest != null ? overallLatest - overallFirst : null,
+    };
+  }, [progressEvaluations]);
 
   const frameworkSummary = useMemo(() => {
     const scores = latestPublishedByPlayer.map(frameworkScores);
@@ -550,6 +566,42 @@ export function Evaluations({ evaluations, players, teams, staff, activeRole, la
           </div>
           {progressPlayerId && (
             <div className="space-y-3">
+              {progressSummary && (
+                <div className="p-4 rounded-xl border border-emerald-100 dark:border-emerald-900/50 bg-emerald-50/60 dark:bg-emerald-950/20">
+                  <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
+                    <div>
+                      <p className="text-xs font-black text-emerald-900 dark:text-emerald-200">{isAr ? 'ملخص التطور' : 'Progress summary'}</p>
+                      <p className="text-[10px] text-emerald-700/70 dark:text-emerald-300/70">
+                        {progressSummary.firstDate} → {progressSummary.latestDate} · {progressSummary.reviewCount} {isAr ? 'تقييمات منشورة' : 'published reviews'}
+                      </p>
+                    </div>
+                    {progressSummary.overallDelta != null && (
+                      <Badge color={progressSummary.overallDelta > 0.05 ? 'emerald' : progressSummary.overallDelta < -0.05 ? 'amber' : 'blue'}>
+                        {isAr ? 'التغير العام' : 'Overall change'}: {progressSummary.overallDelta > 0 ? '+' : ''}{progressSummary.overallDelta.toFixed(1)}
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+                    {CRITERIA_GROUPS.map(group => {
+                      const firstScore = progressSummary.first[group.key];
+                      const latestScore = progressSummary.latest[group.key];
+                      const delta = firstScore != null && latestScore != null ? latestScore - firstScore : null;
+                      return (
+                        <div key={group.key} className="p-2.5 rounded-lg bg-white/80 dark:bg-slate-900/70">
+                          <p className="text-[10px] text-slate-400">{isAr ? group.ar : group.en}</p>
+                          <div className="flex items-end justify-between gap-2 mt-1">
+                            <span className="text-base font-black text-slate-900 dark:text-white">{latestScore == null ? '—' : latestScore.toFixed(1)}</span>
+                            <span className={`text-[10px] font-black ${delta == null ? 'text-slate-400' : delta > 0.05 ? 'text-emerald-600' : delta < -0.05 ? 'text-amber-600' : 'text-slate-400'}`}>
+                              {delta == null ? '—' : `${delta > 0 ? '+' : ''}${delta.toFixed(1)}`}
+                            </span>
+                          </div>
+                          <p className="text-[9px] text-slate-400 mt-1">{isAr ? 'مقارنة بأول تقييم' : 'vs first review'}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
               {progressEvaluations.map((ev, index) => {
                 const current = frameworkScores(ev);
                 const previous = index > 0 ? frameworkScores(progressEvaluations[index - 1]) : null;
