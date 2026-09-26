@@ -6,7 +6,9 @@ import { paymentMethodLabel } from '@/lib/i18n';
 import {
   cancelAIAction,
   executeAIAction,
+  listAIActionHistory,
   prepareAIAction,
+  type AIActionHistoryItem,
   type AIOperation,
   type PreparedAIAction,
 } from '@/lib/ai-operations';
@@ -57,6 +59,7 @@ export function AIOperationsPanel({ activeRole, lang, subscriptions, players, ev
   const [newSubPlanType, setNewSubPlanType] = useState<Subscription['planType']>('monthly');
   const [newSubStartDate, setNewSubStartDate] = useState(new Date().toISOString().slice(0, 10));
   const [prepared, setPrepared] = useState<PreparedAIAction | null>(null);
+  const [history, setHistory] = useState<AIActionHistoryItem[]>([]);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -83,9 +86,19 @@ export function AIOperationsPanel({ activeRole, lang, subscriptions, players, ev
     }
   }, [canRegistration, ar]);
 
+  const loadHistory = useCallback(async () => {
+    try {
+      const response = await listAIActionHistory();
+      setHistory(response.actions || []);
+    } catch {
+      // History is secondary; action controls remain usable.
+    }
+  }, []);
+
   useEffect(() => {
     void loadApps();
-  }, [loadApps]);
+    void loadHistory();
+  }, [loadApps, loadHistory]);
 
   const resetPrepared = () => {
     setPrepared(null);
@@ -189,7 +202,7 @@ export function AIOperationsPanel({ activeRole, lang, subscriptions, players, ev
       await executeAIAction(prepared.requestId);
       setMessage(ar ? 'تم تنفيذ العملية وتسجيلها في سجل التدقيق.' : 'Action executed and recorded in the audit log.');
       setPrepared(null);
-      await Promise.all([onCompleted(), loadApps()]);
+      await Promise.all([onCompleted(), loadApps(), loadHistory()]);
     } catch (e) {
       setError(errorText(e, ar));
     } finally {
@@ -204,6 +217,7 @@ export function AIOperationsPanel({ activeRole, lang, subscriptions, players, ev
       await cancelAIAction(prepared.requestId);
       setPrepared(null);
       setMessage(ar ? 'تم إلغاء العملية المجهزة بدون تغيير البيانات.' : 'Prepared action cancelled without changing data.');
+      await loadHistory();
     } catch (e) {
       setError(errorText(e, ar));
     } finally {
@@ -228,6 +242,34 @@ export function AIOperationsPanel({ activeRole, lang, subscriptions, players, ev
           </p>
         </div>
       </div>
+
+      {history.length > 0 && (
+        <div className="mb-4 rounded-xl border border-violet-100 dark:border-violet-900/40 bg-white/70 dark:bg-slate-900/60 p-3">
+          <div className="flex items-center justify-between gap-3 mb-2">
+            <p className="text-[11px] font-black text-slate-700 dark:text-slate-200">{ar ? 'آخر الإجراءات' : 'Recent actions'}</p>
+            <button onClick={() => void loadHistory()} className="text-[10px] font-bold text-violet-600 dark:text-violet-400">
+              {ar ? 'تحديث' : 'Refresh'}
+            </button>
+          </div>
+          <div className="space-y-1.5">
+            {history.slice(0, 5).map((item) => (
+              <div key={item.requestId} className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 dark:bg-slate-800/70 px-2.5 py-2">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-black text-slate-700 dark:text-slate-200 truncate">{item.operation}</p>
+                  <p className="text-[9px] text-slate-400">{new Date(item.createdAt).toLocaleString(ar ? 'ar-BH' : 'en-BH')}</p>
+                </div>
+                <span className={`shrink-0 rounded-full px-2 py-1 text-[9px] font-black ${
+                  item.status === 'executed'
+                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
+                    : item.status === 'failed' || item.status === 'expired'
+                      ? 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400'
+                      : 'bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
+                }`}>{item.status}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {error && <div className="mb-3 rounded-xl bg-red-50 dark:bg-red-950/30 px-3 py-2 text-xs font-bold text-red-600">{error}</div>}
       {message && <div className="mb-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 px-3 py-2 text-xs font-bold text-emerald-700 dark:text-emerald-400">{message}</div>}

@@ -2,7 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 
 type Operation = "approve_registration" | "review_registration" | "record_subscription_payment" | "record_attendance" | "publish_player_evaluation" | "create_subscription";
-type Mode = "prepare" | "execute" | "cancel";
+type Mode = "prepare" | "execute" | "cancel" | "history";
 
 const OP_ROLES: Record<Operation, string[]> = {
   approve_registration: ["manager"],
@@ -113,7 +113,32 @@ Deno.serve(async (req) => {
     .eq("status", "executing")
     .lt("execution_started_at", staleExecutionIso);
 
-  const mode: Mode = body.mode === "execute" ? "execute" : body.mode === "cancel" ? "cancel" : "prepare";
+  const mode: Mode = body.mode === "execute" ? "execute" : body.mode === "cancel" ? "cancel" : body.mode === "history" ? "history" : "prepare";
+
+  if (mode === "history") {
+    const { data: actions, error: historyError } = await serverClient
+      .from("ai_action_requests")
+      .select("id,operation,status,created_at,executed_at,error_code")
+      .eq("user_id", userData.user.id)
+      .order("created_at", { ascending: false })
+      .limit(10);
+
+    if (historyError) {
+      console.error("AI action history failed", historyError.code);
+      return reply(origin, 500, { error: "history_failed" });
+    }
+
+    return reply(origin, 200, {
+      actions: (actions || []).map((action) => ({
+        requestId: action.id,
+        operation: action.operation,
+        status: action.status,
+        createdAt: action.created_at,
+        executedAt: action.executed_at || null,
+        errorCode: action.error_code || null,
+      })),
+    });
+  }
 
   if (mode === "prepare") {
     const oneMinuteAgo = new Date(Date.now() - 60_000).toISOString();
