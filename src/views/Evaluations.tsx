@@ -1,5 +1,5 @@
 import { useState, useMemo, type FormEvent } from 'react';
-import { Plus, Search, Save, Send, X, Star, ChevronLeft } from 'lucide-react';
+import { Plus, Search, Save, Send, X, Star, ChevronLeft, TrendingUp, History, CalendarClock } from 'lucide-react';
 import type { Player, Team, Staff, PlayerEvaluation, Role, Lang } from '@/types';
 import { tr } from '@/lib/i18n';
 import { db } from '@/lib/store';
@@ -40,6 +40,32 @@ const CRITERIA_GROUPS = [
   { key: 'physical', ar: 'بدني', en: 'Physical' },
   { key: 'psychosocial', ar: 'نفسي واجتماعي', en: 'Psychosocial' },
 ] as const;
+
+function average(values: Array<number | null | undefined>) {
+  const valid = values.filter((v): v is number => typeof v === 'number' && Number.isFinite(v));
+  return valid.length ? valid.reduce((sum, v) => sum + v, 0) / valid.length : null;
+}
+
+function detailedGroupScore(ev: PlayerEvaluation, group: typeof CRITERIA_GROUPS[number]['key']) {
+  const keys = DETAIL_CRITERIA.filter(item => item.group === group).map(item => item.key);
+  return average(keys.map(key => ev.detailedScores?.[key]));
+}
+
+function frameworkScores(ev: PlayerEvaluation) {
+  return {
+    technical: detailedGroupScore(ev, 'technical') ?? ev.technicalScore,
+    tactical: detailedGroupScore(ev, 'tactical') ?? ev.tacticalScore,
+    physical: detailedGroupScore(ev, 'physical') ?? ev.physicalScore,
+    psychosocial: detailedGroupScore(ev, 'psychosocial') ?? average([ev.mentalScore, ev.disciplineScore]),
+  };
+}
+
+function formatDelta(current: number | null, previous: number | null) {
+  if (current == null || previous == null) return '—';
+  const delta = current - previous;
+  if (Math.abs(delta) < 0.05) return '0.0';
+  return `${delta > 0 ? '+' : ''}${delta.toFixed(1)}`;
+}
 
 function ScoreBar({ label, value, max = 5 }: { label: string; value: number | null; max?: number }) {
   const pct = value ? (value / max) * 100 : 0;
@@ -142,6 +168,7 @@ export function Evaluations({ evaluations, players, teams, staff, activeRole, la
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [confirmPublish, setConfirmPublish] = useState(false);
+  const [progressPlayerId, setProgressPlayerId] = useState('');
 
   const emptyForm = {
     id: undefined as string | undefined,
@@ -174,6 +201,43 @@ export function Evaluations({ evaluations, players, teams, staff, activeRole, la
   }, [evaluations, filterStatus, filterPeriod, filterTeam, searchQ, players]);
 
   const activePlayers = useMemo(() => players.filter(p => p.status === 'active'), [players]);
+
+  const publishedEvaluations = useMemo(
+    () => evaluations.filter(ev => ev.status === 'published').sort((a, b) => a.evaluationDate.localeCompare(b.evaluationDate)),
+    [evaluations],
+  );
+
+  const latestPublishedByPlayer = useMemo(() => {
+    const map = new Map<string, PlayerEvaluation>();
+    publishedEvaluations.forEach(ev => map.set(ev.playerId, ev));
+    return Array.from(map.values());
+  }, [publishedEvaluations]);
+
+  const playersWithHistory = useMemo(
+    () => activePlayers.filter(player => publishedEvaluations.filter(ev => ev.playerId === player.id).length >= 2),
+    [activePlayers, publishedEvaluations],
+  );
+
+  const progressEvaluations = useMemo(
+    () => publishedEvaluations.filter(ev => ev.playerId === progressPlayerId).slice(-6),
+    [publishedEvaluations, progressPlayerId],
+  );
+
+  const frameworkSummary = useMemo(() => {
+    const scores = latestPublishedByPlayer.map(frameworkScores);
+    return {
+      technical: average(scores.map(s => s.technical)),
+      tactical: average(scores.map(s => s.tactical)),
+      physical: average(scores.map(s => s.physical)),
+      psychosocial: average(scores.map(s => s.psychosocial)),
+    };
+  }, [latestPublishedByPlayer]);
+
+  const today = new Date().toISOString().split('T')[0];
+  const reassessmentDue = useMemo(
+    () => latestPublishedByPlayer.filter(ev => ev.reassessmentDate && ev.reassessmentDate <= today).length,
+    [latestPublishedByPlayer, today],
+  );
 
   const openNew = () => { setForm(emptyForm); setShowForm(true); setError(''); };
   const openEdit = (ev: PlayerEvaluation) => {
@@ -399,6 +463,86 @@ export function Evaluations({ evaluations, players, teams, staff, activeRole, la
           </button>
         )}
       </PageHeader>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {CRITERIA_GROUPS.map(group => {
+          const value = frameworkSummary[group.key];
+          return (
+            <div key={group.key} className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900/60">
+              <p className="text-[11px] font-bold text-slate-400">{isAr ? group.ar : group.en}</p>
+              <p className="mt-1 text-2xl font-black text-slate-900 dark:text-white">{value == null ? '—' : value.toFixed(1)}<span className="text-xs text-slate-400">/5</span></p>
+              <p className="text-[10px] text-slate-400 mt-1">{isAr ? 'متوسط أحدث تقييم منشور لكل لاعب' : 'Average of each player’s latest published review'}</p>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+        <div className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900/60 flex items-center gap-3">
+          <History className="h-5 w-5 text-blue-500" />
+          <div><p className="text-xl font-black text-slate-900 dark:text-white">{playersWithHistory.length}</p><p className="text-[11px] text-slate-400">{isAr ? 'لاعبون لديهم تقييمان منشوران أو أكثر' : 'Players with 2+ published reviews'}</p></div>
+        </div>
+        <div className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900/60 flex items-center gap-3">
+          <TrendingUp className="h-5 w-5 text-emerald-500" />
+          <div><p className="text-xl font-black text-slate-900 dark:text-white">{publishedEvaluations.length}</p><p className="text-[11px] text-slate-400">{isAr ? 'إجمالي التقييمات المنشورة' : 'Published reviews'}</p></div>
+        </div>
+        <div className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900/60 flex items-center gap-3">
+          <CalendarClock className="h-5 w-5 text-amber-500" />
+          <div><p className="text-xl font-black text-slate-900 dark:text-white">{reassessmentDue}</p><p className="text-[11px] text-slate-400">{isAr ? 'إعادة تقييم مستحقة حسب أحدث خطة' : 'Reassessments due from latest plans'}</p></div>
+        </div>
+      </div>
+
+      {playersWithHistory.length > 0 && (
+        <section className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900/60">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <div>
+              <h3 className="text-sm font-black text-slate-900 dark:text-white">{isAr ? 'سجل تطور اللاعب' : 'Player progress history'}</h3>
+              <p className="text-[11px] text-slate-400">{isAr ? 'مقارنة اللاعب بتقييماته السابقة فقط، بدون ترتيب بين اللاعبين.' : 'Compares a player only with their own previous reviews; no player ranking.'}</p>
+            </div>
+            <select value={progressPlayerId} onChange={e => setProgressPlayerId(e.target.value)} className={`${inputCls} w-auto min-w-[180px]`}>
+              <option value="">{isAr ? 'اختر لاعباً' : 'Select player'}</option>
+              {playersWithHistory.map(player => <option key={player.id} value={player.id}>{player.name}</option>)}
+            </select>
+          </div>
+          {progressPlayerId && (
+            <div className="space-y-3">
+              {progressEvaluations.map((ev, index) => {
+                const current = frameworkScores(ev);
+                const previous = index > 0 ? frameworkScores(progressEvaluations[index - 1]) : null;
+                return (
+                  <div key={ev.id} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-black text-slate-700 dark:text-slate-200">{ev.evaluationDate}</span>
+                      <span className="text-[10px] text-slate-400">{ev.periodType}</span>
+                    </div>
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+                      {CRITERIA_GROUPS.map(group => {
+                        const score = current[group.key];
+                        const prevScore = previous?.[group.key] ?? null;
+                        return (
+                          <div key={group.key} className="p-2 rounded-lg bg-white dark:bg-slate-900">
+                            <p className="text-[10px] text-slate-400">{isAr ? group.ar : group.en}</p>
+                            <div className="flex items-end justify-between gap-2">
+                              <span className="text-base font-black text-slate-900 dark:text-white">{score == null ? '—' : score.toFixed(1)}</span>
+                              <span className={`text-[10px] font-bold ${prevScore == null || score == null ? 'text-slate-400' : score > prevScore ? 'text-emerald-600' : score < prevScore ? 'text-amber-600' : 'text-slate-400'}`}>{formatDelta(score, prevScore)}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {(ev.developmentPriorities?.length > 0 || ev.trainingAction || ev.reassessmentDate) && (
+                      <div className="mt-2 text-[10px] text-slate-500 dark:text-slate-400">
+                        {ev.developmentPriorities?.length > 0 && <span><b>{isAr ? 'الأولويات' : 'Priorities'}:</b> {ev.developmentPriorities.join('، ')} </span>}
+                        {ev.reassessmentDate && <span><b>{isAr ? 'إعادة التقييم' : 'Reassess'}:</b> {ev.reassessmentDate}</span>}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3 items-center">
