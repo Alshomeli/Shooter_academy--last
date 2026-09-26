@@ -3,7 +3,8 @@ import { supabase } from '@/lib/supabase';
 export type AIOperation =
   | 'approve_registration'
   | 'review_registration'
-  | 'record_subscription_payment';
+  | 'record_subscription_payment'
+  | 'record_attendance';
 
 export interface PreparedAIAction {
   requestId: string;
