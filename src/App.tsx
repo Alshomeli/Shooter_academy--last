@@ -457,6 +457,8 @@ export default function App() {
         darkMode={darkMode}
         setDarkMode={setDarkMode}
         currentUser={currentUser}
+        academyName={data.settings?.name}
+        logoUrl={data.settings?.logoUrl}
         onLogout={handleLogout}
         mobileOpen={mobileOpen}
         setMobileOpen={setMobileOpen}

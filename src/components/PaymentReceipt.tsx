@@ -1,27 +1,42 @@
 import { Printer } from 'lucide-react';
-import type { Lang, Player, Subscription, Transaction } from '@/types';
+import type { Lang, Player, Settings, Subscription, Transaction } from '@/types';
 import { paymentMethodLabel } from '@/lib/i18n';
 
 type Props = {
   subscription: Subscription;
   transactions: Transaction[];
   players: Player[];
+  settings?: Settings | null;
   lang: Lang;
   onClose: () => void;
 };
 
-export function PaymentReceipt({ subscription, transactions, players, lang, onClose }: Props) {
+export function PaymentReceipt({ subscription, transactions, players, settings, lang, onClose }: Props) {
   const ar = lang === 'ar';
   const player = players.find((p) => p.id === subscription.playerId);
   const tx = transactions.find((t) => t.subscriptionId === subscription.id);
   const number = tx?.id ? tx.id.replace('txn-', '').slice(0, 12).toUpperCase() : subscription.id;
   const date = tx?.transactionDate || subscription.paidAt?.slice(0, 10) || '-';
+  const brandName = settings?.name?.trim() || 'SHOOTER ACADEMY';
+  const configuredLogo = settings?.logoUrl?.trim() || '';
+  const logoIsImage = /^(https?:\/\/|data:image\/|\/)/i.test(configuredLogo);
   return (
     <div className="fixed inset-0 z-50 bg-black/50 p-4 overflow-y-auto" dir={ar ? 'rtl' : 'ltr'}>
       <div className="max-w-2xl mx-auto bg-white rounded-2xl shadow-xl">
         <div className="p-6 sm:p-8 text-slate-900">
           <div className="flex justify-between gap-4 pb-5 border-b-2 border-red-700">
-            <div><div className="text-2xl font-black text-red-700">SHOOTER ACADEMY</div><div className="text-xs font-bold text-slate-500">{ar ? 'إيصال استلام' : 'RECEIPT'}</div></div>
+            <div className="flex items-center gap-3">
+              {configuredLogo && (
+                logoIsImage
+                  ? <img src={configuredLogo} alt={brandName} className="h-12 w-12 object-contain" />
+                  : <div className="text-3xl leading-none">{configuredLogo}</div>
+              )}
+              <div>
+                <div className="text-2xl font-black text-red-700">{brandName}</div>
+                <div className="text-xs font-bold text-slate-500">{ar ? 'إيصال استلام' : 'RECEIPT'}</div>
+                {(settings?.phone || settings?.email) && <div className="mt-1 text-[10px] text-slate-400">{[settings.phone, settings.email].filter(Boolean).join(' · ')}</div>}
+              </div>
+            </div>
             <div className="text-xs text-end"><div><b>{ar ? 'رقم الإيصال:' : 'Receipt No:'}</b> {number}</div><div><b>{ar ? 'التاريخ:' : 'Date:'}</b> {date}</div></div>
           </div>
           <div className="grid sm:grid-cols-2 gap-4 py-5 text-sm">
