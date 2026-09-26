@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, ClipboardCheck, CreditCard, Loader2, ShieldCheck, XCircle } from 'lucide-react';
+import { CalendarCheck2, CheckCircle2, ClipboardCheck, CreditCard, Loader2, ShieldCheck, XCircle } from 'lucide-react';
 import type { Lang, Player, RegistrationApplication, Role, Subscription } from '@/types';
 import { fetchAllApplications } from '@/lib/registration';
 import { paymentMethodLabel } from '@/lib/i18n';
@@ -33,6 +33,7 @@ export function AIOperationsPanel({ activeRole, lang, subscriptions, players, on
   const ar = lang === 'ar';
   const canPayment = activeRole === 'manager' || activeRole === 'accountant';
   const canRegistration = activeRole === 'manager';
+  const canAttendance = activeRole === 'manager' || activeRole === 'coach';
 
   const [apps, setApps] = useState<RegistrationApplication[]>([]);
   const [loadingApps, setLoadingApps] = useState(false);
@@ -41,6 +42,11 @@ export function AIOperationsPanel({ activeRole, lang, subscriptions, players, on
   const [selectedApplicationId, setSelectedApplicationId] = useState('');
   const [registrationDecision, setRegistrationDecision] = useState<RegistrationDecision>('approve');
   const [reviewNotes, setReviewNotes] = useState('');
+  const [attendancePlayerId, setAttendancePlayerId] = useState('');
+  const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().slice(0, 10));
+  const [attendanceType, setAttendanceType] = useState<'training' | 'match'>('training');
+  const [attendanceStatus, setAttendanceStatus] = useState<'present' | 'absent' | 'excused'>('present');
+  const [attendanceNotes, setAttendanceNotes] = useState('');
   const [prepared, setPrepared] = useState<PreparedAIAction | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
@@ -114,6 +120,24 @@ export function AIOperationsPanel({ activeRole, lang, subscriptions, players, on
     }
   };
 
+  const prepareAttendance = async () => {
+    if (!attendancePlayerId || !attendanceDate || busy) return;
+    setBusy(true); setError(''); setMessage('');
+    try {
+      setPrepared(await prepareAIAction('record_attendance', {
+        playerId: attendancePlayerId,
+        sessionDate: attendanceDate,
+        sessionType: attendanceType,
+        status: attendanceStatus,
+        notes: attendanceNotes.trim(),
+      }));
+    } catch (e) {
+      setError(errorText(e, ar));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const confirmPrepared = async () => {
     if (!prepared || busy) return;
     setBusy(true); setError('');
@@ -143,7 +167,7 @@ export function AIOperationsPanel({ activeRole, lang, subscriptions, players, on
     }
   };
 
-  if (!canPayment && !canRegistration) return null;
+  if (!canPayment && !canRegistration && !canAttendance) return null;
 
   return (
     <section className="rounded-2xl border border-violet-200 dark:border-violet-900/50 bg-violet-50/40 dark:bg-violet-950/10 p-4 sm:p-5">
@@ -172,7 +196,7 @@ export function AIOperationsPanel({ activeRole, lang, subscriptions, players, on
               {ar ? 'معاينة قبل التنفيذ' : 'Preview before execution'}
             </h4>
           </div>
-          <Preview action={prepared} lang={lang} />
+          <Preview action={prepared} lang={lang} players={players} />
           <p className="mt-3 text-[10px] text-amber-700/80 dark:text-amber-300/70">
             {ar ? `تنتهي صلاحية الطلب: ${new Date(prepared.expiresAt).toLocaleString('ar-BH')}` : `Expires: ${new Date(prepared.expiresAt).toLocaleString('en-BH')}`}
           </p>
@@ -248,13 +272,48 @@ export function AIOperationsPanel({ activeRole, lang, subscriptions, players, on
               </div>
             </div>
           )}
+
+          {canAttendance && (
+            <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <CalendarCheck2 className="h-4 w-4 text-violet-600" />
+                <h4 className="text-xs font-black text-slate-800 dark:text-white">{ar ? 'تسجيل حضور لاعب' : 'Record player attendance'}</h4>
+              </div>
+              <div className="space-y-3">
+                <select value={attendancePlayerId} onChange={(e) => setAttendancePlayerId(e.target.value)} className={inputCls}>
+                  <option value="">{ar ? 'اختر اللاعب' : 'Select player'}</option>
+                  {players.filter((p) => p.status === 'active').map((player) => (
+                    <option key={player.id} value={player.id}>{player.name}</option>
+                  ))}
+                </select>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <input type="date" value={attendanceDate} onChange={(e) => setAttendanceDate(e.target.value)} className={inputCls} />
+                  <select value={attendanceType} onChange={(e) => setAttendanceType(e.target.value as 'training' | 'match')} className={inputCls}>
+                    <option value="training">{ar ? 'تدريب' : 'Training'}</option>
+                    <option value="match">{ar ? 'مباراة' : 'Match'}</option>
+                  </select>
+                </div>
+                <select value={attendanceStatus} onChange={(e) => setAttendanceStatus(e.target.value as 'present' | 'absent' | 'excused')} className={inputCls}>
+                  <option value="present">{ar ? 'حاضر' : 'Present'}</option>
+                  <option value="absent">{ar ? 'غائب' : 'Absent'}</option>
+                  <option value="excused">{ar ? 'غياب بعذر' : 'Excused'}</option>
+                </select>
+                <textarea value={attendanceNotes} onChange={(e) => setAttendanceNotes(e.target.value)} rows={2}
+                  placeholder={ar ? 'ملاحظات اختيارية' : 'Optional notes'} className={inputCls} />
+                <button onClick={() => void prepareAttendance()} disabled={!attendancePlayerId || !attendanceDate || busy}
+                  className="w-full rounded-xl bg-violet-600 px-4 py-2 text-xs font-black text-white disabled:opacity-50">
+                  {busy ? (ar ? 'جارٍ التجهيز...' : 'Preparing...') : (ar ? 'معاينة الحضور' : 'Preview attendance')}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </section>
   );
 }
 
-function Preview({ action, lang }: { action: PreparedAIAction; lang: Lang }) {
+function Preview({ action, lang, players }: { action: PreparedAIAction; lang: Lang; players: Player[] }) {
   const ar = lang === 'ar';
   const p = action.preview as Record<string, unknown>;
   if (action.operation === 'record_subscription_payment') {
@@ -265,6 +324,22 @@ function Preview({ action, lang }: { action: PreparedAIAction; lang: Lang }) {
         <Item label={ar ? 'المبلغ' : 'Amount'} value={`${Number(p.amount || 0).toFixed(3)} ${String(p.currency || 'BHD')}`} />
         <Item label={ar ? 'طريقة الدفع' : 'Payment method'} value={String(p.paymentMethod || '—')} />
         <Item label={ar ? 'الفترة' : 'Period'} value={`${String(period.start || '—')} → ${String(period.end || '—')}`} />
+      </dl>
+    );
+  }
+  if (action.operation === 'record_attendance') {
+    const player = players.find((item) => item.id === String(p.playerId || ''));
+    const statusLabel = p.attendanceStatus === 'present'
+      ? (ar ? 'حاضر' : 'Present')
+      : p.attendanceStatus === 'absent'
+        ? (ar ? 'غائب' : 'Absent')
+        : (ar ? 'غياب بعذر' : 'Excused');
+    return (
+      <dl className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-700 dark:text-slate-300">
+        <Item label={ar ? 'اللاعب' : 'Player'} value={player?.name || String(p.playerName || p.playerId || '—')} />
+        <Item label={ar ? 'التاريخ' : 'Date'} value={String(p.sessionDate || '—')} />
+        <Item label={ar ? 'النوع' : 'Type'} value={p.sessionType === 'match' ? (ar ? 'مباراة' : 'Match') : (ar ? 'تدريب' : 'Training')} />
+        <Item label={ar ? 'الحالة' : 'Status'} value={statusLabel} />
       </dl>
     );
   }
