@@ -200,6 +200,22 @@ export default function App() {
   }, [currentUser, loadAllData]);
 
   useEffect(() => {
+    if (!authReady || !currentUser) return;
+    const raw = new URLSearchParams(window.location.search).get('oauth_return');
+    if (!raw) return;
+    try {
+      const target = new URL(raw, window.location.origin);
+      if (target.origin === window.location.origin && target.pathname === '/oauth/consent') {
+        window.location.replace(target.toString());
+      }
+    } catch {
+      // Ignore malformed return targets; never allow an open redirect.
+    }
+  }, [authReady, currentUser]);
+
+
+
+  useEffect(() => {
     if (!currentUser) return;
     const tables = [
       'staff', 'teams', 'players', 'parents', 'subscriptions', 'attendance',
