@@ -33,6 +33,19 @@ export interface ExecutedAIAction {
   result: Record<string, unknown>;
 }
 
+export interface AIOperationsSnapshot {
+  generatedAt: string;
+  role: RoleName;
+  snapshot: {
+    unpaidSubscriptions: number | null;
+    activePlayers: number;
+    draftEvaluations: number | null;
+    applicationsNeedingAction: number | null;
+  };
+}
+
+type RoleName = 'manager' | 'accountant' | 'coach' | 'receptionist';
+
 async function invokeGateway<T>(body: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.functions.invoke('ai-operations-gateway', { body });
   if (error) throw error;
@@ -58,4 +71,8 @@ export function cancelAIAction(requestId: string): Promise<{ requestId: string; 
 
 export function listAIActionHistory(): Promise<{ actions: AIActionHistoryItem[] }> {
   return invokeGateway({ mode: 'history' });
+}
+
+export function getAIOperationsSnapshot(): Promise<AIOperationsSnapshot> {
+  return invokeGateway({ mode: 'snapshot' });
 }

@@ -6,10 +6,12 @@ import { paymentMethodLabel } from '@/lib/i18n';
 import {
   cancelAIAction,
   executeAIAction,
+  getAIOperationsSnapshot,
   listAIActionHistory,
   prepareAIAction,
   type AIActionHistoryItem,
   type AIOperation,
+  type AIOperationsSnapshot,
   type PreparedAIAction,
 } from '@/lib/ai-operations';
 
@@ -60,6 +62,7 @@ export function AIOperationsPanel({ activeRole, lang, subscriptions, players, ev
   const [newSubStartDate, setNewSubStartDate] = useState(new Date().toISOString().slice(0, 10));
   const [prepared, setPrepared] = useState<PreparedAIAction | null>(null);
   const [history, setHistory] = useState<AIActionHistoryItem[]>([]);
+  const [snapshot, setSnapshot] = useState<AIOperationsSnapshot['snapshot'] | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -95,10 +98,20 @@ export function AIOperationsPanel({ activeRole, lang, subscriptions, players, ev
     }
   }, []);
 
+  const loadSnapshot = useCallback(async () => {
+    try {
+      const response = await getAIOperationsSnapshot();
+      setSnapshot(response.snapshot);
+    } catch {
+      // The panel falls back to already-loaded app data if the read-only snapshot is unavailable.
+    }
+  }, []);
+
   useEffect(() => {
     void loadApps();
     void loadHistory();
-  }, [loadApps, loadHistory]);
+    void loadSnapshot();
+  }, [loadApps, loadHistory, loadSnapshot]);
 
   const resetPrepared = () => {
     setPrepared(null);
@@ -202,7 +215,7 @@ export function AIOperationsPanel({ activeRole, lang, subscriptions, players, ev
       await executeAIAction(prepared.requestId);
       setMessage(ar ? 'تم تنفيذ العملية وتسجيلها في سجل التدقيق.' : 'Action executed and recorded in the audit log.');
       setPrepared(null);
-      await Promise.all([onCompleted(), loadApps(), loadHistory()]);
+      await Promise.all([onCompleted(), loadApps(), loadHistory(), loadSnapshot()]);
     } catch (e) {
       setError(errorText(e, ar));
     } finally {
@@ -246,19 +259,19 @@ export function AIOperationsPanel({ activeRole, lang, subscriptions, players, ev
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-4">
         <div className="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3">
           <p className="text-[10px] font-bold text-slate-400">{ar ? 'اشتراكات غير مدفوعة' : 'Unpaid subscriptions'}</p>
-          <p className="mt-1 text-xl font-black text-amber-600">{unpaid.length}</p>
+          <p className="mt-1 text-xl font-black text-amber-600">{canPayment ? (snapshot?.unpaidSubscriptions ?? unpaid.length) : '—'}</p>
         </div>
         <div className="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3">
           <p className="text-[10px] font-bold text-slate-400">{ar ? 'طلبات تحتاج إجراء' : 'Applications needing action'}</p>
-          <p className="mt-1 text-xl font-black text-blue-600">{canRegistration ? actionableApps.length : '—'}</p>
+          <p className="mt-1 text-xl font-black text-blue-600">{canRegistration ? (snapshot?.applicationsNeedingAction ?? actionableApps.length) : '—'}</p>
         </div>
         <div className="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3">
           <p className="text-[10px] font-bold text-slate-400">{ar ? 'تقييمات مسودة' : 'Draft evaluations'}</p>
-          <p className="mt-1 text-xl font-black text-violet-600">{draftEvaluations.length}</p>
+          <p className="mt-1 text-xl font-black text-violet-600">{canPublishEvaluation ? (snapshot?.draftEvaluations ?? draftEvaluations.length) : '—'}</p>
         </div>
         <div className="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3">
           <p className="text-[10px] font-bold text-slate-400">{ar ? 'لاعبون نشطون' : 'Active players'}</p>
-          <p className="mt-1 text-xl font-black text-emerald-600">{players.filter((player) => player.status === 'active').length}</p>
+          <p className="mt-1 text-xl font-black text-emerald-600">{snapshot?.activePlayers ?? players.filter((player) => player.status === 'active').length}</p>
         </div>
       </div>
 
@@ -266,7 +279,7 @@ export function AIOperationsPanel({ activeRole, lang, subscriptions, players, ev
         <div className="mb-4 rounded-xl border border-violet-100 dark:border-violet-900/40 bg-white/70 dark:bg-slate-900/60 p-3">
           <div className="flex items-center justify-between gap-3 mb-2">
             <p className="text-[11px] font-black text-slate-700 dark:text-slate-200">{ar ? 'آخر الإجراءات' : 'Recent actions'}</p>
-            <button onClick={() => void loadHistory()} className="text-[10px] font-bold text-violet-600 dark:text-violet-400">
+            <button onClick={() => { void loadHistory(); void loadSnapshot(); }} className="text-[10px] font-bold text-violet-600 dark:text-violet-400">
               {ar ? 'تحديث' : 'Refresh'}
             </button>
           </div>

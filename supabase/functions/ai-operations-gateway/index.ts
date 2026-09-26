@@ -116,11 +116,22 @@ Deno.serve(async (req) => {
   const mode: Mode = body.mode === "execute" ? "execute" : body.mode === "cancel" ? "cancel" : body.mode === "history" ? "history" : body.mode === "snapshot" ? "snapshot" : "prepare";
 
   if (mode === "snapshot") {
+    const canPayments = ["manager", "accountant"].includes(staff.role);
+    const canEvaluations = ["manager", "coach"].includes(staff.role);
+    const canRegistrations = staff.role === "manager";
+    const hiddenCount = () => Promise.resolve({ count: null as number | null, error: null });
+
     const [unpaidRes, playersRes, draftEvalRes, registrationsRes] = await Promise.all([
-      userClient.from("subscriptions").select("id", { count: "exact", head: true }).eq("status", "unpaid"),
+      canPayments
+        ? userClient.from("subscriptions").select("id", { count: "exact", head: true }).eq("status", "unpaid")
+        : hiddenCount(),
       userClient.from("players").select("id", { count: "exact", head: true }).eq("status", "active"),
-      userClient.from("player_evaluations").select("id", { count: "exact", head: true }).eq("status", "draft"),
-      userClient.from("registration_applications").select("id", { count: "exact", head: true }).in("status", ["pending", "under_review", "needs_info"]),
+      canEvaluations
+        ? userClient.from("player_evaluations").select("id", { count: "exact", head: true }).eq("status", "draft")
+        : hiddenCount(),
+      canRegistrations
+        ? userClient.from("registration_applications").select("id", { count: "exact", head: true }).in("status", ["pending", "under_review", "needs_info"])
+        : hiddenCount(),
     ]);
 
     const sourceError = [unpaidRes.error, playersRes.error, draftEvalRes.error, registrationsRes.error].find(Boolean);
@@ -133,10 +144,10 @@ Deno.serve(async (req) => {
       generatedAt: nowIso,
       role: staff.role,
       snapshot: {
-        unpaidSubscriptions: unpaidRes.count || 0,
+        unpaidSubscriptions: unpaidRes.count,
         activePlayers: playersRes.count || 0,
-        draftEvaluations: draftEvalRes.count || 0,
-        applicationsNeedingAction: registrationsRes.count || 0,
+        draftEvaluations: draftEvalRes.count,
+        applicationsNeedingAction: registrationsRes.count,
       },
     });
   }
