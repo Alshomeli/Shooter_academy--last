@@ -12,6 +12,36 @@ type AuthDetails = {
   client?: { name?: string };
 };
 
+const authBaseUrl = import.meta.env.VITE_SUPABASE_URL?.replace(/\/$/, '') + '/auth/v1';
+
+async function oauthRequest<T>(path: string, init?: RequestInit): Promise<T> {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const token = sessionData.session?.access_token;
+  if (!token) throw new Error('Missing authenticated session');
+
+  const response = await fetch(authBaseUrl + path, {
+    ...init,
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      ...(init?.headers || {}),
+    },
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const message = typeof data?.message === 'string'
+      ? data.message
+      : typeof data?.error_description === 'string'
+        ? data.error_description
+        : typeof data?.error === 'string'
+          ? data.error
+          : `OAuth request failed (${response.status})`;
+    throw new Error(message);
+  }
+  return data as T;
+}
+
 export function OAuthConsent() {
   const [lang] = useState<Lang>(() => prefs.getLang());
   const ar = lang === 'ar';
@@ -46,15 +76,8 @@ export function OAuthConsent() {
       if (!active) return;
       setMember(currentMember);
 
-      const { data, error: authError } = await supabase.auth.oauth.getAuthorizationDetails(authorizationId);
+      const authData = await oauthRequest<AuthDetails>(`/oauth/authorizations/${encodeURIComponent(authorizationId)}`);
       if (!active) return;
-      if (authError) {
-        setError(authError.message);
-        setLoading(false);
-        return;
-      }
-
-      const authData = data as AuthDetails;
       if (authData.redirect_url && !authData.authorization_id) {
         window.location.replace(authData.redirect_url);
         return;
@@ -74,12 +97,15 @@ export function OAuthConsent() {
     if (!authorizationId || busy) return;
     setBusy(true); setError('');
     try {
-      const result = approve
-        ? await supabase.auth.oauth.approveAuthorization(authorizationId)
-        : await supabase.auth.oauth.denyAuthorization(authorizationId);
-      if (result.error) throw result.error;
-      if (!result.data?.redirect_url) throw new Error('Missing OAuth redirect URL');
-      window.location.replace(result.data.redirect_url);
+      const result = await oauthRequest<{ redirect_url?: string }>(
+        `/oauth/authorizations/${encodeURIComponent(authorizationId)}/consent`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ action: approve ? 'approve' : 'deny' }),
+        },
+      );
+      if (!result.redirect_url) throw new Error('Missing OAuth redirect URL');
+      window.location.replace(result.redirect_url);
     } catch (e) {
       setError(e instanceof Error ? e.message : (ar ? 'تعذر إكمال التفويض.' : 'Unable to complete authorization.'));
       setBusy(false);
