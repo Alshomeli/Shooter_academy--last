@@ -17,6 +17,19 @@ interface Props {
 
 const PERIOD_OPTS = ['monthly', 'quarterly', 'custom'] as const;
 
+const DETAIL_CRITERIA = [
+  { key: 'ball_control', ar: 'التحكم بالكرة', en: 'Ball control' },
+  { key: 'passing', ar: 'التمرير', en: 'Passing' },
+  { key: 'decision_making', ar: 'اتخاذ القرار', en: 'Decision making' },
+  { key: 'positioning', ar: 'التمركز', en: 'Positioning' },
+  { key: 'teamwork', ar: 'العمل الجماعي', en: 'Teamwork' },
+  { key: 'fitness', ar: 'اللياقة', en: 'Fitness' },
+  { key: 'speed_agility', ar: 'السرعة والرشاقة', en: 'Speed & agility' },
+  { key: 'focus', ar: 'التركيز', en: 'Focus' },
+  { key: 'coachability', ar: 'الاستجابة للتوجيه', en: 'Coachability' },
+  { key: 'discipline', ar: 'الانضباط', en: 'Discipline' },
+] as const;
+
 function ScoreBar({ label, value, max = 5 }: { label: string; value: number | null; max?: number }) {
   const pct = value ? (value / max) * 100 : 0;
   const color = !value ? 'bg-slate-300 dark:bg-slate-700'
@@ -74,6 +87,23 @@ function EvalCard({ ev, player, coach, lang, onEdit }: {
           )}
         </div>
       )}
+      {Object.keys(ev.detailedScores || {}).length > 0 && (
+        <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+          <p className="text-[11px] font-black text-slate-600 dark:text-slate-300 mb-2">{isAr ? 'التقييم التفصيلي' : 'Detailed assessment'}</p>
+          <div className="flex flex-wrap gap-1.5">
+            {DETAIL_CRITERIA.filter(item => ev.detailedScores[item.key] != null).map(item => (
+              <span key={item.key} className="px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-[10px] font-bold text-slate-600 dark:text-slate-300">
+                {isAr ? item.ar : item.en}: {ev.detailedScores[item.key]}/5
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+      {ev.developmentPriorities?.length > 0 && (
+        <div className="mt-2 text-[11px] text-violet-700 dark:text-violet-400">
+          <span className="font-bold">{isAr ? 'أولويات التطوير' : 'Development priorities'}:</span> {ev.developmentPriorities.join('، ')}
+        </div>
+      )}
       {ev.coachRecommendation && (
         <div className="mt-2 p-2 rounded-lg bg-blue-50 dark:bg-blue-950/30 text-[11px] text-blue-700 dark:text-blue-400">
           <span className="font-bold">{t.coachRecommendation}:</span> {ev.coachRecommendation}
@@ -110,6 +140,9 @@ export function Evaluations({ evaluations, players, teams, staff, activeRole, la
     physicalScore: null as number | null, mentalScore: null as number | null,
     disciplineScore: null as number | null,
     strengths: '', developmentAreas: '', coachNotes: '', coachRecommendation: '',
+    detailedScores: {} as Record<string, number | null>,
+    developmentPriorities: [] as string[],
+    trainingAction: '', reassessmentDate: null as string | null, finalRecommendation: '',
   };
   const [form, setForm] = useState(emptyForm);
 
@@ -141,6 +174,9 @@ export function Evaluations({ evaluations, players, teams, staff, activeRole, la
       disciplineScore: ev.disciplineScore,
       strengths: ev.strengths, developmentAreas: ev.developmentAreas,
       coachNotes: ev.coachNotes, coachRecommendation: ev.coachRecommendation,
+      detailedScores: ev.detailedScores || {}, developmentPriorities: ev.developmentPriorities || [],
+      trainingAction: ev.trainingAction || '', reassessmentDate: ev.reassessmentDate || null,
+      finalRecommendation: ev.finalRecommendation || '',
     });
     setShowForm(true); setError('');
   };
@@ -238,6 +274,31 @@ export function Evaluations({ evaluations, players, teams, staff, activeRole, la
             ))}
           </div>
 
+          <div className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-3">
+            <div>
+              <h3 className="text-sm font-black text-slate-900 dark:text-white">{isAr ? 'التقييم التفصيلي' : 'Detailed assessment'}</h3>
+              <p className="text-[11px] text-slate-400 mt-1">{isAr ? 'اختر 1–5، أو اترك المعيار غير مُقيّم.' : 'Choose 1–5, or leave a criterion not rated.'}</p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {DETAIL_CRITERIA.map(item => (
+                <div key={item.key} className="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60">
+                  <label className="text-xs font-bold text-slate-600 dark:text-slate-300">{isAr ? item.ar : item.en}</label>
+                  <select
+                    value={form.detailedScores[item.key] ?? ''}
+                    onChange={e => setForm(prev => ({
+                      ...prev,
+                      detailedScores: { ...prev.detailedScores, [item.key]: e.target.value === '' ? null : Number(e.target.value) },
+                    }))}
+                    className={`${inputCls} w-28 py-1.5`}
+                  >
+                    <option value="">{isAr ? 'غير مُقيّم' : 'Not rated'}</option>
+                    {[1,2,3,4,5].map(score => <option key={score} value={score}>{score}/5</option>)}
+                  </select>
+                </div>
+              ))}
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField label={t.strengths}>
               <textarea value={form.strengths} onChange={e => setForm(prev => ({ ...prev, strengths: e.target.value }))}
@@ -253,6 +314,26 @@ export function Evaluations({ evaluations, players, teams, staff, activeRole, la
             </FormField>
             <FormField label={t.coachRecommendation}>
               <textarea value={form.coachRecommendation} onChange={e => setForm(prev => ({ ...prev, coachRecommendation: e.target.value }))}
+                className={inputCls} rows={3} />
+            </FormField>
+            <FormField label={isAr ? 'أولوية التطوير الأولى' : 'Development priority 1'}>
+              <input value={form.developmentPriorities[0] || ''} onChange={e => setForm(prev => ({ ...prev, developmentPriorities: [e.target.value, prev.developmentPriorities[1] || ''].filter(Boolean) }))}
+                className={inputCls} />
+            </FormField>
+            <FormField label={isAr ? 'أولوية التطوير الثانية' : 'Development priority 2'}>
+              <input value={form.developmentPriorities[1] || ''} onChange={e => setForm(prev => ({ ...prev, developmentPriorities: [prev.developmentPriorities[0] || '', e.target.value].filter(Boolean) }))}
+                className={inputCls} />
+            </FormField>
+            <FormField label={isAr ? 'إجراء تدريبي مقترح' : 'Suggested training action'}>
+              <textarea value={form.trainingAction} onChange={e => setForm(prev => ({ ...prev, trainingAction: e.target.value }))}
+                className={inputCls} rows={3} />
+            </FormField>
+            <FormField label={isAr ? 'موعد إعادة التقييم' : 'Reassessment date'}>
+              <input type="date" min={form.evaluationDate} value={form.reassessmentDate || ''} onChange={e => setForm(prev => ({ ...prev, reassessmentDate: e.target.value || null }))}
+                className={inputCls} />
+            </FormField>
+            <FormField label={isAr ? 'التوصية النهائية' : 'Final recommendation'}>
+              <textarea value={form.finalRecommendation} onChange={e => setForm(prev => ({ ...prev, finalRecommendation: e.target.value }))}
                 className={inputCls} rows={3} />
             </FormField>
           </div>
