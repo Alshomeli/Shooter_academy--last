@@ -13,9 +13,12 @@ test('remote MCP delegates business mutations to the safe gateway', () => {
 });
 
 test('remote MCP exposes OAuth protection and a non-sensitive health endpoint', () => {
-  assert.match(mcp, /withOAuthProtectedResource/);
+  assert.match(mcp, /oauth-protected-resource/);
+  assert.match(mcp, /WWW-Authenticate/);
+  assert.match(mcp, /authorization_servers/);
   assert.match(mcp, /chatgpt-mcp\/health/);
   assert.match(mcp, /authentication: "supabase-oauth"/);
+  assert.doesNotMatch(mcp, /@supabase\/server/);
 });
 
 test('remote MCP provides only allow-listed administrative preparation tools', () => {
