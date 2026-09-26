@@ -203,7 +203,11 @@ export function Evaluations({ evaluations, players, teams, staff, activeRole, la
     }
     setSaving(true); setError('');
     try {
-      const evalId = await db.savePlayerEvaluation(form as Parameters<typeof db.savePlayerEvaluation>[0]);
+      const payload = {
+        ...form,
+        developmentPriorities: form.developmentPriorities.map(p => p.trim()).filter(Boolean),
+      };
+      const evalId = await db.savePlayerEvaluation(payload as Parameters<typeof db.savePlayerEvaluation>[0]);
       if (publish) await db.publishPlayerEvaluation(form.id || evalId);
       await onRefresh();
       setShowForm(false);
