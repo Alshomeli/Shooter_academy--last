@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { CheckCircle2, Loader2, RefreshCw, ShieldCheck, TriangleAlert } from 'lucide-react';
+import { CheckCircle2, Loader2, RefreshCw, ShieldCheck, AlertTriangle } from 'lucide-react';
 import type { Lang } from '@/types';
 
 interface Props {
@@ -132,7 +132,7 @@ function StatusRow({
     <div className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 px-3 py-3">
       <span className="text-xs font-black text-slate-700 dark:text-slate-200">{label}</span>
       <span className={`inline-flex items-center gap-1.5 text-[10px] font-black ${ready ? 'text-emerald-600' : loading ? 'text-slate-400' : 'text-amber-600'}`}>
-        {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : ready ? <CheckCircle2 className="h-3.5 w-3.5" /> : <TriangleAlert className="h-3.5 w-3.5" />}
+        {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : ready ? <CheckCircle2 className="h-3.5 w-3.5" /> : <AlertTriangle className="h-3.5 w-3.5" />}
         {text}
       </span>
     </div>
