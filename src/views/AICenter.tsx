@@ -7,6 +7,7 @@ import {
 import type { Player, Team, Staff, Match, Training, Transaction, Subscription, Tournament, Parent, Attendance, PlayerEvaluation, Lang, Role } from '@/types';
 import { PageHeader } from '@/components/ui';
 import { AIOperationsPanel } from '@/components/AIOperationsPanel';
+import { ChatGPTIntegrationStatus } from '@/components/ChatGPTIntegrationStatus';
 import { tr } from '@/lib/i18n';
 import { fetchAllPlayerFiles, type UploadedFile } from '@/lib/uploads';
 import type { AIContext } from '@/views/ai-context';
@@ -399,6 +400,8 @@ export function AICenter({ players, subscriptions, transactions, staff, teams, m
       </PageHeader>
 
       <AIInsights players={players} subscriptions={subscriptions} transactions={transactions} matches={matches} trainings={trainings} documents={documents} currency={t.currency} />
+
+      <ChatGPTIntegrationStatus lang={lang} />
 
       <AIOperationsPanel activeRole={activeRole} lang={lang} subscriptions={subscriptions} players={players} evaluations={evaluations} trainings={trainings} onCompleted={onRefresh} />
 
