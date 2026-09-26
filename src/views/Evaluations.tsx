@@ -202,6 +202,13 @@ export function Evaluations({ evaluations, players, teams, staff, activeRole, la
 
   const activePlayers = useMemo(() => players.filter(p => p.status === 'active'), [players]);
 
+  const previousPublishedEvaluation = useMemo(() => {
+    if (!form.playerId) return null;
+    return evaluations
+      .filter(ev => ev.playerId === form.playerId && ev.status === 'published' && ev.id !== form.id)
+      .sort((a, b) => b.evaluationDate.localeCompare(a.evaluationDate))[0] || null;
+  }, [evaluations, form.playerId, form.id]);
+
   const publishedEvaluations = useMemo(
     () => evaluations.filter(ev => ev.status === 'published').sort((a, b) => a.evaluationDate.localeCompare(b.evaluationDate)),
     [evaluations],
@@ -330,6 +337,43 @@ export function Evaluations({ evaluations, players, teams, staff, activeRole, la
               </div>
             )}
           </div>
+
+          {previousPublishedEvaluation && (
+            <div className="p-4 rounded-2xl border border-blue-100 dark:border-blue-900/50 bg-blue-50/60 dark:bg-blue-950/20">
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <div>
+                  <h3 className="text-sm font-black text-blue-900 dark:text-blue-200">{isAr ? 'متابعة خطة التطوير السابقة' : 'Previous development plan follow-up'}</h3>
+                  <p className="text-[11px] text-blue-600/80 dark:text-blue-300/70">
+                    {isAr ? `آخر تقييم منشور: ${previousPublishedEvaluation.evaluationDate}` : `Latest published review: ${previousPublishedEvaluation.evaluationDate}`}
+                  </p>
+                </div>
+                {previousPublishedEvaluation.reassessmentDate && (
+                  <Badge color={previousPublishedEvaluation.reassessmentDate <= new Date().toISOString().split('T')[0] ? 'amber' : 'blue'}>
+                    {isAr ? 'إعادة التقييم' : 'Reassess'}: {previousPublishedEvaluation.reassessmentDate}
+                  </Badge>
+                )}
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                <div className="p-3 rounded-xl bg-white/80 dark:bg-slate-900/70">
+                  <p className="font-black text-slate-700 dark:text-slate-200 mb-1">{isAr ? 'أولويات التطوير' : 'Development priorities'}</p>
+                  <p className="text-slate-500 dark:text-slate-400">
+                    {previousPublishedEvaluation.developmentPriorities?.length
+                      ? previousPublishedEvaluation.developmentPriorities.join('، ')
+                      : (isAr ? 'لا توجد أولويات مسجلة' : 'No priorities recorded')}
+                  </p>
+                </div>
+                <div className="p-3 rounded-xl bg-white/80 dark:bg-slate-900/70">
+                  <p className="font-black text-slate-700 dark:text-slate-200 mb-1">{isAr ? 'الإجراء التدريبي السابق' : 'Previous training action'}</p>
+                  <p className="text-slate-500 dark:text-slate-400">
+                    {previousPublishedEvaluation.trainingAction || (isAr ? 'لا يوجد إجراء مسجل' : 'No action recorded')}
+                  </p>
+                </div>
+              </div>
+              <p className="text-[10px] text-blue-600/70 dark:text-blue-300/60 mt-3">
+                {isAr ? 'استخدم هذه المعلومات لمراجعة التقدم قبل تحديد أولويات جديدة، ولا تعتمد على مقارنة اللاعب بغيره.' : 'Use this context to review progress before setting new priorities; do not compare the player with peers.'}
+              </p>
+            </div>
+          )}
 
           <div className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-3">
             <h3 className="text-sm font-black text-slate-900 dark:text-white">{isAr ? 'الدرجات' : 'Scores'} <span className="text-slate-400 font-normal text-[11px]">({t.scoreRange})</span></h3>
