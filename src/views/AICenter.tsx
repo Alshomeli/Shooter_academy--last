@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import type { Player, Team, Staff, Match, Training, Transaction, Subscription, Tournament, Parent, Attendance, PlayerEvaluation, Lang, Role } from '@/types';
 import { PageHeader } from '@/components/ui';
+import { AIOperationsPanel } from '@/components/AIOperationsPanel';
 import { tr } from '@/lib/i18n';
 import { fetchAllPlayerFiles, type UploadedFile } from '@/lib/uploads';
 import type { AIContext } from '@/views/ai-context';
@@ -29,6 +30,7 @@ interface AICenterProps {
   attendance: Attendance[];
   evaluations: PlayerEvaluation[];
   activeRole: Role;
+  onRefresh: () => Promise<void>;
   lang: Lang;
 }
 
@@ -310,7 +312,7 @@ function generateResponse(personaId: PersonaId, q: string, c: AIContext, teams: 
   }
 }
 
-export function AICenter({ players, subscriptions, transactions, staff, teams, matches, trainings, tournaments, parents, attendance, evaluations, activeRole, lang }: AICenterProps) {
+export function AICenter({ players, subscriptions, transactions, staff, teams, matches, trainings, tournaments, parents, attendance, evaluations, activeRole, lang, onRefresh }: AICenterProps) {
   const t = tr(lang);
   const [activePersona, setActivePersona] = useState<PersonaId>('technical');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -374,6 +376,8 @@ export function AICenter({ players, subscriptions, transactions, staff, teams, m
       </PageHeader>
 
       <AIInsights players={players} subscriptions={subscriptions} transactions={transactions} matches={matches} trainings={trainings} documents={documents} currency={t.currency} />
+
+      <AIOperationsPanel activeRole={activeRole} lang={lang} subscriptions={subscriptions} players={players} onCompleted={onRefresh} />
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
         <aside className="lg:col-span-1 space-y-3">
