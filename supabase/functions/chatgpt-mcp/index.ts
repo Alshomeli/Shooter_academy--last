@@ -232,4 +232,19 @@ app.all("/mcp", async (c) => {
 });
 
 const protectedHandler = withOAuthProtectedResource(app.fetch);
-Deno.serve(protectedHandler);
+
+Deno.serve((req) => {
+  const pathname = new URL(req.url).pathname;
+  if (pathname.endsWith("/chatgpt-mcp/health")) {
+    return Response.json({
+      status: "ok",
+      service: "shooter-academy-admin-mcp",
+      version: "1.0.0",
+      authentication: "supabase-oauth",
+      mutationFlow: "prepare-confirm-execute",
+    }, {
+      headers: { "Cache-Control": "no-store" },
+    });
+  }
+  return protectedHandler(req);
+});
