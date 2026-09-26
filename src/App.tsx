@@ -378,7 +378,7 @@ export default function App() {
       case 'evaluations':
         return <Evaluations evaluations={data.evaluations} players={data.players} teams={data.teams} staff={data.staff} activeRole={activeRole} lang={lang} onRefresh={loadAllData} />;
       case 'reports':
-        return <Reports players={data.players} teams={data.teams} staff={data.staff} matches={data.matches} trainings={data.trainings} transactions={data.transactions} subscriptions={data.subscriptions} attendance={data.attendance} activeRole={activeRole} lang={lang} />;
+        return <Reports players={data.players} teams={data.teams} staff={data.staff} matches={data.matches} trainings={data.trainings} transactions={data.transactions} subscriptions={data.subscriptions} attendance={data.attendance} settings={data.settings} activeRole={activeRole} lang={lang} />;
       case 'audit-logs':
         return <AuditLogs auditLogs={data.auditLogs} loginLogs={data.loginLogs} activeRole={activeRole} lang={lang} />;
       case 'mobile':
@@ -485,7 +485,7 @@ export default function App() {
               </h1>
               <p className="text-[10px] sm:text-xs text-slate-400 font-semibold mt-0.5 flex items-center gap-1.5">
                 <Target className="h-3 w-3 text-emerald-500" />
-                {t.academyName} · {roleLabels[activeRole]}
+                {data.settings?.name?.trim() || t.academyName} · {roleLabels[activeRole]}
               </p>
             </div>
           </div>
