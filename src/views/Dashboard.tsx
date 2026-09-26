@@ -3,7 +3,7 @@ import {
   Users, Trophy, Wallet, TrendingUp, Activity, Target,
   Calendar, Award, Percent, Goal, ShieldCheck,
 } from 'lucide-react';
-import type { Player, Subscription, Match, Transaction, Staff, Team, Parent, Lang, Role, ViewId } from '@/types';
+import type { Player, Subscription, Match, Transaction, Staff, Team, Parent, PlayerEvaluation, Lang, Role, ViewId } from '@/types';
 import { StatCard, PageHeader } from '@/components/ui';
 import { DonutChart, BarChart, LineChart } from '@/components/Charts';
 import { RemindersPanel } from '@/components/RemindersPanel';
@@ -18,12 +18,13 @@ interface DashboardProps {
   staff: Staff[];
   teams: Team[];
   parents: Parent[];
+  evaluations: PlayerEvaluation[];
   setCurrentTab: (v: ViewId) => void;
   activeRole: Role;
   lang: Lang;
 }
 
-export function Dashboard({ players, subscriptions, matches, transactions, staff, teams, parents, setCurrentTab, lang }: DashboardProps) {
+export function Dashboard({ players, subscriptions, matches, transactions, staff, teams, parents, evaluations, setCurrentTab, lang }: DashboardProps) {
   const t = tr(lang);
   const isAr = lang === 'ar';
   const MONTHS = monthsArray(lang);
@@ -32,6 +33,26 @@ export function Dashboard({ players, subscriptions, matches, transactions, staff
     () => getSubscriptionReminders(subscriptions, players, parents),
     [subscriptions, players, parents],
   );
+
+  const reassessmentReminders = useMemo(() => {
+    const latest = new Map<string, PlayerEvaluation>();
+    evaluations.filter(ev => ev.status === 'published').forEach(ev => {
+      const current = latest.get(ev.playerId);
+      if (!current || ev.evaluationDate > current.evaluationDate) latest.set(ev.playerId, ev);
+    });
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const upcomingLimit = new Date(today);
+    upcomingLimit.setDate(upcomingLimit.getDate() + 14);
+    return Array.from(latest.values())
+      .filter(ev => ev.reassessmentDate)
+      .map(ev => {
+        const due = new Date(`${ev.reassessmentDate}T00:00:00`);
+        return { evaluation: ev, player: players.find(p => p.id === ev.playerId), due, overdue: due <= today };
+      })
+      .filter(item => item.due <= upcomingLimit)
+      .sort((a, b) => a.due.getTime() - b.due.getTime());
+  }, [evaluations, players]);
 
   const stats = useMemo(() => {
     const activePlayers = players.filter((p) => p.status === 'active').length;
@@ -201,6 +222,35 @@ export function Dashboard({ players, subscriptions, matches, transactions, staff
       {/* Reminders panel */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <RemindersPanel reminders={reminders} onNavigate={() => setCurrentTab('subscriptions')} compact lang={lang} />
+
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-sm font-black text-slate-900 dark:text-white">{isAr ? 'إعادة تقييم اللاعبين' : 'Player reassessments'}</h3>
+              <p className="text-[10px] text-slate-400 mt-0.5">{isAr ? 'المستحق والقادم خلال 14 يومًا' : 'Due and upcoming within 14 days'}</p>
+            </div>
+            <button onClick={() => setCurrentTab('evaluations')} className="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 cursor-pointer">{t.viewAll}</button>
+          </div>
+          {reassessmentReminders.length === 0 ? (
+            <div className="py-6 text-center">
+              <Calendar className="h-7 w-7 text-slate-300 mx-auto mb-2" />
+              <p className="text-xs font-semibold text-slate-400">{isAr ? 'لا توجد إعادة تقييم مستحقة أو قريبة' : 'No reassessments due or upcoming'}</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {reassessmentReminders.slice(0, 5).map(({ evaluation, player, overdue }) => (
+                <button key={evaluation.id} onClick={() => setCurrentTab('evaluations')} className="w-full flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition text-start cursor-pointer">
+                  <div className={`w-2 h-2 rounded-full shrink-0 ${overdue ? 'bg-red-500' : 'bg-amber-500'}`} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{player?.name || (isAr ? 'لاعب' : 'Player')}</p>
+                    <p className="text-[10px] text-slate-400">{isAr ? 'إعادة التقييم' : 'Reassessment'}: {evaluation.reassessmentDate}</p>
+                  </div>
+                  <span className={`text-[10px] font-black ${overdue ? 'text-red-600' : 'text-amber-600'}`}>{overdue ? (isAr ? 'مستحق' : 'Due') : (isAr ? 'قريب' : 'Upcoming')}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Quick stats summary */}
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm">

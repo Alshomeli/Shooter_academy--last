@@ -372,7 +372,7 @@ export default function App() {
   const renderView = () => {
     switch (currentTab) {
       case 'dashboard':
-        return <Dashboard players={data.players} subscriptions={data.subscriptions} matches={data.matches} transactions={data.transactions} staff={data.staff} teams={data.teams} parents={data.parents} setCurrentTab={setCurrentTab} activeRole={activeRole} lang={lang} />;
+        return <Dashboard players={data.players} subscriptions={data.subscriptions} matches={data.matches} transactions={data.transactions} staff={data.staff} teams={data.teams} parents={data.parents} evaluations={data.evaluations} setCurrentTab={setCurrentTab} activeRole={activeRole} lang={lang} />;
       case 'approvals':
         return <Approvals teams={data.teams} onRefresh={loadAllData} players={data.players} staff={data.staff} onPlayersChange={savePlayers} onStaffChange={saveStaff} activeRole={activeRole} lang={lang} />;
       case 'players':
@@ -410,7 +410,7 @@ export default function App() {
       case 'registration-admin':
         return <RegistrationAdmin lang={lang} activeRole={activeRole} teams={data.teams} players={data.players} onRefresh={loadAllData} />;
       default:
-        return <Dashboard players={data.players} subscriptions={data.subscriptions} matches={data.matches} transactions={data.transactions} staff={data.staff} teams={data.teams} parents={data.parents} setCurrentTab={setCurrentTab} activeRole={activeRole} lang={lang} />;
+        return <Dashboard players={data.players} subscriptions={data.subscriptions} matches={data.matches} transactions={data.transactions} staff={data.staff} teams={data.teams} parents={data.parents} evaluations={data.evaluations} setCurrentTab={setCurrentTab} activeRole={activeRole} lang={lang} />;
     }
   };
 
