@@ -18,16 +18,27 @@ interface Props {
 const PERIOD_OPTS = ['monthly', 'quarterly', 'custom'] as const;
 
 const DETAIL_CRITERIA = [
-  { key: 'ball_control', ar: 'التحكم بالكرة', en: 'Ball control' },
-  { key: 'passing', ar: 'التمرير', en: 'Passing' },
-  { key: 'decision_making', ar: 'اتخاذ القرار', en: 'Decision making' },
-  { key: 'positioning', ar: 'التمركز', en: 'Positioning' },
-  { key: 'teamwork', ar: 'العمل الجماعي', en: 'Teamwork' },
-  { key: 'fitness', ar: 'اللياقة', en: 'Fitness' },
-  { key: 'speed_agility', ar: 'السرعة والرشاقة', en: 'Speed & agility' },
-  { key: 'focus', ar: 'التركيز', en: 'Focus' },
-  { key: 'coachability', ar: 'الاستجابة للتوجيه', en: 'Coachability' },
-  { key: 'discipline', ar: 'الانضباط', en: 'Discipline' },
+  { group: 'technical', key: 'ball_control', ar: 'التحكم بالكرة', en: 'Ball control' },
+  { group: 'technical', key: 'passing', ar: 'التمرير', en: 'Passing' },
+  { group: 'technical', key: 'dribbling', ar: 'المراوغة', en: 'Dribbling' },
+  { group: 'technical', key: 'shooting', ar: 'التسديد', en: 'Shooting' },
+  { group: 'tactical', key: 'decision_making', ar: 'اتخاذ القرار', en: 'Decision making' },
+  { group: 'tactical', key: 'positioning', ar: 'التمركز', en: 'Positioning' },
+  { group: 'tactical', key: 'teamwork', ar: 'العمل الجماعي', en: 'Teamwork' },
+  { group: 'physical', key: 'fitness', ar: 'اللياقة العامة', en: 'General fitness' },
+  { group: 'physical', key: 'speed_agility', ar: 'السرعة والرشاقة', en: 'Speed & agility' },
+  { group: 'physical', key: 'endurance', ar: 'التحمل', en: 'Endurance' },
+  { group: 'psychosocial', key: 'focus', ar: 'التركيز', en: 'Focus' },
+  { group: 'psychosocial', key: 'coachability', ar: 'الاستجابة للتوجيه', en: 'Coachability' },
+  { group: 'psychosocial', key: 'discipline', ar: 'الانضباط', en: 'Discipline' },
+  { group: 'psychosocial', key: 'sportsmanship', ar: 'الروح الرياضية', en: 'Sportsmanship' },
+] as const;
+
+const CRITERIA_GROUPS = [
+  { key: 'technical', ar: 'فني', en: 'Technical' },
+  { key: 'tactical', ar: 'تكتيكي', en: 'Tactical' },
+  { key: 'physical', ar: 'بدني', en: 'Physical' },
+  { key: 'psychosocial', ar: 'نفسي واجتماعي', en: 'Psychosocial' },
 ] as const;
 
 function ScoreBar({ label, value, max = 5 }: { label: string; value: number | null; max?: number }) {
@@ -279,22 +290,29 @@ export function Evaluations({ evaluations, players, teams, staff, activeRole, la
               <h3 className="text-sm font-black text-slate-900 dark:text-white">{isAr ? 'التقييم التفصيلي' : 'Detailed assessment'}</h3>
               <p className="text-[11px] text-slate-400 mt-1">{isAr ? 'اختر 1–5، أو اترك المعيار غير مُقيّم.' : 'Choose 1–5, or leave a criterion not rated.'}</p>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {DETAIL_CRITERIA.map(item => (
-                <div key={item.key} className="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60">
-                  <label className="text-xs font-bold text-slate-600 dark:text-slate-300">{isAr ? item.ar : item.en}</label>
-                  <select
-                    value={form.detailedScores[item.key] ?? ''}
-                    onChange={e => setForm(prev => ({
-                      ...prev,
-                      detailedScores: { ...prev.detailedScores, [item.key]: e.target.value === '' ? null : Number(e.target.value) },
-                    }))}
-                    className={`${inputCls} w-28 py-1.5`}
-                  >
-                    <option value="">{isAr ? 'غير مُقيّم' : 'Not rated'}</option>
-                    {[1,2,3,4,5].map(score => <option key={score} value={score}>{score}/5</option>)}
-                  </select>
-                </div>
+            <div className="space-y-4">
+              {CRITERIA_GROUPS.map(group => (
+                <section key={group.key}>
+                  <h4 className="text-xs font-black text-slate-700 dark:text-slate-200 mb-2">{isAr ? group.ar : group.en}</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {DETAIL_CRITERIA.filter(item => item.group === group.key).map(item => (
+                      <div key={item.key} className="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60">
+                        <label className="text-xs font-bold text-slate-600 dark:text-slate-300">{isAr ? item.ar : item.en}</label>
+                        <select
+                          value={form.detailedScores[item.key] ?? ''}
+                          onChange={e => setForm(prev => ({
+                            ...prev,
+                            detailedScores: { ...prev.detailedScores, [item.key]: e.target.value === '' ? null : Number(e.target.value) },
+                          }))}
+                          className={`${inputCls} w-28 py-1.5`}
+                        >
+                          <option value="">{isAr ? 'غير مُقيّم' : 'Not rated'}</option>
+                          {[1,2,3,4,5].map(score => <option key={score} value={score}>{score}/5</option>)}
+                        </select>
+                      </div>
+                    ))}
+                  </div>
+                </section>
               ))}
             </div>
           </div>
@@ -317,11 +335,11 @@ export function Evaluations({ evaluations, players, teams, staff, activeRole, la
                 className={inputCls} rows={3} />
             </FormField>
             <FormField label={isAr ? 'أولوية التطوير الأولى' : 'Development priority 1'}>
-              <input value={form.developmentPriorities[0] || ''} onChange={e => setForm(prev => ({ ...prev, developmentPriorities: [e.target.value, prev.developmentPriorities[1] || ''].filter(Boolean) }))}
+              <input value={form.developmentPriorities[0] || ''} onChange={e => setForm(prev => ({ ...prev, developmentPriorities: [e.target.value, prev.developmentPriorities[1] || ''] }))}
                 className={inputCls} />
             </FormField>
             <FormField label={isAr ? 'أولوية التطوير الثانية' : 'Development priority 2'}>
-              <input value={form.developmentPriorities[1] || ''} onChange={e => setForm(prev => ({ ...prev, developmentPriorities: [prev.developmentPriorities[0] || '', e.target.value].filter(Boolean) }))}
+              <input value={form.developmentPriorities[1] || ''} onChange={e => setForm(prev => ({ ...prev, developmentPriorities: [prev.developmentPriorities[0] || '', e.target.value] }))}
                 className={inputCls} />
             </FormField>
             <FormField label={isAr ? 'إجراء تدريبي مقترح' : 'Suggested training action'}>
