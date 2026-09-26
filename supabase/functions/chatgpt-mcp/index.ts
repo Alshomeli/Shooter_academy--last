@@ -243,7 +243,11 @@ Deno.serve((req) => {
       authentication: "supabase-oauth",
       mutationFlow: "prepare-confirm-execute",
     }, {
-      headers: { "Cache-Control": "no-store" },
+      headers: {
+        "Cache-Control": "no-store",
+        "Access-Control-Allow-Origin": "*",
+        "Content-Type": "application/json; charset=utf-8",
+      },
     });
   }
   return protectedHandler(req);
