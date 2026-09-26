@@ -1,13 +1,14 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 
-type Operation = "approve_registration" | "review_registration" | "record_subscription_payment";
+type Operation = "approve_registration" | "review_registration" | "record_subscription_payment" | "record_attendance";
 type Mode = "prepare" | "execute" | "cancel";
 
 const OP_ROLES: Record<Operation, string[]> = {
   approve_registration: ["manager"],
   review_registration: ["manager"],
   record_subscription_payment: ["manager", "accountant"],
+  record_attendance: ["manager", "coach"],
 };
 
 const cors = (origin: string | null) => ({
@@ -188,6 +189,48 @@ Deno.serve(async (req) => {
         paymentMethod,
         period: { start: subscription.start_date, end: subscription.end_date },
       };
+    } else if (operation === "record_attendance") {
+      const playerId = cleanText(params.playerId, 100);
+      const sessionDate = cleanText(params.sessionDate, 20);
+      const sessionType = cleanText(params.sessionType, 20) || "training";
+      const status = cleanText(params.status, 20) || "present";
+      const notes = cleanText(params.notes, 500);
+      const trainingId = cleanText(params.trainingId, 100);
+      if (!playerId || !/^\d{4}-\d{2}-\d{2}$/.test(sessionDate)) {
+        return reply(origin, 400, { error: "player_and_valid_session_date_required" });
+      }
+      if (!["training", "match"].includes(sessionType)) {
+        return reply(origin, 400, { error: "invalid_session_type" });
+      }
+      if (!["present", "absent", "excused"].includes(status)) {
+        return reply(origin, 400, { error: "invalid_attendance_status" });
+      }
+
+      const { data: player, error } = await userClient
+        .from("players")
+        .select("id,name,team_id,status")
+        .eq("id", playerId)
+        .maybeSingle();
+      if (error || !player) return reply(origin, 404, { error: "player_not_found" });
+
+      normalized = {
+        playerId,
+        sessionDate,
+        sessionType,
+        status,
+        notes,
+        trainingId: trainingId || null,
+      };
+      preview = {
+        playerId,
+        playerName: player.name,
+        teamId: player.team_id,
+        sessionDate,
+        sessionType,
+        attendanceStatus: status,
+        hasNotes: Boolean(notes),
+        trainingId: trainingId || null,
+      };
     }
 
     const { data: action, error: insertError } = await serverClient
@@ -283,7 +326,7 @@ Deno.serve(async (req) => {
       });
       if (error) throw error;
       sanitizedResult = { applicationId: p.applicationId, status: p.status };
-    } else {
+    } else if (op === "record_subscription_payment") {
       const { data, error } = await userClient.rpc("record_subscription_payment", {
         p_subscription_id: String(p.subscriptionId),
         p_amount: Number(p.amount),
@@ -297,6 +340,23 @@ Deno.serve(async (req) => {
         amount: p.amount,
         paymentMethod: p.paymentMethod,
         transactionId: data?.id ?? null,
+      };
+    } else {
+      const { data, error } = await userClient.rpc("record_attendance_entry", {
+        p_player_id: String(p.playerId),
+        p_session_date: String(p.sessionDate),
+        p_session_type: String(p.sessionType),
+        p_status: String(p.status),
+        p_notes: p.notes ? String(p.notes) : null,
+        p_training_id: p.trainingId ? String(p.trainingId) : null,
+      });
+      if (error) throw error;
+      sanitizedResult = {
+        attendanceId: data?.id ?? null,
+        playerId: p.playerId,
+        sessionDate: p.sessionDate,
+        sessionType: p.sessionType,
+        status: p.status,
       };
     }
 
