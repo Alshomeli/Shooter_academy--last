@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import type {
   Player, Team, Staff, Match, Training, Transaction, Subscription,
-  Attendance, Lang, Role,
+  Attendance, PlayerEvaluation, Lang, Role,
 } from '@/types';
 import { PageHeader, StatCard } from '@/components/ui';
 import { tr, monthsArray, roleLabel, positionLabel } from '@/lib/i18n';
@@ -21,6 +21,7 @@ interface ReportsProps {
   transactions: Transaction[];
   subscriptions: Subscription[];
   attendance: Attendance[];
+  evaluations: PlayerEvaluation[];
   activeRole: Role;
   lang: Lang;
 }
@@ -92,9 +93,24 @@ const POSITION_COLORS: Record<string, string> = {
     'خط وسط': '#10b981', 'Midfielder': '#10b981',
     'مهاجم': '#ef4444', 'Forward': '#ef4444',
   };
+
+const evalAverage = (values: Array<number | null | undefined>) => {
+  const valid = values.filter((v): v is number => typeof v === 'number' && Number.isFinite(v));
+  return valid.length ? valid.reduce((sum, value) => sum + value, 0) / valid.length : null;
+};
+
+function evaluationFramework(ev: PlayerEvaluation) {
+  const d = ev.detailedScores || {};
+  return {
+    technical: evalAverage([d.ball_control, d.passing, d.dribbling, d.shooting]) ?? ev.technicalScore,
+    tactical: evalAverage([d.decision_making, d.positioning, d.teamwork]) ?? ev.tacticalScore,
+    physical: evalAverage([d.fitness, d.speed_agility, d.endurance]) ?? ev.physicalScore,
+    psychosocial: evalAverage([d.focus, d.coachability, d.discipline, d.sportsmanship]) ?? evalAverage([ev.mentalScore, ev.disciplineScore]),
+  };
+}
 export function Reports({
   players, teams, staff, matches, transactions,
-  subscriptions, attendance, lang,
+  subscriptions, attendance, evaluations, lang,
 }: ReportsProps) {
   const t = tr(lang);
   const isAr = lang === 'ar';
@@ -124,6 +140,75 @@ export function Reports({
       return true;
     });
   }, [subscriptions, rangeFrom, rangeTo]);
+
+
+  const evaluationStats = useMemo(() => {
+    const published = evaluations
+      .filter((ev) => ev.status === 'published')
+      .filter((ev) => (!rangeFrom || ev.evaluationDate >= rangeFrom) && (!rangeTo || ev.evaluationDate <= rangeTo))
+      .sort((a, b) => a.evaluationDate.localeCompare(b.evaluationDate));
+
+    const byPlayer = new Map<string, PlayerEvaluation[]>();
+    published.forEach((ev) => {
+      const list = byPlayer.get(ev.playerId) || [];
+      list.push(ev);
+      byPlayer.set(ev.playerId, list);
+    });
+
+    const latest = Array.from(byPlayer.values()).map((list) => list[list.length - 1]);
+    const histories = Array.from(byPlayer.values()).filter((list) => list.length >= 2);
+    const framework = latest.map(evaluationFramework);
+    const avg = {
+      technical: evalAverage(framework.map((s) => s.technical)),
+      tactical: evalAverage(framework.map((s) => s.tactical)),
+      physical: evalAverage(framework.map((s) => s.physical)),
+      psychosocial: evalAverage(framework.map((s) => s.psychosocial)),
+    };
+
+    let improved = 0;
+    let stable = 0;
+    let declined = 0;
+    histories.forEach((list) => {
+      const current = evaluationFramework(list[list.length - 1]);
+      const previous = evaluationFramework(list[list.length - 2]);
+      const currentOverall = evalAverage([current.technical, current.tactical, current.physical, current.psychosocial]);
+      const previousOverall = evalAverage([previous.technical, previous.tactical, previous.physical, previous.psychosocial]);
+      if (currentOverall == null || previousOverall == null) return;
+      const delta = currentOverall - previousOverall;
+      if (delta > 0.05) improved += 1;
+      else if (delta < -0.05) declined += 1;
+      else stable += 1;
+    });
+
+    const today = new Date().toISOString().slice(0, 10);
+    const reassessmentDue = latest.filter((ev) => ev.reassessmentDate && ev.reassessmentDate <= today).length;
+    const withPriorities = latest.filter((ev) => ev.developmentPriorities?.some((p) => p.trim())).length;
+    const withAction = latest.filter((ev) => ev.trainingAction?.trim()).length;
+    const withReassessment = latest.filter((ev) => Boolean(ev.reassessmentDate)).length;
+
+    return {
+      publishedCount: published.length,
+      evaluatedPlayers: byPlayer.size,
+      playersWithHistory: histories.length,
+      reassessmentDue,
+      withPriorities,
+      withAction,
+      withReassessment,
+      latestCount: latest.length,
+      frameworkBars: [
+        { label: isAr ? 'فني' : 'Technical', value: avg.technical ?? 0, color: '#dc2626' },
+        { label: isAr ? 'تكتيكي' : 'Tactical', value: avg.tactical ?? 0, color: '#2563eb' },
+        { label: isAr ? 'بدني' : 'Physical', value: avg.physical ?? 0, color: '#f59e0b' },
+        { label: isAr ? 'نفسي اجتماعي' : 'Psychosocial', value: avg.psychosocial ?? 0, color: '#7c3aed' },
+      ],
+      trendDonut: [
+        { label: isAr ? 'تحسن' : 'Improved', value: improved, color: '#10b981' },
+        { label: isAr ? 'مستقر' : 'Stable', value: stable, color: '#94a3b8' },
+        { label: isAr ? 'تراجع' : 'Declined', value: declined, color: '#f59e0b' },
+      ],
+      comparablePlayers: improved + stable + declined,
+    };
+  }, [evaluations, rangeFrom, rangeTo, isAr]);
 
 
   /* Financial Summary */
@@ -335,6 +420,61 @@ export function Reports({
           <div className="rounded-xl bg-slate-50 dark:bg-slate-800/40 p-5">
             <p className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-4">{t.playersPerTeam}</p>
             <BarChart data={playerStats.teamBars} height={180} />
+          </div>
+        </div>
+      </SectionCard>
+
+      {/* Player Development Report */}
+      <SectionCard>
+        <SectionHeader
+          icon={<TrendingUp className="h-5 w-5" />}
+          title={isAr ? 'تقرير تطور اللاعبين' : 'Player Development Report'}
+          subtitle={isAr ? 'قراءة مجمعة للتقييمات المنشورة وتتبع التطور الذاتي دون ترتيب اللاعبين.' : 'Aggregated published evaluations and self-progress tracking without player ranking.'}
+          gradient="from-red-600 to-red-700"
+        />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <StatCard icon={<Award className="h-5 w-5" />} label={isAr ? 'تقييمات منشورة' : 'Published Reviews'} value={evaluationStats.publishedCount} color="blue" />
+          <StatCard icon={<Users className="h-5 w-5" />} label={isAr ? 'لاعبون تم تقييمهم' : 'Evaluated Players'} value={evaluationStats.evaluatedPlayers} color="emerald" />
+          <StatCard icon={<TrendingUp className="h-5 w-5" />} label={isAr ? 'لديهم سجل تطور' : 'With Progress History'} value={evaluationStats.playersWithHistory} color="purple" />
+          <StatCard icon={<Calendar className="h-5 w-5" />} label={isAr ? 'إعادة تقييم مستحقة' : 'Reassessments Due'} value={evaluationStats.reassessmentDue} color="amber" />
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <div className="rounded-xl bg-slate-50 dark:bg-slate-800/40 p-5">
+            <p className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-4">
+              {isAr ? 'متوسط أحدث تقييم منشور لكل لاعب حسب المحور (من 5)' : 'Latest published framework averages per player (out of 5)'}
+            </p>
+            <BarChart data={evaluationStats.frameworkBars} valueFormatter={(v) => v.toFixed(1)} height={190} />
+          </div>
+          <div className="rounded-xl bg-slate-50 dark:bg-slate-800/40 p-5">
+            <p className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-4">
+              {isAr ? 'اتجاه التطور مقارنةً بالتقييم السابق للاعب نفسه' : 'Progress trend versus each player’s own previous review'}
+            </p>
+            {evaluationStats.comparablePlayers > 0 ? (
+              <DonutChart
+                data={evaluationStats.trendDonut}
+                centerValue={evaluationStats.comparablePlayers.toString()}
+                centerLabel={isAr ? 'قابل للمقارنة' : 'Comparable'}
+                size={180}
+              />
+            ) : (
+              <div className="h-[180px] flex items-center justify-center text-xs text-slate-400 text-center">
+                {isAr ? 'يلزم وجود تقييمين منشورين أو أكثر للاعب لاحتساب اتجاه التطور.' : 'At least two published reviews per player are needed for progress trends.'}
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5">
+          <div className="rounded-xl border border-slate-100 dark:border-slate-800 p-4">
+            <p className="text-2xl font-black text-slate-900 dark:text-white">{evaluationStats.withPriorities}<span className="text-xs text-slate-400">/{evaluationStats.latestCount}</span></p>
+            <p className="text-[11px] text-slate-500">{isAr ? 'أحدث التقييمات التي تحتوي أولويات تطوير' : 'Latest reviews with development priorities'}</p>
+          </div>
+          <div className="rounded-xl border border-slate-100 dark:border-slate-800 p-4">
+            <p className="text-2xl font-black text-slate-900 dark:text-white">{evaluationStats.withAction}<span className="text-xs text-slate-400">/{evaluationStats.latestCount}</span></p>
+            <p className="text-[11px] text-slate-500">{isAr ? 'أحدث التقييمات التي تحتوي إجراءً تدريبياً' : 'Latest reviews with a development action'}</p>
+          </div>
+          <div className="rounded-xl border border-slate-100 dark:border-slate-800 p-4">
+            <p className="text-2xl font-black text-slate-900 dark:text-white">{evaluationStats.withReassessment}<span className="text-xs text-slate-400">/{evaluationStats.latestCount}</span></p>
+            <p className="text-[11px] text-slate-500">{isAr ? 'أحدث التقييمات التي لها موعد إعادة تقييم' : 'Latest reviews with a reassessment date'}</p>
           </div>
         </div>
       </SectionCard>
