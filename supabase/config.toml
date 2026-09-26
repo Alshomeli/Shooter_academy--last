@@ -3,3 +3,9 @@ verify_jwt = true
 
 [functions.delete-player-file]
 verify_jwt = true
+
+
+[auth.oauth_server]
+enabled = true
+authorization_url_path = "/oauth/consent"
+allow_dynamic_registration = true
