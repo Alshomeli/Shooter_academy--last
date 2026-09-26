@@ -91,7 +91,7 @@ const PERSONA_COLORS: Record<Persona['color'], {
   rose: { ring: 'ring-rose-500/30', bg: 'bg-rose-50 dark:bg-rose-900/20', text: 'text-rose-600 dark:text-rose-400', iconBg: 'from-rose-500 to-rose-600', border: 'border-slate-200 dark:border-slate-800', activeBorder: 'border-rose-500', activeShadow: 'shadow-rose-200/50' },
 };
 
-const LIVE_AI_PERSONAS = new Set<PersonaId>(['financial', 'operations', 'documents', 'communication', 'players', 'training', 'matches']);
+const LIVE_AI_PERSONAS = new Set<PersonaId>(['financial', 'operations', 'documents', 'communication', 'players', 'training', 'matches', 'scout']);
 
 const SUGGESTIONS: Record<PersonaId, string[]> = {
   technical: ['حلل أداء الفرق', 'توصيات لتحسين الحضور', 'تقرير شامل'],
