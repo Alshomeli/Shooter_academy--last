@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import type {
   Player, Team, Staff, Match, Training, Transaction, Subscription,
-  Attendance, Lang, Role,
+  Attendance, Lang, Role, Settings,
 } from '@/types';
 import { PageHeader, StatCard } from '@/components/ui';
 import { tr, monthsArray, roleLabel, positionLabel } from '@/lib/i18n';
@@ -21,6 +21,7 @@ interface ReportsProps {
   transactions: Transaction[];
   subscriptions: Subscription[];
   attendance: Attendance[];
+  settings?: Settings | null;
   activeRole: Role;
   lang: Lang;
 }
@@ -94,11 +95,14 @@ const POSITION_COLORS: Record<string, string> = {
   };
 export function Reports({
   players, teams, staff, matches, transactions,
-  subscriptions, attendance, lang,
+  subscriptions, attendance, settings, lang,
 }: ReportsProps) {
   const t = tr(lang);
   const isAr = lang === 'ar';
   const MONTHS = monthsArray(lang);
+  const brandName = settings?.name?.trim() || (isAr ? 'أكاديمية شوتر' : 'Shooter Academy');
+  const configuredLogo = settings?.logoUrl?.trim() || '';
+  const logoIsImage = /^(https?:\/\/|data:image\/|\/)/i.test(configuredLogo);
 
   const [datePreset, setDatePreset] = useState<DateRangePreset>('this_year');
   const [customFrom, setCustomFrom] = useState('');
@@ -223,6 +227,22 @@ export function Reports({
 
   return (
     <div className="space-y-6 text-right" dir={isAr ? 'rtl' : 'ltr'}>
+      <div className="hidden print:flex items-center justify-between gap-4 border-b-2 border-slate-800 pb-4 mb-5">
+        <div className="flex items-center gap-3">
+          {configuredLogo && (logoIsImage
+            ? <img src={configuredLogo} alt={brandName} className="h-14 w-14 object-contain" />
+            : <span className="text-3xl">{configuredLogo}</span>)}
+          <div>
+            <h1 className="text-xl font-black text-slate-900">{brandName}</h1>
+            <p className="text-xs text-slate-500">{isAr ? 'تقرير إداري' : 'Administrative report'}</p>
+          </div>
+        </div>
+        <div className="text-[10px] text-slate-500 text-start">
+          {settings?.phone && <div>{settings.phone}</div>}
+          {settings?.email && <div>{settings.email}</div>}
+          {settings?.address && <div>{settings.address}</div>}
+        </div>
+      </div>
       <PageHeader title={t.reports} subtitle={t.reportsSubtitle}>
         <button onClick={() => exportReportCsv('players', players, teams)} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition cursor-pointer shadow-sm">
           <Download className="h-4 w-4" /> {t.exportPlayersCsv}
