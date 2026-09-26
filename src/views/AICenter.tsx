@@ -537,7 +537,10 @@ function AIInsights({ players, subscriptions, transactions, matches, trainings, 
     const published = evaluations.filter((ev) => ev.status === 'published');
     const byPlayer = new Map<string, PlayerEvaluation[]>();
     published.forEach((ev) => byPlayer.set(ev.playerId, [...(byPlayer.get(ev.playerId) || []), ev]));
-    const latest = Array.from(byPlayer.values()).map((items) => [...items].sort((a, b) => a.evaluationDate.localeCompare(b.evaluationDate)).at(-1)!);
+    const latest = Array.from(byPlayer.values()).map((items) => {
+      const sorted = [...items].sort((a, b) => a.evaluationDate.localeCompare(b.evaluationDate));
+      return sorted[sorted.length - 1];
+    });
     const progressHistory = Array.from(byPlayer.values()).filter((items) => items.length >= 2).length;
     const today = new Date().toISOString().slice(0, 10);
     const reassessmentDue = latest.filter((ev) => ev.reassessmentDate && ev.reassessmentDate <= today).length;
