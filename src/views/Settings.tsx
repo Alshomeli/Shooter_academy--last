@@ -17,6 +17,10 @@ interface SettingsProps {
 const inputCls =
   'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-800 dark:text-white';
 
+function isImageLogo(value: string) {
+  return /^(https?:\/\/|data:image\/|\/)/i.test(value.trim());
+}
+
 export function SettingsView({ settings, onSettingsChange, activeRole, lang }: SettingsProps) {
   const t = tr(lang);
   const isAr = lang === 'ar';
@@ -106,8 +110,10 @@ export function SettingsView({ settings, onSettingsChange, activeRole, lang }: S
               <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
                 {isAr ? 'الشعار' : 'Logo'}
               </label>
-              <div className="w-14 h-11 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-2xl">
-                {form.logoUrl || '⚽'}
+              <div className="w-14 h-14 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-2xl overflow-hidden">
+                {form.logoUrl && isImageLogo(form.logoUrl)
+                  ? <img src={form.logoUrl} alt={isAr ? 'شعار الأكاديمية' : 'Academy logo'} className="w-full h-full object-contain p-1" />
+                  : <span>{form.logoUrl || '⚽'}</span>}
               </div>
             </div>
             <div className="flex-1">
@@ -124,15 +130,17 @@ export function SettingsView({ settings, onSettingsChange, activeRole, lang }: S
             </div>
             <div className="w-28 shrink-0">
               <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
-                {isAr ? 'رمز الشعار' : 'Logo emoji'}
+                {isAr ? 'الشعار' : 'Logo'}
               </label>
               <input
                 value={form.logoUrl}
                 onChange={(e) => set('logoUrl', e.target.value)}
-                className={`${inputCls} text-center text-xl`}
-                maxLength={4}
-                placeholder="⚽"
+                className={inputCls}
+                placeholder={isAr ? '/logo.png أو رابط صورة أو رمز' : '/logo.png, image URL, or emoji'}
               />
+              <p className="mt-1 text-[10px] text-slate-400">
+                {isAr ? 'يمكن استخدام مسار صورة داخل المشروع أو رابط صورة مباشر أو رمز.' : 'Use a project image path, direct image URL, or emoji.'}
+              </p>
             </div>
           </div>
 
