@@ -21,6 +21,8 @@ interface SidebarProps {
   onLogout: () => void;
   mobileOpen: boolean;
   setMobileOpen: (v: boolean) => void;
+  academyName?: string;
+  logoUrl?: string;
 }
 
 interface NavItem {
@@ -43,10 +45,15 @@ function getRoleOptions(lang: Lang): { value: Role; label: string }[] {
 export function Sidebar({
   currentTab, setCurrentTab, activeRole, lang, setLang,
   darkMode, setDarkMode, currentUser, onLogout, mobileOpen, setMobileOpen,
+  academyName, logoUrl,
 }: SidebarProps) {
   const t = tr(lang);
   const isAr = lang === 'ar';
   const ROLE_OPTIONS = getRoleOptions(lang);
+  const brandName = academyName?.trim() || t.academyShort;
+  const configuredLogo = logoUrl?.trim() || '';
+  const logoIsImage = /^(https?:\/\/|data:image\/|\/)/i.test(configuredLogo);
+  const fallbackLogo = '/copilot_image_1776165482483-300x300.png';
 
   const navItems: NavItem[] = [
     { id: 'dashboard', label: t.dashboard, icon: LayoutDashboard, allowedRoles: ['manager', 'accountant', 'coach', 'receptionist'] },
@@ -97,11 +104,13 @@ export function Sidebar({
             <div className="relative group shrink-0">
               <div className="absolute -inset-0.5 bg-gradient-to-tr from-emerald-500 to-amber-500 rounded-full blur opacity-40 group-hover:opacity-75 transition duration-1000" />
               <div className="relative w-13 h-13 rounded-full overflow-hidden bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg ring-2 ring-emerald-400/30">
-                <img src="/copilot_image_1776165482483-300x300.png" alt={isAr ? 'شعار الأكاديمية' : 'Academy logo'} className="h-10 w-10 object-contain" />
+                {configuredLogo && !logoIsImage
+                  ? <span className="text-2xl" aria-label={isAr ? 'شعار الأكاديمية' : 'Academy logo'}>{configuredLogo}</span>
+                  : <img src={logoIsImage ? configuredLogo : fallbackLogo} alt={isAr ? 'شعار الأكاديمية' : 'Academy logo'} className="h-10 w-10 object-contain" />}
               </div>
             </div>
             <div className="min-w-0 flex-1">
-              <h1 className="font-black text-base text-emerald-400 tracking-tight leading-tight">{t.academyShort}</h1>
+              <h1 className="font-black text-base text-emerald-400 tracking-tight leading-tight">{brandName}</h1>
               <p className="text-[10px] text-slate-400 font-bold tracking-wider mt-0.5 uppercase">SHOOTER ACADEMY</p>
               <p className="text-[9px] text-emerald-500 font-semibold mt-0.5">{t.systemTitle}</p>
             </div>
