@@ -271,7 +271,7 @@ export function AIOperationsPanel({ activeRole, lang, subscriptions, players, ev
         </div>
       )}
 
-      {error && <div className="mb-3 rounded-xl bg-red-50 dark:bg-red-950/30 px-3 py-2 text-xs font-bold text-red-600">{error}</div>
+      {error && <div className="mb-3 rounded-xl bg-red-50 dark:bg-red-950/30 px-3 py-2 text-xs font-bold text-red-600">{error}</div>}
       {message && <div className="mb-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 px-3 py-2 text-xs font-bold text-emerald-700 dark:text-emerald-400">{message}</div>}
 
       {prepared ? (
