@@ -1,5 +1,6 @@
 import { useState, useMemo, type FormEvent } from 'react';
 import { Plus, Search, Save, Send, X, Star, ChevronLeft, TrendingUp, History, CalendarClock } from 'lucide-react';
+import { averageEvaluationScores as average, evaluationFrameworkScores as frameworkScores } from '@/lib/evaluation-scores';
 import type { Player, Team, Staff, PlayerEvaluation, Role, Lang } from '@/types';
 import { tr } from '@/lib/i18n';
 import { db } from '@/lib/store';
@@ -40,25 +41,6 @@ const CRITERIA_GROUPS = [
   { key: 'physical', ar: 'بدني', en: 'Physical' },
   { key: 'psychosocial', ar: 'نفسي واجتماعي', en: 'Psychosocial' },
 ] as const;
-
-function average(values: Array<number | null | undefined>) {
-  const valid = values.filter((v): v is number => typeof v === 'number' && Number.isFinite(v));
-  return valid.length ? valid.reduce((sum, v) => sum + v, 0) / valid.length : null;
-}
-
-function detailedGroupScore(ev: PlayerEvaluation, group: typeof CRITERIA_GROUPS[number]['key']) {
-  const keys = DETAIL_CRITERIA.filter(item => item.group === group).map(item => item.key);
-  return average(keys.map(key => ev.detailedScores?.[key]));
-}
-
-function frameworkScores(ev: PlayerEvaluation) {
-  return {
-    technical: detailedGroupScore(ev, 'technical') ?? ev.technicalScore,
-    tactical: detailedGroupScore(ev, 'tactical') ?? ev.tacticalScore,
-    physical: detailedGroupScore(ev, 'physical') ?? ev.physicalScore,
-    psychosocial: detailedGroupScore(ev, 'psychosocial') ?? average([ev.mentalScore, ev.disciplineScore]),
-  };
-}
 
 function formatDelta(current: number | null, previous: number | null) {
   if (current == null || previous == null) return '—';

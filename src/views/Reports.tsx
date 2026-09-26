@@ -4,6 +4,7 @@ import {
   BarChart3, Download, TrendingUp, Users, Trophy, Wallet,
   Activity, Target, Award, Percent, Printer, Calendar,
 } from 'lucide-react';
+import { averageEvaluationScores, evaluationFrameworkScores } from '@/lib/evaluation-scores';
 import type {
   Player, Team, Staff, Match, Training, Transaction, Subscription,
   Attendance, Lang, Role, Settings, PlayerEvaluation,
@@ -228,7 +229,7 @@ export function Reports({
     });
     byPlayer.forEach(list => list.sort((a, b) => a.evaluationDate.localeCompare(b.evaluationDate)));
     const histories = Array.from(byPlayer.values()).filter(list => list.length >= 2);
-    const average = (values: number[]) => values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
+    const average = (values: number[]) => averageEvaluationScores(values);
     const deltas = (pick: (ev: PlayerEvaluation) => number | null) => histories.flatMap(list => {
       const first = pick(list[0]);
       const latest = pick(list[list.length - 1]);
@@ -241,10 +242,10 @@ export function Reports({
       playersWithHistory: histories.length,
       reassessmentDue: latestReviews.filter(ev => ev.reassessmentDate && ev.reassessmentDate <= today).length,
       changes: [
-        { label: isAr ? 'فني' : 'Technical', value: average(deltas(ev => ev.technicalScore)) },
-        { label: isAr ? 'تكتيكي' : 'Tactical', value: average(deltas(ev => ev.tacticalScore)) },
-        { label: isAr ? 'بدني' : 'Physical', value: average(deltas(ev => ev.physicalScore)) },
-        { label: isAr ? 'ذهني' : 'Mental', value: average(deltas(ev => ev.mentalScore)) },
+        { label: isAr ? 'فني' : 'Technical', value: average(deltas(ev => evaluationFrameworkScores(ev).technical)) },
+        { label: isAr ? 'تكتيكي' : 'Tactical', value: average(deltas(ev => evaluationFrameworkScores(ev).tactical)) },
+        { label: isAr ? 'بدني' : 'Physical', value: average(deltas(ev => evaluationFrameworkScores(ev).physical)) },
+        { label: isAr ? 'نفسي واجتماعي' : 'Psychosocial', value: average(deltas(ev => evaluationFrameworkScores(ev).psychosocial)) },
       ],
     };
   }, [evaluations, isAr]);
