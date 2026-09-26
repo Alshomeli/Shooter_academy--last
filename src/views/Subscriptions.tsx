@@ -9,6 +9,7 @@ import {
 import type { Subscription, Player, Parent, Transaction, Staff, Settings, Lang, Role } from '@/types';
 import { Badge, Modal, ConfirmDialog, PageHeader, EmptyState, StatCard, FormField, FormError, SaveButton, inputCls } from '@/components/ui';
 import { RemindersPanel } from '@/components/RemindersPanel';
+import { PaymentReceipt } from '@/components/PaymentReceipt';
 import { reminderStats, getSubscriptionReminders } from '@/lib/reminders';
 import { tr, planLabel, categoryLabel, paymentMethodLabel } from '@/lib/i18n';
 
@@ -98,6 +99,7 @@ export function Subscriptions({
   const [deleteSubId, setDeleteSubId] = useState<string | null>(null);
   const [deleteTransId, setDeleteTransId] = useState<string | null>(null);
   const [markingPaidId, setMarkingPaidId] = useState<string | null>(null);
+  const [receiptSub, setReceiptSub] = useState<Subscription | null>(null);
 
   const [paymentTarget, setPaymentTarget] = useState<Subscription | null>(null);
   const [paymentMethod, setPaymentMethod] = useState('cash');
@@ -386,6 +388,11 @@ export function Subscriptions({
 
                       {/* Actions */}
                       <div className="flex items-center gap-1.5 ms-auto">
+                        {isPaid && (
+                          <button onClick={() => setReceiptSub(sub)} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 transition cursor-pointer">
+                            <Receipt className="h-3.5 w-3.5" /> {isAr ? 'إيصال' : 'Receipt'}
+                          </button>
+                        )}
                         {!isPaid && canPay && (
                           <button
                             onClick={() => { setPaymentTarget(sub); setPaymentError(''); setPaymentMethod('cash'); }}
@@ -536,6 +543,8 @@ export function Subscriptions({
           <button className="bg-emerald-600 text-white rounded-lg py-2 px-4 disabled:opacity-50" disabled={!!markingPaidId} onClick={() => void handleMarkPaid()}>{markingPaidId ? t.processing : t.confirmPayment}</button>
         </div>
       </Modal>
+      {receiptSub && <PaymentReceipt subscription={receiptSub} transactions={transactions} players={players} lang={lang} onClose={() => setReceiptSub(null)} />}
+
       {/* ---------------- Modals ---------------- */}
       {(showAddSub || editSub) && (
         <SubscriptionForm
