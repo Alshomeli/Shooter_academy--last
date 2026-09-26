@@ -5,7 +5,8 @@ export type AIOperation =
   | 'review_registration'
   | 'record_subscription_payment'
   | 'record_attendance'
-  | 'publish_player_evaluation';
+  | 'publish_player_evaluation'
+  | 'create_subscription';
 
 export interface PreparedAIAction {
   requestId: string;
