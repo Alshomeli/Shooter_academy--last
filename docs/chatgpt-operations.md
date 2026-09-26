@@ -12,7 +12,7 @@ A connector must never call a business mutation directly. The required sequence 
 4. Send `mode: execute` with the prepared `requestId` and `confirm: true`.
 5. Refresh application data and show the gateway result.
 
-Cancellation uses `mode: cancel`. Recent actions can be fetched with `mode: history`.
+Cancellation uses `mode: cancel`. Recent actions can be fetched with `mode: history`. A connector can request `mode: snapshot` for a read-only, aggregate operational summary (unpaid subscriptions, active players, draft evaluations, and registration applications needing action). The snapshot does not return player names or other personal details.
 
 The connector must authenticate with the user's Supabase access token. It must **never** contain or transmit the Supabase service-role key.
 
