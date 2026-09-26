@@ -1,7 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 
-type Operation = "approve_registration" | "review_registration" | "record_subscription_payment" | "record_attendance";
+type Operation = "approve_registration" | "review_registration" | "record_subscription_payment" | "record_attendance" | "publish_player_evaluation";
 type Mode = "prepare" | "execute" | "cancel";
 
 const OP_ROLES: Record<Operation, string[]> = {
@@ -9,6 +9,7 @@ const OP_ROLES: Record<Operation, string[]> = {
   review_registration: ["manager"],
   record_subscription_payment: ["manager", "accountant"],
   record_attendance: ["manager", "coach"],
+  publish_player_evaluation: ["manager", "coach"],
 };
 
 const cors = (origin: string | null) => ({
@@ -189,6 +190,37 @@ Deno.serve(async (req) => {
         paymentMethod,
         period: { start: subscription.start_date, end: subscription.end_date },
       };
+    } else if (operation === "publish_player_evaluation") {
+      const evaluationId = cleanText(params.evaluationId, 64);
+      if (!evaluationId) return reply(origin, 400, { error: "evaluation_id_required" });
+
+      const { data: evaluation, error } = await userClient
+        .from("player_evaluations")
+        .select("id,player_id,team_id,evaluation_date,status,technical_score,tactical_score,physical_score,mental_score,discipline_score")
+        .eq("id", evaluationId)
+        .maybeSingle();
+      if (error || !evaluation) return reply(origin, 404, { error: "evaluation_not_found" });
+      if (evaluation.status !== "draft") return reply(origin, 409, { error: "evaluation_not_draft" });
+
+      const scoresComplete = [
+        evaluation.technical_score,
+        evaluation.tactical_score,
+        evaluation.physical_score,
+        evaluation.mental_score,
+        evaluation.discipline_score,
+      ].every((score) => score != null);
+
+      if (!scoresComplete) return reply(origin, 409, { error: "evaluation_scores_incomplete" });
+
+      normalized = { evaluationId };
+      preview = {
+        evaluationId,
+        playerId: evaluation.player_id,
+        teamId: evaluation.team_id,
+        evaluationDate: evaluation.evaluation_date,
+        currentStatus: evaluation.status,
+        newStatus: "published",
+      };
     } else if (operation === "record_attendance") {
       const playerId = cleanText(params.playerId, 100);
       const sessionDate = cleanText(params.sessionDate, 20);
@@ -341,7 +373,7 @@ Deno.serve(async (req) => {
         paymentMethod: p.paymentMethod,
         transactionId: data?.id ?? null,
       };
-    } else {
+    } else if (op === "record_attendance") {
       const { data, error } = await userClient.rpc("record_attendance_entry", {
         p_player_id: String(p.playerId),
         p_session_date: String(p.sessionDate),
@@ -357,6 +389,17 @@ Deno.serve(async (req) => {
         sessionDate: p.sessionDate,
         sessionType: p.sessionType,
         status: p.status,
+      };
+    } else {
+      const { data, error } = await userClient.rpc("publish_player_evaluation", {
+        p_evaluation_id: String(p.evaluationId),
+      });
+      if (error) throw error;
+      sanitizedResult = {
+        evaluationId: p.evaluationId,
+        playerId: data?.player_id ?? null,
+        status: data?.status ?? "published",
+        publishedAt: data?.published_at ?? null,
       };
     }
 
