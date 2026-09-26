@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import type {
   Player, Team, Staff, Match, Training, Transaction, Subscription,
-  Attendance, Lang, Role, Settings,
+  Attendance, Lang, Role, Settings, PlayerEvaluation,
 } from '@/types';
 import { PageHeader, StatCard } from '@/components/ui';
 import { tr, monthsArray, roleLabel, positionLabel } from '@/lib/i18n';
@@ -21,6 +21,7 @@ interface ReportsProps {
   transactions: Transaction[];
   subscriptions: Subscription[];
   attendance: Attendance[];
+  evaluations: PlayerEvaluation[];
   settings?: Settings | null;
   activeRole: Role;
   lang: Lang;
@@ -95,7 +96,7 @@ const POSITION_COLORS: Record<string, string> = {
   };
 export function Reports({
   players, teams, staff, matches, transactions,
-  subscriptions, attendance, settings, lang,
+  subscriptions, attendance, evaluations, settings, lang,
 }: ReportsProps) {
   const t = tr(lang);
   const isAr = lang === 'ar';
@@ -215,6 +216,38 @@ export function Reports({
       ],
     };
   }, [attendance, t]);
+
+  /* Player Development Analytics */
+  const developmentStats = useMemo(() => {
+    const published = evaluations.filter(ev => ev.status === 'published');
+    const byPlayer = new Map<string, PlayerEvaluation[]>();
+    published.forEach(ev => {
+      const list = byPlayer.get(ev.playerId) || [];
+      list.push(ev);
+      byPlayer.set(ev.playerId, list);
+    });
+    byPlayer.forEach(list => list.sort((a, b) => a.evaluationDate.localeCompare(b.evaluationDate)));
+    const histories = Array.from(byPlayer.values()).filter(list => list.length >= 2);
+    const average = (values: number[]) => values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
+    const deltas = (pick: (ev: PlayerEvaluation) => number | null) => histories.flatMap(list => {
+      const first = pick(list[0]);
+      const latest = pick(list[list.length - 1]);
+      return first != null && latest != null ? [latest - first] : [];
+    });
+    const latestReviews = Array.from(byPlayer.values()).map(list => list[list.length - 1]);
+    const today = new Date().toISOString().slice(0, 10);
+    return {
+      publishedCount: published.length,
+      playersWithHistory: histories.length,
+      reassessmentDue: latestReviews.filter(ev => ev.reassessmentDate && ev.reassessmentDate <= today).length,
+      changes: [
+        { label: isAr ? 'فني' : 'Technical', value: average(deltas(ev => ev.technicalScore)) },
+        { label: isAr ? 'تكتيكي' : 'Tactical', value: average(deltas(ev => ev.tacticalScore)) },
+        { label: isAr ? 'بدني' : 'Physical', value: average(deltas(ev => ev.physicalScore)) },
+        { label: isAr ? 'ذهني' : 'Mental', value: average(deltas(ev => ev.mentalScore)) },
+      ],
+    };
+  }, [evaluations, isAr]);
 
   /* Staff Summary */
   const staffStats = useMemo(() => {
@@ -355,6 +388,30 @@ export function Reports({
           <div className="rounded-xl bg-slate-50 dark:bg-slate-800/40 p-5">
             <p className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-4">{t.playersPerTeam}</p>
             <BarChart data={playerStats.teamBars} height={180} />
+          </div>
+        </div>
+      </SectionCard>
+
+      {/* Player Development Analytics */}
+      <SectionCard>
+        <SectionHeader icon={<TrendingUp className="h-5 w-5" />} title={isAr ? 'تحليلات تطور اللاعبين' : 'Player Development Analytics'} subtitle={isAr ? 'مؤشرات مجمعة من التقييمات المنشورة، بدون ترتيب أو مقارنة بين اللاعبين.' : 'Aggregate indicators from published reviews, without ranking or comparing players.'} gradient="from-emerald-500 to-teal-600" />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+          <StatCard icon={<Award className="h-5 w-5" />} label={isAr ? 'التقييمات المنشورة' : 'Published reviews'} value={developmentStats.publishedCount} color="emerald" />
+          <StatCard icon={<TrendingUp className="h-5 w-5" />} label={isAr ? 'لاعبون لديهم سجل تطور' : 'Players with progress history'} value={developmentStats.playersWithHistory} sublabel={isAr ? 'تقييمان أو أكثر' : '2+ published reviews'} color="blue" />
+          <StatCard icon={<Calendar className="h-5 w-5" />} label={isAr ? 'إعادة تقييم مستحقة' : 'Reassessments due'} value={developmentStats.reassessmentDue} color="amber" />
+        </div>
+        <div className="rounded-xl bg-slate-50 dark:bg-slate-800/40 p-5">
+          <p className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-4">{isAr ? 'متوسط التغير من أول تقييم إلى أحدث تقييم لكل لاعب' : 'Average first-to-latest change per player'}</p>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {developmentStats.changes.map(item => (
+              <div key={item.label} className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
+                <p className="text-[11px] font-bold text-slate-400">{item.label}</p>
+                <p className={`mt-1 text-xl font-black ${item.value == null ? 'text-slate-400' : item.value > 0.05 ? 'text-emerald-600' : item.value < -0.05 ? 'text-amber-600' : 'text-slate-700 dark:text-slate-200'}`}>
+                  {item.value == null ? '—' : `${item.value > 0 ? '+' : ''}${item.value.toFixed(1)}`}
+                </p>
+                <p className="text-[9px] text-slate-400 mt-1">{isAr ? 'نقطة من 5' : 'points out of 5'}</p>
+              </div>
+            ))}
           </div>
         </div>
       </SectionCard>

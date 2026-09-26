@@ -394,7 +394,7 @@ export default function App() {
       case 'evaluations':
         return <Evaluations evaluations={data.evaluations} players={data.players} teams={data.teams} staff={data.staff} activeRole={activeRole} lang={lang} onRefresh={loadAllData} />;
       case 'reports':
-        return <Reports players={data.players} teams={data.teams} staff={data.staff} matches={data.matches} trainings={data.trainings} transactions={data.transactions} subscriptions={data.subscriptions} attendance={data.attendance} settings={data.settings} activeRole={activeRole} lang={lang} />;
+        return <Reports players={data.players} teams={data.teams} staff={data.staff} matches={data.matches} trainings={data.trainings} transactions={data.transactions} subscriptions={data.subscriptions} attendance={data.attendance} evaluations={data.evaluations} settings={data.settings} activeRole={activeRole} lang={lang} />;
       case 'audit-logs':
         return <AuditLogs auditLogs={data.auditLogs} loginLogs={data.loginLogs} activeRole={activeRole} lang={lang} />;
       case 'mobile':
