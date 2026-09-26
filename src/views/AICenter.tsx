@@ -4,7 +4,7 @@ import {
   Brain, Zap, Target, Activity, RefreshCw, FileText, Lightbulb, AlertTriangle, CheckCircle2,
   Apple, Search, ClipboardList, MessageSquare,
 } from 'lucide-react';
-import type { Player, Team, Staff, Match, Training, Transaction, Subscription, Tournament, Parent, Attendance, Lang, Role } from '@/types';
+import type { Player, Team, Staff, Match, Training, Transaction, Subscription, Tournament, Parent, Attendance, PlayerEvaluation, Lang, Role } from '@/types';
 import { PageHeader } from '@/components/ui';
 import { tr } from '@/lib/i18n';
 import { fetchAllPlayerFiles, type UploadedFile } from '@/lib/uploads';
@@ -27,6 +27,7 @@ interface AICenterProps {
   tournaments: Tournament[];
   parents: Parent[];
   attendance: Attendance[];
+  evaluations: PlayerEvaluation[];
   activeRole: Role;
   lang: Lang;
 }
@@ -93,7 +94,7 @@ const LIVE_AI_PERSONAS = new Set<PersonaId>(['financial', 'operations', 'documen
 const SUGGESTIONS: Record<PersonaId, string[]> = {
   technical: ['حلل أداء الفرق', 'توصيات لتحسين الحضور', 'تقرير شامل'],
   financial: ['تقرير مالي سريع', 'تحليل الاشتراكات المتأخرة', 'توقعات مالية'],
-  players: ['حالة تقييمات اللاعبين', 'توزيع المراكز', 'الاشتراكات المتأخرة'],
+  players: ['تحليل تطور التقييمات', 'إعادة التقييم المستحقة', 'توزيع المراكز'],
   matches: ['معدل الفوز', 'المباريات القادمة', 'خطة استعداد للمباراة'],
   documents: ['تحليل المستندات', 'اللاعبون الناقصون', 'تقرير المستندات'],
   training: ['الجلسات التدريبية المسجلة', 'مواعيد التدريبات', 'أهداف الجلسات'],
@@ -141,7 +142,7 @@ function buildContext(
   };
 }
 
-function generateResponse(personaId: PersonaId, q: string, c: AIContext, teams: Team[], players: Player[]): string {
+function generateResponse(personaId: PersonaId, q: string, c: AIContext, teams: Team[], players: Player[], evaluations: PlayerEvaluation[]): string {
   if (/(تقرير شامل|تقرير عام|تقرير الأكاديمية|full report|comprehensive)/.test(q)) return generateFullReport(c);
   const currency = c.currency;
 
@@ -181,8 +182,26 @@ function generateResponse(personaId: PersonaId, q: string, c: AIContext, teams: 
     }
 
     case 'players': {
-      if (/(تقييم|تقييمات|أداء|أفضل|مميز|نجم|نجوم|top|ranking|rank)/.test(q)) {
-        return 'بيانات تقييمات الأداء غير محمّلة في الرد المحلي، لذلك لا يمكن ترتيب اللاعبين أو تحديد الأفضل اعتمادًا على رقم القميص أو حالة النشاط. يجب الاعتماد على تقييمات فعلية مسجلة في النظام.';
+      if (/(تقييم|تقييمات|أداء|تطور|إعادة التقييم|أفضل|مميز|نجم|نجوم|top|ranking|rank)/.test(q)) {
+        const published = evaluations.filter((ev) => ev.status === 'published').sort((a, b) => a.evaluationDate.localeCompare(b.evaluationDate));
+        if (!published.length) return 'لا توجد تقييمات منشورة حاليًا، لذلك لا يمكن تحليل التطور أو المقارنة. لن يتم ترتيب اللاعبين أو وصف أي لاعب بأنه الأفضل.';
+        const byPlayer = new Map<string, PlayerEvaluation[]>();
+        published.forEach((ev) => byPlayer.set(ev.playerId, [...(byPlayer.get(ev.playerId) || []), ev]));
+        const history = Array.from(byPlayer.values()).filter((items) => items.length >= 2);
+        const latest = Array.from(byPlayer.values()).map((items) => items[items.length - 1]);
+        const today = new Date().toISOString().slice(0, 10);
+        const due = latest.filter((ev) => ev.reassessmentDate && ev.reassessmentDate <= today).length;
+        const plans = latest.filter((ev) => ev.developmentPriorities?.length || ev.trainingAction || ev.reassessmentDate).length;
+        return [
+          '📈 ملخص تطور التقييمات:',
+          `• تقييمات منشورة: ${published.length}`,
+          `• لاعبون لديهم تقييم منشور: ${byPlayer.size}`,
+          `• لاعبون لديهم تاريخ يمكن مقارنته ذاتيًا: ${history.length}`,
+          `• إعادة تقييم مستحقة: ${due}`,
+          `• أحدث تقييمات تحتوي خطة تطوير: ${plans} من ${latest.length}`,
+          '',
+          'يُستخدم هذا التحليل لمتابعة تطور اللاعب مقارنةً بسجله السابق، وليس لترتيب اللاعبين فيما بينهم.',
+        ].join('\n');
       }
       if (/(مركز|مراكز|توزيع|position)/.test(q)) {
         const list = Object.entries(c.positionCounts).sort((a, b) => b[1] - a[1]).map(([pos, count]) => `• ${pos}: ${count} لاعب`).join('\n');
@@ -291,7 +310,7 @@ function generateResponse(personaId: PersonaId, q: string, c: AIContext, teams: 
   }
 }
 
-export function AICenter({ players, subscriptions, transactions, staff, teams, matches, trainings, tournaments, parents, attendance, activeRole, lang }: AICenterProps) {
+export function AICenter({ players, subscriptions, transactions, staff, teams, matches, trainings, tournaments, parents, attendance, evaluations, activeRole, lang }: AICenterProps) {
   const t = tr(lang);
   const [activePersona, setActivePersona] = useState<PersonaId>('technical');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -330,11 +349,11 @@ export function AICenter({ players, subscriptions, transactions, staff, teams, m
         return;
       }
 
-      const reply = generateResponse(activePersona, content, ctx, teams, players);
+      const reply = generateResponse(activePersona, content, ctx, teams, players, evaluations);
       setMessages((prev) => [...prev, { id: uid(), role: 'ai', text: reply }]);
     } catch (error) {
       console.error('AI assistant request failed', error);
-      const fallback = generateResponse(activePersona, content, ctx, teams, players);
+      const fallback = generateResponse(activePersona, content, ctx, teams, players, evaluations);
       const notice = lang === 'ar'
         ? 'تعذر الاتصال بخدمة الذكاء الاصطناعي الآن. هذه إجابة محلية من بيانات النظام:\n\n'
         : 'The AI service is unavailable right now. Here is a local response from system data:\n\n';
