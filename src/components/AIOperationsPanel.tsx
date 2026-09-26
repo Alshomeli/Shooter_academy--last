@@ -1,0 +1,288 @@
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { CheckCircle2, ClipboardCheck, CreditCard, Loader2, ShieldCheck, XCircle } from 'lucide-react';
+import type { Lang, Player, RegistrationApplication, Role, Subscription } from '@/types';
+import { fetchAllApplications } from '@/lib/registration';
+import { paymentMethodLabel } from '@/lib/i18n';
+import {
+  cancelAIAction,
+  executeAIAction,
+  prepareAIAction,
+  type AIOperation,
+  type PreparedAIAction,
+} from '@/lib/ai-operations';
+
+interface Props {
+  activeRole: Role;
+  lang: Lang;
+  subscriptions: Subscription[];
+  players: Player[];
+  onCompleted: () => Promise<void>;
+}
+
+type RegistrationDecision = 'approve' | 'under_review' | 'needs_info' | 'rejected';
+
+const inputCls =
+  'w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-white';
+
+function errorText(error: unknown, ar: boolean) {
+  const message = error instanceof Error ? error.message : String(error || '');
+  return ar ? `تعذر إتمام العملية: ${message}` : `Unable to complete the action: ${message}`;
+}
+
+export function AIOperationsPanel({ activeRole, lang, subscriptions, players, onCompleted }: Props) {
+  const ar = lang === 'ar';
+  const canPayment = activeRole === 'manager' || activeRole === 'accountant';
+  const canRegistration = activeRole === 'manager';
+
+  const [apps, setApps] = useState<RegistrationApplication[]>([]);
+  const [loadingApps, setLoadingApps] = useState(false);
+  const [selectedSubscriptionId, setSelectedSubscriptionId] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [selectedApplicationId, setSelectedApplicationId] = useState('');
+  const [registrationDecision, setRegistrationDecision] = useState<RegistrationDecision>('approve');
+  const [reviewNotes, setReviewNotes] = useState('');
+  const [prepared, setPrepared] = useState<PreparedAIAction | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+
+  const unpaid = useMemo(() => subscriptions.filter((s) => s.status === 'unpaid'), [subscriptions]);
+  const actionableApps = useMemo(
+    () => apps.filter((a) => ['pending', 'under_review', 'needs_info'].includes(a.status)),
+    [apps],
+  );
+
+  const loadApps = useCallback(async () => {
+    if (!canRegistration) return;
+    setLoadingApps(true);
+    try {
+      setApps(await fetchAllApplications());
+    } catch (e) {
+      setError(errorText(e, ar));
+    } finally {
+      setLoadingApps(false);
+    }
+  }, [canRegistration, ar]);
+
+  useEffect(() => {
+    void loadApps();
+  }, [loadApps]);
+
+  const resetPrepared = () => {
+    setPrepared(null);
+    setError('');
+  };
+
+  const preparePayment = async () => {
+    if (!selectedSubscriptionId || busy) return;
+    setBusy(true); setError(''); setMessage('');
+    try {
+      setPrepared(await prepareAIAction('record_subscription_payment', {
+        subscriptionId: selectedSubscriptionId,
+        paymentMethod,
+      }));
+    } catch (e) {
+      setError(errorText(e, ar));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const prepareRegistration = async () => {
+    if (!selectedApplicationId || busy) return;
+    if ((registrationDecision === 'needs_info' || registrationDecision === 'rejected') && !reviewNotes.trim()) {
+      setError(ar ? 'اكتب سبب القرار قبل تجهيز العملية.' : 'Add a reason before preparing this action.');
+      return;
+    }
+    setBusy(true); setError(''); setMessage('');
+    try {
+      let operation: AIOperation = 'approve_registration';
+      let params: Record<string, unknown> = { applicationId: selectedApplicationId };
+      if (registrationDecision !== 'approve') {
+        operation = 'review_registration';
+        params = {
+          applicationId: selectedApplicationId,
+          status: registrationDecision,
+          notes: reviewNotes.trim(),
+        };
+      }
+      setPrepared(await prepareAIAction(operation, params));
+    } catch (e) {
+      setError(errorText(e, ar));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const confirmPrepared = async () => {
+    if (!prepared || busy) return;
+    setBusy(true); setError('');
+    try {
+      await executeAIAction(prepared.requestId);
+      setMessage(ar ? 'تم تنفيذ العملية وتسجيلها في سجل التدقيق.' : 'Action executed and recorded in the audit log.');
+      setPrepared(null);
+      await Promise.all([onCompleted(), loadApps()]);
+    } catch (e) {
+      setError(errorText(e, ar));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const cancelPrepared = async () => {
+    if (!prepared || busy) return;
+    setBusy(true); setError('');
+    try {
+      await cancelAIAction(prepared.requestId);
+      setPrepared(null);
+      setMessage(ar ? 'تم إلغاء العملية المجهزة بدون تغيير البيانات.' : 'Prepared action cancelled without changing data.');
+    } catch (e) {
+      setError(errorText(e, ar));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!canPayment && !canRegistration) return null;
+
+  return (
+    <section className="rounded-2xl border border-violet-200 dark:border-violet-900/50 bg-violet-50/40 dark:bg-violet-950/10 p-4 sm:p-5">
+      <div className="flex items-start gap-3 mb-4">
+        <div className="w-10 h-10 rounded-xl bg-violet-600 text-white flex items-center justify-center shrink-0">
+          <ShieldCheck className="h-5 w-5" />
+        </div>
+        <div>
+          <h3 className="text-sm font-black text-slate-900 dark:text-white">
+            {ar ? 'إجراءات إدارية آمنة' : 'Safe administrative actions'}
+          </h3>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+            {ar ? 'كل تعديل يمر بمعاينة ثم تأكيد صريح قبل التنفيذ.' : 'Every mutation is previewed and requires explicit confirmation before execution.'}
+          </p>
+        </div>
+      </div>
+
+      {error && <div className="mb-3 rounded-xl bg-red-50 dark:bg-red-950/30 px-3 py-2 text-xs font-bold text-red-600">{error}</div>}
+      {message && <div className="mb-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 px-3 py-2 text-xs font-bold text-emerald-700 dark:text-emerald-400">{message}</div>}
+
+      {prepared ? (
+        <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <ClipboardCheck className="h-4 w-4 text-amber-600" />
+            <h4 className="text-sm font-black text-amber-800 dark:text-amber-300">
+              {ar ? 'معاينة قبل التنفيذ' : 'Preview before execution'}
+            </h4>
+          </div>
+          <Preview action={prepared} lang={lang} />
+          <p className="mt-3 text-[10px] text-amber-700/80 dark:text-amber-300/70">
+            {ar ? `تنتهي صلاحية الطلب: ${new Date(prepared.expiresAt).toLocaleString('ar-BH')}` : `Expires: ${new Date(prepared.expiresAt).toLocaleString('en-BH')}`}
+          </p>
+          <div className="flex flex-wrap gap-2 mt-4">
+            <button onClick={() => void confirmPrepared()} disabled={busy}
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-black text-white disabled:opacity-50">
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+              {ar ? 'تأكيد وتنفيذ' : 'Confirm & execute'}
+            </button>
+            <button onClick={() => void cancelPrepared()} disabled={busy}
+              className="inline-flex items-center gap-2 rounded-xl bg-slate-200 dark:bg-slate-800 px-4 py-2 text-xs font-black text-slate-700 dark:text-slate-200 disabled:opacity-50">
+              <XCircle className="h-4 w-4" />
+              {ar ? 'إلغاء' : 'Cancel'}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+          {canPayment && (
+            <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <CreditCard className="h-4 w-4 text-emerald-600" />
+                <h4 className="text-xs font-black text-slate-800 dark:text-white">{ar ? 'تسجيل دفعة اشتراك' : 'Record subscription payment'}</h4>
+              </div>
+              <div className="space-y-3">
+                <select value={selectedSubscriptionId} onChange={(e) => setSelectedSubscriptionId(e.target.value)} className={inputCls}>
+                  <option value="">{ar ? 'اختر اشتراكاً غير مدفوع' : 'Select an unpaid subscription'}</option>
+                  {unpaid.map((sub) => {
+                    const player = players.find((p) => p.id === sub.playerId);
+                    return <option key={sub.id} value={sub.id}>{player?.name || sub.playerId} — {sub.amount.toFixed(3)} BHD</option>;
+                  })}
+                </select>
+                <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className={inputCls}>
+                  {['cash', 'bank_transfer', 'benefit', 'card'].map((method) => (
+                    <option key={method} value={method}>{paymentMethodLabel(method, lang)}</option>
+                  ))}
+                </select>
+                <button onClick={() => void preparePayment()} disabled={!selectedSubscriptionId || busy}
+                  className="w-full rounded-xl bg-violet-600 px-4 py-2 text-xs font-black text-white disabled:opacity-50">
+                  {busy ? (ar ? 'جارٍ التجهيز...' : 'Preparing...') : (ar ? 'معاينة العملية' : 'Preview action')}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {canRegistration && (
+            <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <ClipboardCheck className="h-4 w-4 text-blue-600" />
+                <h4 className="text-xs font-black text-slate-800 dark:text-white">{ar ? 'إجراء على طلب تسجيل' : 'Registration action'}</h4>
+              </div>
+              <div className="space-y-3">
+                <select value={selectedApplicationId} onChange={(e) => setSelectedApplicationId(e.target.value)} className={inputCls} disabled={loadingApps}>
+                  <option value="">{loadingApps ? (ar ? 'جارٍ تحميل الطلبات...' : 'Loading applications...') : (ar ? 'اختر طلباً' : 'Select application')}</option>
+                  {actionableApps.map((app) => (
+                    <option key={app.id} value={app.id}>{app.parentName} — {app.status} — {app.createdAt.slice(0, 10)}</option>
+                  ))}
+                </select>
+                <select value={registrationDecision} onChange={(e) => setRegistrationDecision(e.target.value as RegistrationDecision)} className={inputCls}>
+                  <option value="approve">{ar ? 'موافقة' : 'Approve'}</option>
+                  <option value="under_review">{ar ? 'قيد المراجعة' : 'Mark under review'}</option>
+                  <option value="needs_info">{ar ? 'طلب معلومات إضافية' : 'Request more information'}</option>
+                  <option value="rejected">{ar ? 'رفض' : 'Reject'}</option>
+                </select>
+                {registrationDecision !== 'approve' && (
+                  <textarea value={reviewNotes} onChange={(e) => setReviewNotes(e.target.value)} rows={2}
+                    placeholder={ar ? 'ملاحظات المراجعة' : 'Review notes'} className={inputCls} />
+                )}
+                <button onClick={() => void prepareRegistration()} disabled={!selectedApplicationId || busy}
+                  className="w-full rounded-xl bg-violet-600 px-4 py-2 text-xs font-black text-white disabled:opacity-50">
+                  {busy ? (ar ? 'جارٍ التجهيز...' : 'Preparing...') : (ar ? 'معاينة العملية' : 'Preview action')}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function Preview({ action, lang }: { action: PreparedAIAction; lang: Lang }) {
+  const ar = lang === 'ar';
+  const p = action.preview as Record<string, unknown>;
+  if (action.operation === 'record_subscription_payment') {
+    const period = (p.period || {}) as Record<string, unknown>;
+    return (
+      <dl className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-700 dark:text-slate-300">
+        <Item label={ar ? 'الاشتراك' : 'Subscription'} value={String(p.subscriptionId || '—')} />
+        <Item label={ar ? 'المبلغ' : 'Amount'} value={`${Number(p.amount || 0).toFixed(3)} ${String(p.currency || 'BHD')}`} />
+        <Item label={ar ? 'طريقة الدفع' : 'Payment method'} value={String(p.paymentMethod || '—')} />
+        <Item label={ar ? 'الفترة' : 'Period'} value={`${String(period.start || '—')} → ${String(period.end || '—')}`} />
+      </dl>
+    );
+  }
+  return (
+    <dl className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-700 dark:text-slate-300">
+      <Item label={ar ? 'رقم الطلب' : 'Application'} value={String(p.applicationId || '—')} />
+      <Item label={ar ? 'الحالة الحالية' : 'Current status'} value={String(p.currentStatus || '—')} />
+      {p.newStatus != null && <Item label={ar ? 'الحالة الجديدة' : 'New status'} value={String(p.newStatus)} />}
+      <Item label={ar ? 'نوع التسجيل' : 'Registration type'} value={String(p.registrationType || '—')} />
+    </dl>
+  );
+}
+
+function Item({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg bg-white/70 dark:bg-slate-900/70 p-2.5">
+      <dt className="text-[10px] font-bold text-slate-400">{label}</dt>
+      <dd className="mt-0.5 font-black break-all">{value}</dd>
+    </div>
+  );
+}
