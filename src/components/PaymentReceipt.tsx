@@ -21,8 +21,8 @@ export function PaymentReceipt({ subscription, transactions, players, settings, 
   const configuredLogo = settings?.logoUrl?.trim() || '';
   const logoIsImage = /^(https?:\/\/|data:image\/|\/)/i.test(configuredLogo);
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 p-4 overflow-y-auto" dir={ar ? 'rtl' : 'ltr'}>
-      <div className="max-w-2xl mx-auto bg-white rounded-2xl shadow-xl">
+    <div className="receipt-overlay fixed inset-0 z-50 bg-black/50 p-4 overflow-y-auto" dir={ar ? 'rtl' : 'ltr'}>
+      <div className="receipt-print-root max-w-2xl mx-auto bg-white rounded-2xl shadow-xl">
         <div className="p-6 sm:p-8 text-slate-900">
           <div className="flex justify-between gap-4 pb-5 border-b-2 border-red-700">
             <div className="flex items-center gap-3">
@@ -48,9 +48,15 @@ export function PaymentReceipt({ subscription, transactions, players, settings, 
           <div className="py-4 border-t text-xs text-slate-600"><b>{ar ? 'البيان:' : 'For:'}</b> {ar ? 'سداد اشتراك الأكاديمية' : 'Academy subscription payment'}<br/><b>{ar ? 'فترة الاشتراك:' : 'Subscription period:'}</b> {subscription.startDate} - {subscription.endDate}</div>
           <div className="grid grid-cols-2 gap-8 pt-12 text-xs text-center"><div className="border-t pt-2">{ar ? 'توقيع المستلم' : 'Receiver signature'}</div><div className="border-t pt-2">{ar ? 'توقيع الدافع' : 'Payer signature'}</div></div>
         </div>
-        <div className="flex justify-end gap-2 p-4 border-t">
+        <div className="receipt-no-print flex justify-end gap-2 p-4 border-t">
           <button onClick={onClose} className="px-4 py-2 rounded-xl bg-slate-100 text-sm font-bold">{ar ? 'إغلاق' : 'Close'}</button>
-          <button onClick={() => window.print()} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-700 text-white text-sm font-bold"><Printer className="h-4 w-4"/>{ar ? 'طباعة' : 'Print'}</button>
+          <button onClick={() => {
+            document.body.classList.add('receipt-printing');
+            const cleanup = () => document.body.classList.remove('receipt-printing');
+            window.addEventListener('afterprint', cleanup, { once: true });
+            window.print();
+            window.setTimeout(cleanup, 1500);
+          }} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-700 text-white text-sm font-bold"><Printer className="h-4 w-4"/>{ar ? 'طباعة' : 'Print'}</button>
         </div>
       </div>
     </div>
