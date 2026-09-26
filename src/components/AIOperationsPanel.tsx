@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CalendarCheck2, CheckCircle2, ClipboardCheck, CreditCard, FileCheck2, Loader2, ShieldCheck, XCircle } from 'lucide-react';
-import type { Lang, Player, PlayerEvaluation, RegistrationApplication, Role, Subscription } from '@/types';
+import type { Lang, Player, PlayerEvaluation, RegistrationApplication, Role, Subscription, Training } from '@/types';
 import { fetchAllApplications } from '@/lib/registration';
 import { paymentMethodLabel } from '@/lib/i18n';
 import {
@@ -17,6 +17,7 @@ interface Props {
   subscriptions: Subscription[];
   players: Player[];
   evaluations: PlayerEvaluation[];
+  trainings: Training[];
   onCompleted: () => Promise<void>;
 }
 
@@ -30,7 +31,7 @@ function errorText(error: unknown, ar: boolean) {
   return ar ? `تعذر إتمام العملية: ${message}` : `Unable to complete the action: ${message}`;
 }
 
-export function AIOperationsPanel({ activeRole, lang, subscriptions, players, evaluations, onCompleted }: Props) {
+export function AIOperationsPanel({ activeRole, lang, subscriptions, players, evaluations, trainings, onCompleted }: Props) {
   const ar = lang === 'ar';
   const canPayment = activeRole === 'manager' || activeRole === 'accountant';
   const canRegistration = activeRole === 'manager';
@@ -49,6 +50,7 @@ export function AIOperationsPanel({ activeRole, lang, subscriptions, players, ev
   const [attendanceType, setAttendanceType] = useState<'training' | 'match'>('training');
   const [attendanceStatus, setAttendanceStatus] = useState<'present' | 'absent' | 'excused'>('present');
   const [attendanceNotes, setAttendanceNotes] = useState('');
+  const [attendanceTrainingId, setAttendanceTrainingId] = useState('');
   const [selectedEvaluationId, setSelectedEvaluationId] = useState('');
   const [prepared, setPrepared] = useState<PreparedAIAction | null>(null);
   const [busy, setBusy] = useState(false);
@@ -137,6 +139,7 @@ export function AIOperationsPanel({ activeRole, lang, subscriptions, players, ev
         sessionType: attendanceType,
         status: attendanceStatus,
         notes: attendanceNotes.trim(),
+        trainingId: attendanceType === 'training' ? attendanceTrainingId || null : null,
       }));
     } catch (e) {
       setError(errorText(e, ar));
@@ -314,6 +317,28 @@ export function AIOperationsPanel({ activeRole, lang, subscriptions, players, ev
                     <option value="match">{ar ? 'مباراة' : 'Match'}</option>
                   </select>
                 </div>
+                {attendanceType === 'training' && (
+                  <select
+                    value={attendanceTrainingId}
+                    onChange={(e) => {
+                      const id = e.target.value;
+                      setAttendanceTrainingId(id);
+                      const training = trainings.find((item) => item.id === id);
+                      if (training) setAttendanceDate(training.sessionDate);
+                    }}
+                    className={inputCls}
+                  >
+                    <option value="">{ar ? 'بدون ربط بحصة محددة' : 'No specific training session'}</option>
+                    {trainings
+                      .slice()
+                      .sort((a, b) => b.sessionDate.localeCompare(a.sessionDate))
+                      .map((training) => (
+                        <option key={training.id} value={training.id}>
+                          {training.sessionDate} — {training.title}
+                        </option>
+                      ))}
+                  </select>
+                )}
                 <select value={attendanceStatus} onChange={(e) => setAttendanceStatus(e.target.value as 'present' | 'absent' | 'excused')} className={inputCls}>
                   <option value="present">{ar ? 'حاضر' : 'Present'}</option>
                   <option value="absent">{ar ? 'غائب' : 'Absent'}</option>
