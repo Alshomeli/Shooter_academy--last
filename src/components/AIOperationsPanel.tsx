@@ -243,6 +243,25 @@ export function AIOperationsPanel({ activeRole, lang, subscriptions, players, ev
         </div>
       </div>
 
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-4">
+        <div className="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3">
+          <p className="text-[10px] font-bold text-slate-400">{ar ? 'اشتراكات غير مدفوعة' : 'Unpaid subscriptions'}</p>
+          <p className="mt-1 text-xl font-black text-amber-600">{unpaid.length}</p>
+        </div>
+        <div className="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3">
+          <p className="text-[10px] font-bold text-slate-400">{ar ? 'طلبات تحتاج إجراء' : 'Applications needing action'}</p>
+          <p className="mt-1 text-xl font-black text-blue-600">{canRegistration ? actionableApps.length : '—'}</p>
+        </div>
+        <div className="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3">
+          <p className="text-[10px] font-bold text-slate-400">{ar ? 'تقييمات مسودة' : 'Draft evaluations'}</p>
+          <p className="mt-1 text-xl font-black text-violet-600">{draftEvaluations.length}</p>
+        </div>
+        <div className="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3">
+          <p className="text-[10px] font-bold text-slate-400">{ar ? 'لاعبون نشطون' : 'Active players'}</p>
+          <p className="mt-1 text-xl font-black text-emerald-600">{players.filter((player) => player.status === 'active').length}</p>
+        </div>
+      </div>
+
       {history.length > 0 && (
         <div className="mb-4 rounded-xl border border-violet-100 dark:border-violet-900/40 bg-white/70 dark:bg-slate-900/60 p-3">
           <div className="flex items-center justify-between gap-3 mb-2">
