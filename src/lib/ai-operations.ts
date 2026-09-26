@@ -17,6 +17,15 @@ export interface PreparedAIAction {
   expiresAt: string;
 }
 
+export interface AIActionHistoryItem {
+  requestId: string;
+  operation: AIOperation;
+  status: 'pending' | 'executing' | 'executed' | 'cancelled' | 'expired' | 'failed';
+  createdAt: string;
+  executedAt?: string | null;
+  errorCode?: string | null;
+}
+
 export interface ExecutedAIAction {
   requestId: string;
   operation: AIOperation;
@@ -44,4 +53,9 @@ export function executeAIAction(requestId: string): Promise<ExecutedAIAction> {
 
 export function cancelAIAction(requestId: string): Promise<{ requestId: string; status: 'cancelled' }> {
   return invokeGateway({ mode: 'cancel', requestId });
+}
+
+
+export function listAIActionHistory(): Promise<{ actions: AIActionHistoryItem[] }> {
+  return invokeGateway({ mode: 'history' });
 }
