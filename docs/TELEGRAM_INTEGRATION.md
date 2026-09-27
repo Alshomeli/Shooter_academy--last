@@ -36,3 +36,8 @@ Mutating actions remain disabled until delegated staff identity is added. When e
 `prepare -> preview -> explicit confirmation -> execute/cancel`
 
 No Telegram mutation should bypass that confirmation flow.
+
+
+## Webhook recovery
+
+If the hosted Edge Function secret cannot be updated through the connected tooling, webhook registration can be recovered with a one-time bootstrap secret whose plaintext is never committed. Only its SHA-256 digest is stored in source control. The runtime still accepts the normal `TELEGRAM_WEBHOOK_SECRET` environment secret when configured.
