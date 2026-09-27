@@ -41,3 +41,10 @@ No Telegram mutation should bypass that confirmation flow.
 ## Webhook recovery
 
 If the hosted Edge Function secret cannot be updated through the connected tooling, webhook registration can be recovered with a one-time bootstrap secret whose plaintext is never committed. Only its SHA-256 digest is stored in source control. The runtime still accepts the normal `TELEGRAM_WEBHOOK_SECRET` environment secret when configured.
+
+
+## Voice notes
+
+Authorized managers can send Telegram voice notes instead of typing supported administrative questions. The webhook uses Telegram `getFile`, downloads the voice note server-side, and transcribes it with OpenAI speech-to-text before passing the transcript through the same read-only intent routing used for text messages.
+
+Required server secret: `OPENAI_API_KEY`. Never expose this key to the browser, Telegram messages, source control, or logs. Voice files are processed in memory and are not persisted by this function. Telegram bot downloads are limited to 20 MB.
