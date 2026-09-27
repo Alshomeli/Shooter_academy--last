@@ -17,6 +17,13 @@ const BOOTSTRAP_MANAGER_CHAT_HASHES = new Set([
   "77aa335710747063044d0b8d13ab0c4576ea69f2e9fd5beb71167d9bdfda2a11",
 ]);
 
+// Bootstrap webhook authentication stores only the SHA-256 digest of the
+// Telegram secret token. This lets us securely recover webhook registration
+// without committing the plaintext secret.
+const BOOTSTRAP_WEBHOOK_SECRET_HASHES = new Set([
+  "30d0b4b7784e9587110b7b2ec6da8d2bdcf8a502fce7e8c160dc15dd98647eac",
+]);
+
 async function sha256Hex(value: string): Promise<string> {
   const bytes = new TextEncoder().encode(value);
   const digest = await crypto.subtle.digest("SHA-256", bytes);
@@ -29,6 +36,12 @@ async function isAuthorizedManagerChat(chatId: number): Promise<boolean> {
   const raw = String(chatId);
   if (MANAGER_CHAT_IDS.has(raw)) return true;
   return BOOTSTRAP_MANAGER_CHAT_HASHES.has(await sha256Hex(raw));
+}
+
+async function isAuthorizedWebhookSecret(value: string | null): Promise<boolean> {
+  if (!value) return false;
+  if (TELEGRAM_WEBHOOK_SECRET && value === TELEGRAM_WEBHOOK_SECRET) return true;
+  return BOOTSTRAP_WEBHOOK_SECRET_HASHES.has(await sha256Hex(value));
 }
 
 type TelegramUpdate = {
@@ -109,13 +122,15 @@ function formatMoney(value: number): string {
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
 
-  if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_WEBHOOK_SECRET || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+  if (!TELEGRAM_BOT_TOKEN || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     console.error("Required Telegram manager configuration is missing");
     return new Response("Function is not configured", { status: 500 });
   }
 
   const providedSecret = req.headers.get("X-Telegram-Bot-Api-Secret-Token");
-  if (providedSecret !== TELEGRAM_WEBHOOK_SECRET) return new Response("Unauthorized", { status: 401 });
+  if (!(await isAuthorizedWebhookSecret(providedSecret))) {
+    return new Response("Unauthorized", { status: 401 });
+  }
 
   let update: TelegramUpdate;
   try {
