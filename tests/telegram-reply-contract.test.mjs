@@ -37,3 +37,11 @@ test('Telegram bot credentials stay in server environment', () => {
   assert.match(source, /Deno\.env\.get\("SUPABASE_SERVICE_ROLE_KEY"\)/);
   assert.doesNotMatch(source, /\b\d{8,12}:[A-Za-z0-9_-]{20,}\b/);
 });
+
+
+test('Telegram webhook bootstrap secret is stored only as a digest', () => {
+  assert.match(source, /BOOTSTRAP_WEBHOOK_SECRET_HASHES/);
+  assert.match(source, /isAuthorizedWebhookSecret/);
+  assert.match(source, /crypto\.subtle\.digest\("SHA-256"/);
+  assert.doesNotMatch(source, /QTX8VAH4At1fHrnlRBgLTRA6LIWTroAsUAhkE2xdbiY/);
+});
