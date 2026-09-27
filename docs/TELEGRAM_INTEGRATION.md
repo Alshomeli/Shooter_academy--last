@@ -1,35 +1,37 @@
-# Telegram integration status
+# Telegram Manager integration
 
-## Current baseline
+## Current state
 
-The production Supabase project currently has an active `telegram-reply` Edge Function.
-This repository now stores the same baseline source so production behavior is reproducible.
+The development branch is healthy and rebuilds all migrations successfully. `telegram-reply` is now the read-only Telegram Manager v1.
 
-The current function:
+Security model:
 
-- accepts only POST requests,
-- requires `X-Telegram-Bot-Api-Secret-Token`,
-- reads the bot token and webhook secret from Edge Function secrets,
-- ignores non-text updates,
-- sends a simple echo reply through Telegram `sendMessage`.
+- Telegram calls the webhook without a Supabase user JWT, so `verify_jwt = false` is required.
+- Every request must pass `X-Telegram-Bot-Api-Secret-Token`.
+- Administrative summaries are restricted to private chats.
+- Allowed chats are configured server-side in `TELEGRAM_MANAGER_CHAT_IDS`.
+- Bot token, webhook secret, and Supabase service role key stay in Edge Function secrets.
+- The function does not expose player names, guardian details, national IDs, notes, or contact information.
+- Telegram Manager v1 performs no inserts, updates, deletes, or RPC mutations.
 
-It is intentionally **not** connected to academy data or administrative mutations yet.
+## Commands
 
-## Next integration stage
+- `/whoami` — returns the Telegram chat/user IDs needed for server-side authorization setup.
+- `ملخص اليوم` or `/summary` — active-player count, unpaid subscriptions, subscriptions ending today, and today's recorded income total.
+- `من دفع اليوم؟` or `/payments` — today's income transaction count and total, without player-identifying details.
+- `اشتراكات تنتهي اليوم` or `/expiring` — counts expiring today and during the next seven days.
+- `مساعدة` or `/help` — command help.
 
-The safe target architecture is:
+## Required secret
 
-`Telegram webhook -> identity/pairing adapter -> ai-operations-gateway -> Supabase/RPCs`
+Set `TELEGRAM_MANAGER_CHAT_IDS` to a comma-separated allowlist of authorized private Telegram chat IDs.
 
-Requirements before enabling administrative commands:
+Use `/whoami` first, then place the approved chat ID in the Edge Function secret. Do not authorize based on Telegram username.
 
-1. Fix the Supabase development branch migration drift so the branch can be rebuilt from production migrations.
-2. Add manager/staff pairing without trusting Telegram usernames.
-3. Keep read-only summaries role-scoped.
-4. Route all mutations through the existing prepare -> explicit confirmation -> execute lifecycle.
-5. Use Telegram inline confirmation/cancel actions for pending mutations.
-6. Keep bot tokens and webhook secrets server-side only.
-7. Avoid returning unnecessary player/minor personal data in chat.
-8. Validate the integration on the development branch before production deployment.
+## Next stage
 
-Production should not be used as the development environment for the next stage.
+Mutating actions remain disabled until delegated staff identity is added. When enabled, mutations must reuse the existing `ai-operations-gateway` lifecycle:
+
+`prepare -> preview -> explicit confirmation -> execute/cancel`
+
+No Telegram mutation should bypass that confirmation flow.
