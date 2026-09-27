@@ -23,12 +23,12 @@ before update on public.teams
 for each row execute function internal.guard_team_coach_assignment();
 
 -- Remove accidental public/API exposure of the development-only table when it exists.
-DO $
+DO $body$
 BEGIN
   IF to_regclass('public.some_table') IS NOT NULL THEN
     EXECUTE 'DROP POLICY IF EXISTS "Anyone can read some_table" ON public.some_table';
     EXECUTE 'REVOKE ALL ON public.some_table FROM anon, authenticated';
-    EXECUTE $COMMENT ON TABLE public.some_table IS 'Development-only table; intentionally not exposed to anon/authenticated API roles.'$;
+    EXECUTE 'COMMENT ON TABLE public.some_table IS ''Development-only table; intentionally not exposed to anon/authenticated API roles.''';
   END IF;
 END
-$;
+$body$;
