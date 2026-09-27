@@ -1,10 +1,9 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "npm:@supabase/supabase-js@2.57.4";
-
 const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN");
 const TELEGRAM_WEBHOOK_SECRET = Deno.env.get("TELEGRAM_WEBHOOK_SECRET");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+const SUPABASE_SECRET_KEYS = Deno.env.get("SUPABASE_SECRET_KEYS");
 const MANAGER_CHAT_IDS = new Set(
   (Deno.env.get("TELEGRAM_MANAGER_CHAT_IDS") || "")
     .split(",")
@@ -69,12 +68,16 @@ function normalize(text: string): string {
 }
 
 function isSummaryCommand(text: string): boolean {
-  return ["/summary", "summary", "ملخص", "ملخص اليوم", "شنو صار اليوم", "شو صار اليوم"].includes(normalize(text));
+  const value = normalize(text);
+  return ["/summary", "summary", "ملخص", "ملخص اليوم", "شنو صار اليوم", "شو صار اليوم"].includes(value)
+    || value.includes("ملخص")
+    || (value.includes("اليوم") && (value.includes("شنو صار") || value.includes("شو صار") || value.includes("وش صار")));
 }
 
 function isPaymentsCommand(text: string): boolean {
   const value = normalize(text);
-  return ["/payments", "payments", "دفعات اليوم", "الدفعات اليوم", "من دفع اليوم", "من دفع اليوم؟"].includes(value);
+  return ["/payments", "payments", "دفعات اليوم", "الدفعات اليوم", "من دفع اليوم", "من دفع اليوم؟"].includes(value)
+    || (value.includes("اليوم") && (value.includes("دفع") || value.includes("دفعات") || value.includes("مدفوع")));
 }
 
 function isExpiringCommand(text: string): boolean {
@@ -85,7 +88,11 @@ function isExpiringCommand(text: string): boolean {
     "الاشتراكات التي تنتهي اليوم",
     "اشتراكات تنتهي اليوم",
     "الاشتراكات المنتهية اليوم",
-  ].includes(value);
+  ].includes(value)
+    || (
+      value.includes("اشتراك")
+      && (value.includes("تنتهي") || value.includes("ينتهي") || value.includes("انتهاء") || value.includes("منته"))
+    );
 }
 
 function isHelpCommand(text: string): boolean {
@@ -119,10 +126,68 @@ function formatMoney(value: number): string {
   }).format(value);
 }
 
+function serverApiKey(): string {
+  if (SUPABASE_SECRET_KEYS) {
+    try {
+      const parsed = JSON.parse(SUPABASE_SECRET_KEYS) as Record<string, string>;
+      const key = parsed.default || Object.values(parsed)[0];
+      if (key) return String(key);
+    } catch {
+      console.error("SUPABASE_SECRET_KEYS could not be parsed");
+    }
+  }
+  if (SUPABASE_SERVICE_ROLE_KEY) return SUPABASE_SERVICE_ROLE_KEY;
+  throw new Error("supabase_server_key_unavailable");
+}
+
+function restUrl(table: string, params: Record<string, string>): URL {
+  if (!SUPABASE_URL) throw new Error("supabase_url_unavailable");
+  const url = new URL(`${SUPABASE_URL}/rest/v1/${table}`);
+  for (const [key, value] of Object.entries(params)) {
+    const paramName = key === "end_date_lte" ? "end_date" : key;
+    url.searchParams.append(paramName, value);
+  }
+  return url;
+}
+
+async function restCount(table: string, params: Record<string, string>): Promise<number> {
+  const response = await fetch(restUrl(table, { select: "id", ...params }), {
+    method: "HEAD",
+    headers: {
+      apikey: serverApiKey(),
+      Prefer: "count=exact",
+    },
+  });
+  if (!response.ok) {
+    console.error("Telegram REST count failed", table, response.status);
+    throw new Error(`rest_count_failed_${response.status}`);
+  }
+  const contentRange = response.headers.get("content-range") || "";
+  const totalText = contentRange.split("/")[1] || "0";
+  const total = Number(totalText);
+  return Number.isFinite(total) ? total : 0;
+}
+
+async function restRows<T>(table: string, params: Record<string, string>): Promise<T[]> {
+  const response = await fetch(restUrl(table, params), {
+    method: "GET",
+    headers: {
+      apikey: serverApiKey(),
+      Accept: "application/json",
+    },
+  });
+  if (!response.ok) {
+    console.error("Telegram REST rows failed", table, response.status);
+    throw new Error(`rest_rows_failed_${response.status}`);
+  }
+  const data = await response.json();
+  return Array.isArray(data) ? data as T[] : [];
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
 
-  if (!TELEGRAM_BOT_TOKEN || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+  if (!TELEGRAM_BOT_TOKEN || !SUPABASE_URL || (!SUPABASE_SECRET_KEYS && !SUPABASE_SERVICE_ROLE_KEY)) {
     console.error("Required Telegram manager configuration is missing");
     return new Response("Function is not configured", { status: 500 });
   }
@@ -167,10 +232,6 @@ Deno.serve(async (req: Request) => {
     return Response.json({ ok: true });
   }
 
-  const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-
   try {
     if (isHelpCommand(incomingText)) {
       await sendMessage(
@@ -191,16 +252,15 @@ Deno.serve(async (req: Request) => {
     const today = bahrainDate();
 
     if (isSummaryCommand(incomingText)) {
-      const [{ count: activePlayers, error: playersError }, { count: unpaid, error: unpaidError }, { count: expiringToday, error: expiryError }, { data: payments, error: paymentsError }] = await Promise.all([
-        admin.from("players").select("id", { count: "exact", head: true }).eq("status", "active"),
-        admin.from("subscriptions").select("id", { count: "exact", head: true }).eq("status", "unpaid"),
-        admin.from("subscriptions").select("id", { count: "exact", head: true }).eq("end_date", today),
-        admin.from("transactions").select("amount,type").eq("transaction_date", today),
+      const [activePlayers, unpaid, expiringToday, paymentRows] = await Promise.all([
+        restCount("players", { status: "eq.active" }),
+        restCount("subscriptions", { status: "eq.unpaid" }),
+        restCount("subscriptions", { end_date: `eq.${today}` }),
+        restRows<{ amount?: number | string; type?: string }>("transactions", {
+          select: "amount,type",
+          transaction_date: `eq.${today}`,
+        }),
       ]);
-      const firstError = playersError || unpaidError || expiryError || paymentsError;
-      if (firstError) throw firstError;
-
-      const paymentRows = payments || [];
       const incomingTotal = paymentRows
         .filter((row) => String(row.type).toLowerCase() === "income")
         .reduce((sum, row) => sum + Number(row.amount || 0), 0);
@@ -209,9 +269,9 @@ Deno.serve(async (req: Request) => {
         chatId,
         [
           `ملخص اليوم — ${today}`,
-          `اللاعبون النشطون: ${activePlayers ?? 0}`,
-          `اشتراكات غير مدفوعة: ${unpaid ?? 0}`,
-          `اشتراكات تنتهي اليوم: ${expiringToday ?? 0}`,
+          `اللاعبون النشطون: ${activePlayers}`,
+          `اشتراكات غير مدفوعة: ${unpaid}`,
+          `اشتراكات تنتهي اليوم: ${expiringToday}`,
           `إيرادات مسجلة اليوم: ${formatMoney(incomingTotal)} د.ب`,
         ].join("\n"),
       );
@@ -219,13 +279,10 @@ Deno.serve(async (req: Request) => {
     }
 
     if (isPaymentsCommand(incomingText)) {
-      const { data, error } = await admin
-        .from("transactions")
-        .select("amount,type")
-        .eq("transaction_date", today);
-      if (error) throw error;
-
-      const rows = data || [];
+      const rows = await restRows<{ amount?: number | string; type?: string }>("transactions", {
+        select: "amount,type",
+        transaction_date: `eq.${today}`,
+      });
       const incomes = rows.filter((row) => String(row.type).toLowerCase() === "income");
       const total = incomes.reduce((sum, row) => sum + Number(row.amount || 0), 0);
 
@@ -244,18 +301,17 @@ Deno.serve(async (req: Request) => {
 
     if (isExpiringCommand(incomingText)) {
       const inSevenDays = bahrainDate(7);
-      const [{ count: todayCount, error: todayError }, { count: weekCount, error: weekError }] = await Promise.all([
-        admin.from("subscriptions").select("id", { count: "exact", head: true }).eq("end_date", today),
-        admin.from("subscriptions").select("id", { count: "exact", head: true }).gt("end_date", today).lte("end_date", inSevenDays),
+      const [todayCount, weekCount] = await Promise.all([
+        restCount("subscriptions", { end_date: `eq.${today}` }),
+        restCount("subscriptions", { end_date: `gt.${today}`, end_date_lte: `lte.${inSevenDays}` }),
       ]);
-      if (todayError || weekError) throw todayError || weekError;
 
       await sendMessage(
         chatId,
         [
           "الاشتراكات القريبة من الانتهاء",
-          `تنتهي اليوم: ${todayCount ?? 0}`,
-          `تنتهي خلال 7 أيام القادمة: ${weekCount ?? 0}`,
+          `تنتهي اليوم: ${todayCount}`,
+          `تنتهي خلال 7 أيام القادمة: ${weekCount}`,
         ].join("\n"),
       );
       return Response.json({ ok: true });

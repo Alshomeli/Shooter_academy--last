@@ -45,3 +45,18 @@ test('Telegram webhook bootstrap secret is stored only as a digest', () => {
   assert.match(source, /crypto\.subtle\.digest\("SHA-256"/);
   assert.doesNotMatch(source, /QTX8VAH4At1fHrnlRBgLTRA6LIWTroAsUAhkE2xdbiY/);
 });
+
+
+test('Telegram summaries use the server API key only as apikey, not as a bearer token', () => {
+  assert.match(source, /SUPABASE_SECRET_KEYS/);
+  assert.match(source, /serverApiKey/);
+  assert.match(source, /apikey:\s*serverApiKey\(\)/);
+  assert.doesNotMatch(source, /Authorization:\s*[\`'"]Bearer/);
+  assert.doesNotMatch(source, /createClient\(/);
+});
+
+test('Telegram understands common Arabic phrasing beyond exact slash commands', () => {
+  assert.match(source, /value\.includes\("ملخص"\)/);
+  assert.match(source, /value\.includes\("دفع"\)/);
+  assert.match(source, /value\.includes\("اشتراك"\)/);
+});
