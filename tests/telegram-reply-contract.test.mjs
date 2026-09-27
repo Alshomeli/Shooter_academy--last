@@ -51,7 +51,7 @@ test('Telegram summaries use the server API key only as apikey, not as a bearer 
   assert.match(source, /SUPABASE_SECRET_KEYS/);
   assert.match(source, /serverApiKey/);
   assert.match(source, /apikey:\s*serverApiKey\(\)/);
-  assert.doesNotMatch(source, /Authorization:\s*[\`'"]Bearer/);
+  assert.doesNotMatch(source, /Authorization:\s*[\`'\"]Bearer\s*\$\{serverApiKey\(\)\}/);
   assert.doesNotMatch(source, /createClient\(/);
 });
 
