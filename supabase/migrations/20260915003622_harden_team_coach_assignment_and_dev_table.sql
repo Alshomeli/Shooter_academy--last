@@ -22,8 +22,13 @@ create trigger trg_guard_team_coach_assignment
 before update on public.teams
 for each row execute function internal.guard_team_coach_assignment();
 
--- Remove accidental public/API exposure of the development-only table.
-drop policy if exists "Anyone can read some_table" on public.some_table;
-revoke all on public.some_table from anon, authenticated;
-
-comment on table public.some_table is 'Development-only table; intentionally not exposed to anon/authenticated API roles.';
+-- Remove accidental public/API exposure of the development-only table when it exists.
+DO $
+BEGIN
+  IF to_regclass('public.some_table') IS NOT NULL THEN
+    EXECUTE 'DROP POLICY IF EXISTS "Anyone can read some_table" ON public.some_table';
+    EXECUTE 'REVOKE ALL ON public.some_table FROM anon, authenticated';
+    EXECUTE $COMMENT ON TABLE public.some_table IS 'Development-only table; intentionally not exposed to anon/authenticated API roles.'$;
+  END IF;
+END
+$;
