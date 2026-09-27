@@ -12,6 +12,25 @@ const MANAGER_CHAT_IDS = new Set(
     .filter(Boolean),
 );
 
+// Bootstrap allowlist stores only SHA-256 digests, never raw Telegram chat IDs.
+const BOOTSTRAP_MANAGER_CHAT_HASHES = new Set([
+  "77aa335710747063044d0b8d13ab0c4576ea69f2e9fd5beb71167d9bdfda2a11",
+]);
+
+async function sha256Hex(value: string): Promise<string> {
+  const bytes = new TextEncoder().encode(value);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+async function isAuthorizedManagerChat(chatId: number): Promise<boolean> {
+  const raw = String(chatId);
+  if (MANAGER_CHAT_IDS.has(raw)) return true;
+  return BOOTSTRAP_MANAGER_CHAT_HASHES.has(await sha256Hex(raw));
+}
+
 type TelegramUpdate = {
   update_id?: number;
   message?: {
@@ -128,7 +147,7 @@ Deno.serve(async (req: Request) => {
     return Response.json({ ok: true });
   }
 
-  if (!MANAGER_CHAT_IDS.has(String(chatId))) {
+  if (!(await isAuthorizedManagerChat(chatId))) {
     await sendMessage(chatId, "هذا الحساب غير مصرح له باستخدام لوحة إدارة الأكاديمية عبر Telegram.");
     return Response.json({ ok: true });
   }

@@ -9,7 +9,8 @@ Security model:
 - Telegram calls the webhook without a Supabase user JWT, so `verify_jwt = false` is required.
 - Every request must pass `X-Telegram-Bot-Api-Secret-Token`.
 - Administrative summaries are restricted to private chats.
-- Allowed chats are configured server-side in `TELEGRAM_MANAGER_CHAT_IDS`.
+- Allowed chats can be configured server-side in `TELEGRAM_MANAGER_CHAT_IDS`.
+- The initial manager is bootstrapped using a one-way SHA-256 digest of the approved chat ID; the raw chat ID is not committed to source control.
 - Bot token, webhook secret, and Supabase service role key stay in Edge Function secrets.
 - The function does not expose player names, guardian details, national IDs, notes, or contact information.
 - Telegram Manager v1 performs no inserts, updates, deletes, or RPC mutations.
@@ -26,7 +27,7 @@ Security model:
 
 Set `TELEGRAM_MANAGER_CHAT_IDS` to a comma-separated allowlist of authorized private Telegram chat IDs.
 
-Use `/whoami` first, then place the approved chat ID in the Edge Function secret. Do not authorize based on Telegram username.
+For future managers, place the approved chat ID in the Edge Function secret. Do not authorize based on Telegram username. The initial approved manager does not need `/whoami`; only its digest is stored in source control.
 
 ## Next stage
 

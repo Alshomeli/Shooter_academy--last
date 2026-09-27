@@ -15,7 +15,10 @@ test('Telegram webhook requires the provider secret and is configured without pl
 test('Telegram manager is limited to direct chats and an explicit chat allowlist', () => {
   assert.match(source, /chatType !== "private"/);
   assert.match(source, /TELEGRAM_MANAGER_CHAT_IDS/);
-  assert.match(source, /MANAGER_CHAT_IDS\.has/);
+  assert.match(source, /isAuthorizedManagerChat/);
+  assert.match(source, /BOOTSTRAP_MANAGER_CHAT_HASHES/);
+  assert.match(source, /crypto\.subtle\.digest\("SHA-256"/);
+  assert.doesNotMatch(source, /5853714848/);
   assert.match(source, /\/whoami/);
 });
 
