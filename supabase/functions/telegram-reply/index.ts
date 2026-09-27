@@ -4,6 +4,8 @@ const TELEGRAM_WEBHOOK_SECRET = Deno.env.get("TELEGRAM_WEBHOOK_SECRET");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 const SUPABASE_SECRET_KEYS = Deno.env.get("SUPABASE_SECRET_KEYS");
+const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+const MAX_VOICE_BYTES = 20 * 1024 * 1024;
 const MANAGER_CHAT_IDS = new Set(
   (Deno.env.get("TELEGRAM_MANAGER_CHAT_IDS") || "")
     .split(",")
@@ -50,6 +52,13 @@ type TelegramUpdate = {
     from?: { id?: number; is_bot?: boolean; first_name?: string };
     chat?: { id?: number; type?: string };
     text?: string;
+    voice?: {
+      file_id?: string;
+      file_unique_id?: string;
+      duration?: number;
+      mime_type?: string;
+      file_size?: number;
+    };
   };
 };
 
@@ -97,6 +106,53 @@ function isExpiringCommand(text: string): boolean {
 
 function isHelpCommand(text: string): boolean {
   return ["/start", "/help", "help", "مساعدة", "الأوامر", "اوامر"].includes(normalize(text));
+}
+
+async function telegramVoiceToText(voice: NonNullable<NonNullable<TelegramUpdate["message"]>["voice"]>): Promise<string> {
+  if (!TELEGRAM_BOT_TOKEN) throw new Error("telegram_bot_token_missing");
+  if (!OPENAI_API_KEY) throw new Error("voice_transcription_not_configured");
+  if (!voice.file_id) throw new Error("voice_file_id_missing");
+  if (voice.file_size && voice.file_size > MAX_VOICE_BYTES) throw new Error("voice_file_too_large");
+
+  const fileInfoResponse = await fetch(
+    `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getFile?file_id=${encodeURIComponent(voice.file_id)}`,
+  );
+  const fileInfo = await fileInfoResponse.json();
+  const filePath = fileInfo?.result?.file_path;
+  if (!fileInfoResponse.ok || !fileInfo?.ok || typeof filePath !== "string") {
+    throw new Error("telegram_get_file_failed");
+  }
+
+  const audioResponse = await fetch(
+    `https://api.telegram.org/file/bot${TELEGRAM_BOT_TOKEN}/${filePath}`,
+  );
+  if (!audioResponse.ok) throw new Error("telegram_voice_download_failed");
+  const audioBlob = await audioResponse.blob();
+  if (audioBlob.size > MAX_VOICE_BYTES) throw new Error("voice_file_too_large");
+
+  const form = new FormData();
+  form.append("file", audioBlob, "telegram-voice.ogg");
+  form.append("model", "gpt-4o-mini-transcribe");
+  form.append("language", "ar");
+  form.append(
+    "prompt",
+    "محادثة إدارية باللهجة البحرينية أو الخليجية عن الأكاديمية: ملخص اليوم، الدفعات، الاشتراكات، اللاعبين، الحضور والإدارة.",
+  );
+
+  const transcriptionResponse = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${OPENAI_API_KEY}` },
+    body: form,
+  });
+  const transcription = await transcriptionResponse.json();
+  if (!transcriptionResponse.ok || typeof transcription?.text !== "string") {
+    console.error("Voice transcription failed", transcriptionResponse.status);
+    throw new Error("voice_transcription_failed");
+  }
+
+  const text = transcription.text.trim();
+  if (!text) throw new Error("voice_transcription_empty");
+  return text;
 }
 
 async function sendMessage(chatId: number, text: string) {
@@ -207,9 +263,10 @@ Deno.serve(async (req: Request) => {
   const chatId = update.message?.chat?.id;
   const chatType = update.message?.chat?.type;
   const telegramUserId = update.message?.from?.id;
-  const incomingText = update.message?.text;
+  const textMessage = update.message?.text;
+  const voiceMessage = update.message?.voice;
 
-  if (typeof chatId !== "number" || typeof incomingText !== "string") {
+  if (typeof chatId !== "number" || (typeof textMessage !== "string" && !voiceMessage?.file_id)) {
     return Response.json({ ok: true });
   }
 
@@ -219,7 +276,7 @@ Deno.serve(async (req: Request) => {
     return Response.json({ ok: true });
   }
 
-  if (normalize(incomingText) === "/whoami") {
+  if (typeof textMessage === "string" && normalize(textMessage) === "/whoami") {
     await sendMessage(
       chatId,
       `Telegram Chat ID: ${chatId}\nTelegram User ID: ${telegramUserId ?? "unknown"}\n\nاستخدم هذه القيم فقط لإعداد الربط الإداري الآمن.`,
@@ -232,6 +289,25 @@ Deno.serve(async (req: Request) => {
     return Response.json({ ok: true });
   }
 
+  let incomingText = textMessage || "";
+  if (voiceMessage?.file_id) {
+    try {
+      incomingText = await telegramVoiceToText(voiceMessage);
+      await sendMessage(chatId, `🎙️ فهمت طلبك: «${incomingText.slice(0, 500)}»`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "voice_transcription_failed";
+      console.error("Telegram voice handling failed", message);
+      if (message === "voice_transcription_not_configured") {
+        await sendMessage(chatId, "ميزة الرسائل الصوتية جاهزة برمجيًا، لكنها تحتاج تفعيل مفتاح تحويل الصوت إلى نص على الخادم.");
+      } else if (message === "voice_file_too_large") {
+        await sendMessage(chatId, "الرسالة الصوتية كبيرة جدًا. أرسل مقطعًا أقصر.");
+      } else {
+        await sendMessage(chatId, "لم أستطع فهم الرسالة الصوتية هذه المرة. جرّب إرسالها مرة أخرى أو اكتب الطلب.");
+      }
+      return Response.json({ ok: false }, { status: 200 });
+    }
+  }
+
   try {
     if (isHelpCommand(incomingText)) {
       await sendMessage(
@@ -242,6 +318,7 @@ Deno.serve(async (req: Request) => {
           "• من دفع اليوم؟",
           "• اشتراكات تنتهي اليوم",
           "• /whoami",
+          "• ويمكنك إرسال نفس الطلبات كرسالة صوتية",
           "",
           "الإصدار الحالي قراءة فقط. أي تعديل إداري سيحتاج تأكيد صريح قبل التنفيذ في المرحلة التالية.",
         ].join("\n"),
