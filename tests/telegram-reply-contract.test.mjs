@@ -60,3 +60,21 @@ test('Telegram understands common Arabic phrasing beyond exact slash commands', 
   assert.match(source, /value\.includes\("دفع"\)/);
   assert.match(source, /value\.includes\("اشتراك"\)/);
 });
+
+
+test('Telegram manager accepts private voice notes and transcribes them server-side', () => {
+  assert.match(source, /message\?\.voice/);
+  assert.match(source, /getFile\?file_id=/);
+  assert.match(source, /api\.telegram\.org\/file\/bot/);
+  assert.match(source, /OPENAI_API_KEY/);
+  assert.match(source, /\/v1\/audio\/transcriptions/);
+  assert.match(source, /gpt-4o-mini-transcribe/);
+  assert.match(source, /MAX_VOICE_BYTES/);
+});
+
+test('Voice transcription happens only after manager authorization', () => {
+  const authIndex = source.indexOf('isAuthorizedManagerChat(chatId)');
+  const transcribeCallIndex = source.lastIndexOf('telegramVoiceToText(voiceMessage)');
+  assert.ok(authIndex >= 0);
+  assert.ok(transcribeCallIndex > authIndex);
+});
