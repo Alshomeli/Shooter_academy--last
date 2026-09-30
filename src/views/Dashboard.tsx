@@ -142,12 +142,12 @@ export function Dashboard({ players, subscriptions, matches, transactions, staff
       </div>
 
       {/* Secondary KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={<Goal className="h-5 w-5" />} label={t.goalsScored} value={stats.goalsScored} sublabel={`${t.goalsConceded} ${stats.goalsConceded}`} color="emerald" onClick={() => setCurrentTab('schedules')} />
-        <StatCard icon={<Target className="h-5 w-5" />} label={t.goalDifference} value={stats.goalsScored - stats.goalsConceded} sublabel={t.goalDifference} color="blue" onClick={() => setCurrentTab('schedules')} />
-        <StatCard icon={<Calendar className="h-5 w-5" />} label={t.scheduledMatches} value={stats.scheduled} sublabel={t.scheduledMatchesHint} color="amber" onClick={() => setCurrentTab('schedules')} />
+      {(canSeeTechnical || canSeeStaff) && <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {canSeeTechnical && <StatCard icon={<Goal className="h-5 w-5" />} label={t.goalsScored} value={stats.goalsScored} sublabel={`${t.goalsConceded} ${stats.goalsConceded}`} color="emerald" onClick={() => setCurrentTab('schedules')} />}
+        {canSeeTechnical && <StatCard icon={<Target className="h-5 w-5" />} label={t.goalDifference} value={stats.goalsScored - stats.goalsConceded} sublabel={t.goalDifference} color="blue" onClick={() => setCurrentTab('schedules')} />}
+        {canSeeTechnical && <StatCard icon={<Calendar className="h-5 w-5" />} label={t.scheduledMatches} value={stats.scheduled} sublabel={t.scheduledMatchesHint} color="amber" onClick={() => setCurrentTab('schedules')} />}
         {canSeeStaff && <StatCard icon={<Award className="h-5 w-5" />} label={t.totalStaff} value={stats.totalStaff} sublabel={t.totalStaffHint} color="slate" onClick={() => setCurrentTab('staff')} />}
-      </div>
+      </div>}
 
       {/* Charts row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
