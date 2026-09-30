@@ -150,3 +150,37 @@ test('telegram manager assistant keeps payment proof and staff document queries 
   assert.match(source, /parsedQuestion\.intent === "payment_proofs"/);
   assert.match(source, /parsedQuestion\.intent === "staff_documents"/);
 });
+
+
+test('Telegram operations are restricted to manager and coach linked roles', () => {
+  assert.match(source, /role\?: "manager" \| "coach"/);
+  assert.doesNotMatch(source, /role\?: "manager" \| "coach" \| "parent"/);
+  assert.match(source, /linkedIdentity\?\.role !== "coach"/);
+  assert.match(source, /telegram_identity/);
+});
+
+test('Coach daily operations stay scoped through server RPCs', () => {
+  assert.match(source, /telegram_set_training_attendance/);
+  assert.match(source, /telegram_complete_training/);
+  assert.match(source, /telegram_quick_player_note/);
+  assert.match(source, /telegram_ensure_today_trainings/);
+  assert.match(source, /coach_id:/);
+  assert.match(source, /team_id:/);
+});
+
+test('Coach attendance UI supports correction and completion workflow', () => {
+  assert.match(source, /editMessageText/);
+  assert.match(source, /الحالة:/);
+  assert.match(source, /الحضور الناقص/);
+  assert.match(source, /إنهاء الحصة/);
+  assert.match(source, /training:complete:/);
+});
+
+test('Telegram role menus expose bounded operational shortcuts', () => {
+  assert.match(source, /sendRoleMenu/);
+  assert.match(source, /حصة اليوم/);
+  assert.match(source, /ملخص الحضور/);
+  assert.match(source, /مباريات فريقي/);
+  assert.match(source, /ملخص اليوم/);
+  assert.match(source, /إثباتات الدفع/);
+});
