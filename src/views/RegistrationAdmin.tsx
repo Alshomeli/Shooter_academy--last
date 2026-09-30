@@ -142,10 +142,10 @@ export function RegistrationAdmin({ lang, activeRole, teams, players, onRefresh 
 
   const handleFinalize = async (playerId: string) => {
     const data = assignData[playerId];
-    if (actionLoading || activeRole !== 'manager' || !data?.teamId || !data.position || !Number.isInteger(data.jerseyNumber) || data.jerseyNumber <= 0) return;
+    if (actionLoading || activeRole !== 'manager') return;
     setActionLoading(true); setError('');
     try {
-      await finalizePlayer(playerId, data.teamId, data.position, data.jerseyNumber);
+      await finalizePlayer(playerId, data?.teamId || '', data?.position || '', data?.jerseyNumber || 0);
       await onRefresh();
       const updated = await loadApps();
       if (updated && selectedApp) setSelectedApp(updated.find(a => a.id === selectedApp.id) || null);
@@ -415,7 +415,9 @@ function AppDetail({
           const childDocs = app.documents.filter((d) => d.childId === child.id && d.fileCategory === 'document');
           const assign = child.playerId ? assignData[child.playerId] : undefined;
           const activated = players.some(p => p.id === child.playerId && p.status === 'active' && p.teamId);
-          const selectedTeam = assign?.teamId ? teams.find((tm) => tm.id === assign.teamId) : undefined;
+          const birthYear = child.birthDate?.slice(0, 4);
+          const birthTeam = teams.find((tm) => birthYear && new RegExp(`(^|[^0-9])${birthYear}([^0-9]|$)`).test(tm.name));
+          const selectedTeam = birthTeam || (assign?.teamId ? teams.find((tm) => tm.id === assign.teamId) : undefined);
 
           return (
             <div key={child.id} className="p-3 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3 mb-3">
@@ -459,12 +461,11 @@ function AppDetail({
                     <div>
                       <label className="block text-[10px] font-bold text-slate-500 mb-1">{t.team}</label>
                       <select
-                        value={assign?.teamId || ''}
-                        onChange={(e) => onAssignChange(child.playerId!, 'teamId', e.target.value)}
+                        value={selectedTeam?.id || ''}
+                        disabled
                         className={inputCls}
                       >
-                        <option value="">—</option>
-                        {teams.map((tm) => <option key={tm.id} value={tm.id}>{tm.name}</option>)}
+                        <option value={selectedTeam?.id || ''}>{selectedTeam?.name || (isAr ? 'تحدد تلقائياً حسب سنة الميلاد' : 'Automatically selected by birth year')}</option>
                       </select>
                       {selectedTeam && (
                         <p className="text-[10px] text-slate-400 mt-0.5">{t.pitchNumber}: {selectedTeam.pitchNumber}</p>
@@ -493,11 +494,11 @@ function AppDetail({
                   </div>
                   <button
                     onClick={() => onFinalize(child.playerId!)}
-                    disabled={actionLoading || !assign?.teamId || !assign?.position || !Number.isInteger(assign?.jerseyNumber) || assign.jerseyNumber <= 0}
+                    disabled={actionLoading || !selectedTeam}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {actionLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Shield className="h-3.5 w-3.5" />}
-                    {t.regFinalize}
+                    {isAr ? 'تفعيل وإسناد للفئة' : 'Activate and assign category'}
                   </button>
                 </div>
               )}
