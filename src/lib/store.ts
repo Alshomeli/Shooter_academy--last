@@ -293,10 +293,12 @@ export const db = {
       const { data: existing, error: existingError } = await supabase.from('staff_documents').select('id,file_path').eq('staff_id', staffId).eq('document_type', 'profile_photo').maybeSingle();
       if (existingError) throw existingError;
       if (existing) {
-        const { error: removeError } = await supabase.storage.from('staff-documents').remove([existing.file_path]);
-        if (removeError) throw removeError;
+        // Remove the database reference first so a storage failure can only leave an
+        // unreferenced object, never a live document row pointing at a missing file.
         const { error: deleteError } = await supabase.from('staff_documents').delete().eq('id', existing.id);
         if (deleteError) throw deleteError;
+        const { error: removeError } = await supabase.storage.from('staff-documents').remove([existing.file_path]);
+        if (removeError) console.warn('Could not remove superseded staff document object', removeError.message);
       }
     }
     const ext = (file.name.split('.').pop() || 'bin').toLowerCase();
@@ -320,10 +322,10 @@ export const db = {
   },
 
   async deleteStaffDocument(doc: StaffDocument): Promise<void> {
-    const { error: storageError } = await supabase.storage.from('staff-documents').remove([doc.filePath]);
-    if (storageError) throw storageError;
     const { error } = await supabase.from('staff_documents').delete().eq('id', doc.id);
     if (error) throw error;
+    const { error: storageError } = await supabase.storage.from('staff-documents').remove([doc.filePath]);
+    if (storageError) console.warn('Could not remove unreferenced staff document object', storageError.message);
   },
 
   async getStaffDocuments(): Promise<StaffDocument[]> {
