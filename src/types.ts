@@ -205,6 +205,37 @@ export interface Settings {
   subscriptionFeeQuarterly: number;
   subscriptionFeeSemiAnnual: number;
   subscriptionFeeYearly: number;
+  benefitIban?: string;
+  benefitAccountName?: string;
+  paymentInstructionsAr?: string;
+  paymentInstructionsEn?: string;
+}
+
+export interface PaymentProof {
+  id: string;
+  subscriptionId: string;
+  playerId: string;
+  parentUserId: string;
+  amount: number;
+  transferDate: string;
+  proofPath: string;
+  status: 'pending' | 'approved' | 'rejected' | 'needs_info';
+  parentNote: string;
+  reviewNote: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  createdAt: string;
+}
+
+export interface StaffDocument {
+  id: string;
+  staffId: string;
+  documentType: string;
+  title: string;
+  filePath: string;
+  expiryDate?: string;
+  notes: string;
+  createdAt: string;
 }
 
 export interface CurrentUser {
