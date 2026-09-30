@@ -36,7 +36,7 @@ interface SubscriptionRow {
 }
 interface AttendanceRow {
   id: string; player_id: string; session_date: string;
-  session_type: string; status: string; notes: string | null;
+  session_type: string; training_id?: string | null; match_id?: string | null; status: string; notes: string | null;
 }
 interface MatchRow {
   id: string; team_id: string; opponent: string; match_date: string;
@@ -124,7 +124,7 @@ export const mapSubscription = (r: SubscriptionRow): Subscription => ({
 
 export const mapAttendance = (r: AttendanceRow): Attendance => ({
   id: r.id, playerId: r.player_id, sessionDate: r.session_date,
-  sessionType: r.session_type as Attendance['sessionType'],
+  sessionType: r.session_type as Attendance['sessionType'], trainingId: r.training_id ?? undefined, matchId: r.match_id ?? undefined,
   status: r.status as Attendance['status'], notes: r.notes ?? undefined,
 });
 
@@ -222,7 +222,7 @@ export const subscriptionToRow = (s: Subscription): SubscriptionRow => ({
 
 export const attendanceToRow = (a: Attendance): AttendanceRow => ({
   id: a.id, player_id: a.playerId, session_date: a.sessionDate,
-  session_type: a.sessionType, status: a.status, notes: a.notes ?? null,
+  session_type: a.sessionType, training_id: a.trainingId ?? null, match_id: a.matchId ?? null, status: a.status, notes: a.notes ?? null,
 });
 
 export const matchToRow = (m: Match): MatchRow => ({
