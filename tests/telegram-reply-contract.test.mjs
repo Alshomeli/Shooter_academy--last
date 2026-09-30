@@ -112,3 +112,10 @@ test('Smart Admin v2 supports bounded Bahrain date ranges', () => {
   assert.match(source, /session_date_gte/);
   assert.match(source, /submitted_at_gte/);
 });
+
+
+test('Telegram financial summaries use the canonical revenue transaction type', () => {
+  assert.match(source, /String\(row\.type\)\.toLowerCase\(\) === "revenue"/);
+  assert.doesNotMatch(source, /String\(row\.type\)\.toLowerCase\(\) === "income"/);
+  assert.match(source, /const revenues = rows\.filter/);
+});
