@@ -102,9 +102,9 @@ export async function approveApplication(applicationId: string): Promise<void> {
 
 export async function finalizePlayer(
   playerId: string,
-  teamId: string,
-  position: string,
-  jerseyNumber: number,
+  teamId = '',
+  position = '',
+  jerseyNumber = 0,
 ): Promise<void> {
   const { error } = await supabase.rpc('finalize_registered_player', {
     p_player_id: playerId,
