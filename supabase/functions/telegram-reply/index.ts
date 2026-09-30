@@ -372,15 +372,34 @@ async function rpc<T>(functionName: string, body: Record<string, unknown>): Prom
   return payload as T;
 }
 
-async function deliverPendingRegistrationNotifications() {
-  const managerChats = Array.from(MANAGER_CHAT_IDS)
+async function rememberAuthorizedManagerChat(chatId: number) {
+  const chatHash = await sha256Hex(String(chatId));
+  try {
+    await rpc<boolean>("telegram_register_manager_chat", { p_chat_id_hash: chatHash, p_chat_id: chatId });
+  } catch (error) {
+    console.error("Telegram manager chat persistence failed", error instanceof Error ? error.message : "unknown");
+  }
+}
+
+async function configuredManagerChats(): Promise<number[]> {
+  const configured = Array.from(MANAGER_CHAT_IDS)
     .map((value) => Number(value))
     .filter((value) => Number.isFinite(value));
+  try {
+    const stored = await rpc<Array<{ chat_id?: number | string }>>("telegram_manager_chat_ids", {});
+    for (const row of stored || []) {
+      const value = Number(row.chat_id);
+      if (Number.isFinite(value)) configured.push(value);
+    }
+  } catch (error) {
+    console.error("Telegram manager chat lookup failed", error instanceof Error ? error.message : "unknown");
+  }
+  return Array.from(new Set(configured));
+}
 
-  // The bootstrap manager is intentionally hash-only, so proactive delivery needs
-  // TELEGRAM_MANAGER_CHAT_IDS configured server-side. Interactive callbacks remain
-  // authorized by the hash binding even without the raw ID in source control.
-  if (managerChats.length === 0) return { delivered: 0, waitingForConfiguredChatIds: true };
+async function deliverPendingRegistrationNotifications() {
+  const managerChats = await configuredManagerChats();
+  if (managerChats.length === 0) return { delivered: 0, waitingForManagerChatRegistration: true };
 
   const rows = await rpc<Array<{ application_id: string; parent_full_name?: string; submitted_at?: string }>>(
     "telegram_claim_registration_notifications",
@@ -544,6 +563,7 @@ Deno.serve(async (req: Request) => {
       await answerCallbackQuery(callback.id, "غير مصرح بهذا الإجراء.");
       return Response.json({ ok: true });
     }
+    await rememberAuthorizedManagerChat(callbackChatId);
 
     const approveMatch = callback.data.match(/^reg:approve:([0-9a-f-]{36})$/i);
     const reviewMatch = callback.data.match(/^reg:review:([0-9a-f-]{36})$/i);
@@ -668,6 +688,7 @@ Deno.serve(async (req: Request) => {
     await sendMessage(chatId, "هذا الحساب غير مصرح له باستخدام لوحة إدارة الأكاديمية عبر Telegram.");
     return Response.json({ ok: true });
   }
+  await rememberAuthorizedManagerChat(chatId);
 
   let incomingText = textMessage || "";
   if (voiceMessage?.file_id) {
