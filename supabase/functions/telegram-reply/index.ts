@@ -103,6 +103,18 @@ function isSummaryCommand(text: string): boolean {
     ));
 }
 
+function wantsDetailedSummary(text: string): boolean {
+  const value = normalize(text);
+  return value.includes("تفاصيل")
+    || value.includes("بالتفصيل")
+    || value.includes("شنو صار")
+    || value.includes("شو صار")
+    || value.includes("وش صار")
+    || value.includes("ماذا حصل")
+    || value.includes("ماذا حدث")
+    || value.includes("ايش صار");
+}
+
 function isPaymentsCommand(text: string): boolean {
   const value = normalize(text);
   return ["/payments", "payments", "دفعات اليوم", "الدفعات اليوم", "من دفع اليوم", "من دفع اليوم؟"].includes(value)
@@ -784,6 +796,7 @@ Deno.serve(async (req: Request) => {
     const today = bahrainDate();
 
     if (isSummaryCommand(incomingText)) {
+      const detailedSummary = wantsDetailedSummary(incomingText);
       const [activePlayers, unpaid, overdueUnpaid, currentUnpaid, expiringToday, paymentRows, matches, trainings, attendanceRows, pendingRegistrations, pendingStaffApplications, pendingPaymentProofs, expiringStaffDocuments, expiredStaffDocuments] = await Promise.all([
         restCount("players", { status: "eq.active" }),
         restCount("subscriptions", { status: "eq.unpaid" }),
@@ -812,10 +825,13 @@ Deno.serve(async (req: Request) => {
           `اشتراكات غير مدفوعة: ${unpaid} (متأخرة ومنتهية: ${overdueUnpaid} / حالية أو قادمة: ${currentUnpaid})`,
           `اشتراكات تنتهي اليوم: ${expiringToday}`,
           `إيرادات مسجلة اليوم: ${formatMoney(incomingTotal)} د.ب`,
+          ...(detailedSummary && paymentRows.length > 0
+            ? paymentRows.filter((row) => String(row.type).toLowerCase() === "revenue").slice(0, 10).map((row, index) => `💳 ${index + 1}) ${formatMoney(Number(row.amount || 0))} د.ب`)
+            : []),
           `المباريات اليوم: ${matches.length}`,
-          ...matches.slice(0, 5).map((m) => `⚽ ضد ${m.opponent || "غير محدد"} — ${m.location || "الموقع غير محدد"} — ${m.result || "scheduled"}`),
+          ...(detailedSummary ? matches.slice(0, 10).map((m) => `⚽ ضد ${m.opponent || "غير محدد"} — ${m.location || "الموقع غير محدد"} — ${m.result || "scheduled"}`) : []),
           `التدريبات اليوم: ${trainings.length}`,
-          ...trainings.slice(0, 5).map((t) => `🏃 ${t.title || "تدريب"} — ${Number(t.duration_minutes || 0)} دقيقة`),
+          ...(detailedSummary ? trainings.slice(0, 10).map((t) => `🏃 ${t.title || "تدريب"} — ${Number(t.duration_minutes || 0)} دقيقة`) : []),
           `الحضور المسجل اليوم: ${attendanceRows.length} (حاضر ${attendanceRows.filter((r) => r.status === "present").length} / غائب ${attendanceRows.filter((r) => r.status === "absent").length})`,
           `طلبات تسجيل اللاعبين المعلقة: ${pendingRegistrations}`,
           `طلبات انضمام الطاقم المعلقة: ${pendingStaffApplications}`,
