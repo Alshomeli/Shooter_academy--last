@@ -1,7 +1,7 @@
 import { useState, useMemo, useDeferredValue, useEffect, type FormEvent } from 'react';
 import {
   Dumbbell, Plus, Search, Edit2, Trash2, Eye, Mail, Phone, Award, Star,
-  Briefcase, Calendar, FileUp, FileText, AlertTriangle, Camera,
+  Briefcase, Calendar, FileUp, FileText, AlertTriangle,
 } from 'lucide-react';
 import type { Staff, Team, Player, Lang, Role, StaffDocument } from '@/types';
 import { db } from '@/lib/store';
