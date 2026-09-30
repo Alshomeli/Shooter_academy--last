@@ -198,6 +198,20 @@ export const db = {
     };
   },
 
+  async getManagementAlertSummary(): Promise<{ pendingPaymentProofs: number; expiringStaffDocuments: number; expiredStaffDocuments: number; unpaidSubscriptions: number; dueAmount: number; asOf: string }> {
+    const { data, error } = await supabase.rpc('management_alert_summary');
+    if (error) throw error;
+    const r = (data || {}) as Record<string, unknown>;
+    return {
+      pendingPaymentProofs: Number(r.pendingPaymentProofs) || 0,
+      expiringStaffDocuments: Number(r.expiringStaffDocuments) || 0,
+      expiredStaffDocuments: Number(r.expiredStaffDocuments) || 0,
+      unpaidSubscriptions: Number(r.unpaidSubscriptions) || 0,
+      dueAmount: Number(r.dueAmount) || 0,
+      asOf: String(r.asOf || ''),
+    };
+  },
+
   async getPaymentProofs(): Promise<PaymentProof[]> {
     const { data, error } = await supabase.from('payment_proofs').select('*').order('created_at', { ascending: false });
     if (error) throw error;
