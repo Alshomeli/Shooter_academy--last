@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { CheckCircle2, Clipboard, CreditCard, FileUp, LogOut, Plus, RefreshCw, UserRound } from 'lucide-react';
+import { CheckCircle2, Clipboard, CreditCard, FileText, FileUp, LogOut, Plus, RefreshCw, Star, UserRound, CalendarCheck2, WalletCards } from 'lucide-react';
 import { Registration } from '@/views/Registration';
 import { Badge, Modal } from '@/components/ui';
 import { errorMessage, fetchMyApplications } from '@/lib/registration';
@@ -34,6 +34,12 @@ export function ParentPortal({ user, players, subscriptions, attendance, evaluat
   const playerSubscriptions = selectedPlayer ? subscriptions.filter((s) => s.playerId === selectedPlayer.id).sort((a,b) => b.startDate.localeCompare(a.startDate)) : [];
   const playerAttendance = selectedPlayer ? attendance.filter((a) => a.playerId === selectedPlayer.id) : [];
   const playerEvaluations = selectedPlayer ? evaluations.filter((e) => e.playerId === selectedPlayer.id && e.status === 'published').sort((a,b) => b.evaluationDate.localeCompare(a.evaluationDate)) : [];
+  const presentCount = playerAttendance.filter(a=>a.status==='present').length;
+  const attendanceRate = playerAttendance.length ? Math.round((presentCount/playerAttendance.length)*100) : 0;
+  const latestEvaluation = playerEvaluations[0];
+  const currentSubscription = playerSubscriptions.find(s=>s.status==='unpaid') || playerSubscriptions[0];
+  const approvedPayments = playerSubscriptions.filter(s=>s.status==='paid');
+  const selectedDocuments = selectedPlayer ? playerDocuments.filter(d=>d.playerId===selectedPlayer.id&&d.fileCategory!=='photo') : [];
   const load = useCallback(async () => {
     try { const [myApps, proofs, docs] = await Promise.all([fetchMyApplications(), db.getPaymentProofs(), db.getPlayerDocuments()]); setApps(myApps); setPaymentProofs(proofs); setPlayerDocuments(docs); const photos=docs.filter(d=>d.playerId&&d.fileCategory==='photo'); const pairs=await Promise.all(photos.map(async d=>[d.playerId!,await db.getPlayerDocumentUrl(d.filePath)] as const)); setPhotoUrls(Object.fromEntries(pairs)); setError(''); setReady(true); }
     catch (e) { setError(errorMessage(e, lang === 'ar')); }
@@ -80,10 +86,10 @@ export function ParentPortal({ user, players, subscriptions, attendance, evaluat
           <div className="bg-white dark:bg-slate-900 border dark:border-slate-700 rounded-2xl p-5">
             <div className="flex flex-wrap justify-between gap-4"><div className="flex items-center gap-3"><div className="h-16 w-16 rounded-2xl bg-slate-100 dark:bg-slate-800 grid place-items-center overflow-hidden">{photoUrls[selectedPlayer.id]?<img src={photoUrls[selectedPlayer.id]} alt="" className="w-full h-full object-cover"/>:<UserRound className="h-7 w-7"/>}</div><div><h2 className="text-xl font-black">{selectedPlayer.name}</h2><p className="text-sm text-slate-500">{text('ملف اللاعب','Player profile')}</p></div></div><Badge color={selectedPlayer.status === 'active' ? 'green' : 'amber'}>{selectedPlayer.status === 'active' ? text('نشط','Active') : text('غير نشط','Inactive')}</Badge></div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-5">
-              <div className="rounded-xl bg-slate-50 dark:bg-slate-800 p-3"><p className="text-xs text-slate-500">{text('الحضور','Attendance')}</p><p className="font-black">{playerAttendance.filter(a=>a.status==='present').length}/{playerAttendance.length}</p></div>
-              <div className="rounded-xl bg-slate-50 dark:bg-slate-800 p-3"><p className="text-xs text-slate-500">{text('التقييمات','Evaluations')}</p><p className="font-black">{playerEvaluations.length}</p></div>
-              <div className="rounded-xl bg-slate-50 dark:bg-slate-800 p-3"><p className="text-xs text-slate-500">{text('الاشتراكات','Subscriptions')}</p><p className="font-black">{playerSubscriptions.length}</p></div>
-              <div className="rounded-xl bg-slate-50 dark:bg-slate-800 p-3"><p className="text-xs text-slate-500">{text('غير المدفوع','Unpaid')}</p><p className="font-black">{playerSubscriptions.filter(s=>s.status==='unpaid').length}</p></div>
+              <div className="rounded-xl bg-slate-50 dark:bg-slate-800 p-3"><div className="flex items-center gap-2 text-xs text-slate-500"><CalendarCheck2 className="h-4 w-4"/>{text('نسبة الحضور','Attendance rate')}</div><p className="font-black text-lg mt-1">{attendanceRate}%</p><p className="text-[10px] text-slate-400">{presentCount}/{playerAttendance.length}</p></div>
+              <div className="rounded-xl bg-slate-50 dark:bg-slate-800 p-3"><div className="flex items-center gap-2 text-xs text-slate-500"><Star className="h-4 w-4"/>{text('آخر تقييم','Latest evaluation')}</div><p className="font-black text-lg mt-1">{latestEvaluation?.overallScore!=null?latestEvaluation.overallScore.toFixed(1)+'/5':'—'}</p><p className="text-[10px] text-slate-400">{latestEvaluation?.evaluationDate||text('لا يوجد بعد','None yet')}</p></div>
+              <div className="rounded-xl bg-slate-50 dark:bg-slate-800 p-3"><div className="flex items-center gap-2 text-xs text-slate-500"><CreditCard className="h-4 w-4"/>{text('حالة الاشتراك','Subscription')}</div><p className="font-black text-lg mt-1">{currentSubscription?(currentSubscription.status==='paid'?text('مدفوع','Paid'):text('مطلوب الدفع','Payment due')):'—'}</p><p className="text-[10px] text-slate-400">{currentSubscription?.endDate||''}</p></div>
+              <div className="rounded-xl bg-slate-50 dark:bg-slate-800 p-3"><div className="flex items-center gap-2 text-xs text-slate-500"><FileText className="h-4 w-4"/>{text('الملفات','Documents')}</div><p className="font-black text-lg mt-1">{selectedDocuments.length}</p><p className="text-[10px] text-slate-400">{text('ملفات متاحة للحساب','available files')}</p></div>
             </div>
           </div>
 
@@ -100,9 +106,14 @@ export function ParentPortal({ user, players, subscriptions, attendance, evaluat
             })}
           </div>
 
-          {playerDocuments.some(d=>d.playerId===selectedPlayer.id&&d.fileCategory!=='photo') && <div className="bg-white dark:bg-slate-900 border dark:border-slate-700 rounded-2xl p-5 space-y-3">
+          <div className="bg-white dark:bg-slate-900 border dark:border-slate-700 rounded-2xl p-5 space-y-3">
+            <div className="flex items-center gap-2"><WalletCards className="h-5 w-5 text-emerald-600"/><div><h3 className="font-black">{text('سجل المدفوعات السابقة','Payment history')}</h3><p className="text-xs text-slate-500">{text('الاشتراكات التي اعتمدت كمدفوعة','Subscriptions approved as paid')}</p></div></div>
+            {approvedPayments.length===0?<p className="text-sm text-slate-500 py-3">{text('لا توجد مدفوعات معتمدة حتى الآن.','No approved payments yet.')}</p>:approvedPayments.map(sub=><div key={sub.id} className="border-t dark:border-slate-700 pt-3 flex items-center justify-between gap-3"><div><p className="font-bold text-sm">{planLabel(sub.planType,lang)}</p><p className="text-xs text-slate-500" dir="ltr">{sub.startDate} — {sub.endDate}</p></div><div className="text-end"><p className="font-black text-emerald-600">{sub.amount} {text('د.ب','BHD')}</p><Badge color="green">{text('مدفوع','Paid')}</Badge></div></div>)}
+          </div>
+
+          {selectedDocuments.length > 0 && <div className="bg-white dark:bg-slate-900 border dark:border-slate-700 rounded-2xl p-5 space-y-3">
             <h3 className="font-black">{text('مستندات اللاعب','Player documents')}</h3>
-            {playerDocuments.filter(d=>d.playerId===selectedPlayer.id&&d.fileCategory!=='photo').map(d=><button key={d.id} onClick={async()=>window.open(await db.getPlayerDocumentUrl(d.filePath),'_blank','noopener,noreferrer')} className="w-full flex justify-between gap-3 border-t dark:border-slate-700 pt-3 text-sm"><span className="font-bold">{d.fileName}</span><span className="text-emerald-600">{text('عرض','View')}</span></button>)}
+            {selectedDocuments.map(d=><button key={d.id} onClick={async()=>window.open(await db.getPlayerDocumentUrl(d.filePath),'_blank','noopener,noreferrer')} className="w-full flex justify-between gap-3 border-t dark:border-slate-700 pt-3 text-sm"><span className="font-bold">{d.fileName}</span><span className="text-emerald-600">{text('عرض','View')}</span></button>)}
           </div>}
 
           {playerEvaluations.length > 0 && <div className="bg-white dark:bg-slate-900 border dark:border-slate-700 rounded-2xl p-5 space-y-3"><h3 className="font-black">{tr(lang).playerEvaluations}</h3>
