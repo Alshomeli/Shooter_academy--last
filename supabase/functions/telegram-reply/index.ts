@@ -371,6 +371,56 @@ async function rpc<T>(functionName: string, body: Record<string, unknown>): Prom
   return payload as T;
 }
 
+async function deliverPendingRegistrationNotifications() {
+  const managerChats = Array.from(MANAGER_CHAT_IDS)
+    .map((value) => Number(value))
+    .filter((value) => Number.isFinite(value));
+
+  // The bootstrap manager is intentionally hash-only, so proactive delivery needs
+  // TELEGRAM_MANAGER_CHAT_IDS configured server-side. Interactive callbacks remain
+  // authorized by the hash binding even without the raw ID in source control.
+  if (managerChats.length === 0) return { delivered: 0, waitingForConfiguredChatIds: true };
+
+  const rows = await rpc<Array<{ application_id: string; parent_full_name?: string; submitted_at?: string }>>(
+    "telegram_claim_registration_notifications",
+    { p_limit: 10 },
+  );
+
+  let delivered = 0;
+  for (const row of rows || []) {
+    try {
+      for (const chatId of managerChats) {
+        if (!(await isAuthorizedManagerChat(chatId))) continue;
+        await sendMessage(
+          chatId,
+          `🆕 طلب تسجيل جديد
+ولي الأمر: ${row.parent_full_name || "غير محدد"}
+تاريخ الإرسال: ${row.submitted_at || "غير محدد"}`,
+          {
+            inline_keyboard: [[
+              { text: "✅ موافقة", callback_data: `reg:approve:${row.application_id}` },
+              { text: "👀 مراجعة في الموقع", callback_data: `reg:review:${row.application_id}` },
+            ]],
+          },
+        );
+      }
+      await rpc<void>("telegram_finish_registration_notification", {
+        p_application_id: row.application_id,
+        p_success: true,
+        p_error: null,
+      });
+      delivered += 1;
+    } catch (error) {
+      await rpc<void>("telegram_finish_registration_notification", {
+        p_application_id: row.application_id,
+        p_success: false,
+        p_error: error instanceof Error ? error.message : "delivery_failed",
+      });
+    }
+  }
+  return { delivered, waitingForConfiguredChatIds: false };
+}
+
 function formatMoney(value: number): string {
   return new Intl.NumberFormat("en-BH", {
     minimumFractionDigits: 3,
@@ -449,12 +499,27 @@ Deno.serve(async (req: Request) => {
     return new Response("Unauthorized", { status: 401 });
   }
 
-  let update: TelegramUpdate;
+  let rawPayload: unknown;
   try {
-    update = await req.json();
+    rawPayload = await req.json();
   } catch {
     return new Response("Invalid JSON", { status: 400 });
   }
+
+  if (
+    typeof rawPayload === "object" && rawPayload !== null
+    && "action" in rawPayload
+    && (rawPayload as { action?: unknown }).action === "flush_registration_notifications"
+  ) {
+    try {
+      return Response.json({ ok: true, ...(await deliverPendingRegistrationNotifications()) });
+    } catch (error) {
+      console.error("Telegram notification flush failed", error instanceof Error ? error.message : "unknown");
+      return Response.json({ ok: false }, { status: 500 });
+    }
+  }
+
+  const update = rawPayload as TelegramUpdate;
 
   const callback = update.callback_query;
   if (callback?.id && callback.message?.chat?.id && callback.data) {
