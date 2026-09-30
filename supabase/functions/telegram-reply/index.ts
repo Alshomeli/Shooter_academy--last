@@ -62,6 +62,15 @@ type TelegramUpdate = {
       file_size?: number;
     };
   };
+  callback_query?: {
+    id?: string;
+    from?: { id?: number; is_bot?: boolean; first_name?: string };
+    data?: string;
+    message?: {
+      message_id?: number;
+      chat?: { id?: number; type?: string };
+    };
+  };
 };
 
 function bahrainDate(offsetDays = 0): string {
@@ -311,7 +320,9 @@ async function telegramVoiceToText(voice: NonNullable<NonNullable<TelegramUpdate
   return text;
 }
 
-async function sendMessage(chatId: number, text: string) {
+type InlineKeyboard = { inline_keyboard: Array<Array<{ text: string; callback_data?: string; url?: string }>> };
+
+async function sendMessage(chatId: number, text: string, replyMarkup?: InlineKeyboard) {
   if (!TELEGRAM_BOT_TOKEN) throw new Error("telegram_bot_token_missing");
   const response = await fetch(
     `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
@@ -322,6 +333,7 @@ async function sendMessage(chatId: number, text: string) {
         chat_id: chatId,
         text: text.slice(0, 4096),
         disable_web_page_preview: true,
+        ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
       }),
     },
   );
@@ -329,6 +341,34 @@ async function sendMessage(chatId: number, text: string) {
     console.error("Telegram sendMessage failed", response.status);
     throw new Error("telegram_send_failed");
   }
+}
+
+async function answerCallbackQuery(callbackQueryId: string, text: string) {
+  if (!TELEGRAM_BOT_TOKEN) throw new Error("telegram_bot_token_missing");
+  await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ callback_query_id: callbackQueryId, text: text.slice(0, 180), show_alert: false }),
+  });
+}
+
+async function rpc<T>(functionName: string, body: Record<string, unknown>): Promise<T> {
+  if (!SUPABASE_URL) throw new Error("supabase_url_unavailable");
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${functionName}`, {
+    method: "POST",
+    headers: {
+      apikey: serverApiKey(),
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    console.error("Telegram RPC failed", functionName, response.status);
+    throw new Error(`rpc_failed_${response.status}`);
+  }
+  return payload as T;
 }
 
 function formatMoney(value: number): string {
@@ -416,6 +456,73 @@ Deno.serve(async (req: Request) => {
     return new Response("Invalid JSON", { status: 400 });
   }
 
+  const callback = update.callback_query;
+  if (callback?.id && callback.message?.chat?.id && callback.data) {
+    const callbackChatId = callback.message.chat.id;
+    const callbackChatType = callback.message.chat.type;
+    if (callbackChatType !== "private" || !(await isAuthorizedManagerChat(callbackChatId))) {
+      await answerCallbackQuery(callback.id, "غير مصرح بهذا الإجراء.");
+      return Response.json({ ok: true });
+    }
+
+    const approveMatch = callback.data.match(/^reg:approve:([0-9a-f-]{36})$/i);
+    const reviewMatch = callback.data.match(/^reg:review:([0-9a-f-]{36})$/i);
+
+    if (approveMatch) {
+      try {
+        const chatHash = await sha256Hex(String(callbackChatId));
+        const result = await rpc<{
+          success?: boolean;
+          alreadyProcessed?: boolean;
+          status?: string;
+          reviewedByStaffId?: string;
+          reviewedByName?: string;
+          nextStep?: string;
+        }>("telegram_approve_registration_application", {
+          p_application_id: approveMatch[1],
+          p_chat_id_hash: chatHash,
+        });
+
+        if (result?.success) {
+          await answerCallbackQuery(callback.id, "تمت الموافقة بنجاح.");
+          await sendMessage(
+            callbackChatId,
+            `✅ تمت الموافقة على طلب التسجيل بواسطة ${result.reviewedByName || "المدير"}.
+بقي تحديد الفريق، المركز ورقم القميص ثم تفعيل اللاعب من الموقع.`,
+          );
+        } else if (result?.alreadyProcessed) {
+          let reviewer = result.reviewedByStaffId || "مدير آخر";
+          if (result.reviewedByStaffId) {
+            const staffRows = await restRows<{ name?: string }>("staff", {
+              select: "name",
+              id: `eq.${result.reviewedByStaffId}`,
+              limit: "1",
+            });
+            reviewer = staffRows[0]?.name?.trim() || reviewer;
+          }
+          await answerCallbackQuery(callback.id, "الطلب تمت معالجته مسبقًا.");
+          await sendMessage(
+            callbackChatId,
+            `ℹ️ هذا الطلب تمت معالجته مسبقًا. الحالة الحالية: ${result.status || "غير معروفة"}. بواسطة: ${reviewer}.`,
+          );
+        }
+      } catch (error) {
+        console.error("Telegram registration approval failed", error instanceof Error ? error.message : "unknown");
+        await answerCallbackQuery(callback.id, "تعذرت الموافقة. راجع الطلب في الموقع.");
+      }
+      return Response.json({ ok: true });
+    }
+
+    if (reviewMatch) {
+      await answerCallbackQuery(callback.id, "راجع الطلب من لوحة التسجيل في الموقع لإضافة الملاحظات أو الرفض.");
+      await sendMessage(callbackChatId, `👀 الطلب ${reviewMatch[1]} يحتاج مراجعة من لوحة طلبات التسجيل في الموقع.`);
+      return Response.json({ ok: true });
+    }
+
+    await answerCallbackQuery(callback.id, "إجراء غير معروف.");
+    return Response.json({ ok: true });
+  }
+
   const chatId = update.message?.chat?.id;
   const chatType = update.message?.chat?.type;
   const telegramUserId = update.message?.from?.id;
@@ -481,7 +588,7 @@ Deno.serve(async (req: Request) => {
           "",
           "أمثلة: «كم مدرب عندنا؟» — «كم دخلنا هذا الشهر؟» — «كم غياب أمس؟»",
           "",
-          "المساعد حاليًا للقراءة فقط. أي تعديل إداري يحتاج مسار تأكيد منفصل.",
+          "طلبات التسجيل المعلقة يمكن اعتمادها من زر «موافقة»، بينما الرفض أو طلب معلومات إضافية يتم من الموقع مع تسجيل الملاحظات.",
         ].join("\n"),
       );
       return Response.json({ ok: true });
@@ -649,17 +756,33 @@ Deno.serve(async (req: Request) => {
 
     if (parsedQuestion.intent === "registrations") {
       const effectiveRange = range || adminDateRange("today")!;
-      const rows = await restRows<{ status?: string }>("registration_applications", {
-        select: "status",
+      const rows = await restRows<{ id?: string; parent_full_name?: string; status?: string; submitted_at?: string }>("registration_applications", {
+        select: "id,parent_full_name,status,submitted_at",
         submitted_at_gte: `gte.${effectiveRange.start}T00:00:00+03:00`,
         submitted_at_lte: `lte.${effectiveRange.end}T23:59:59+03:00`,
+        order: "submitted_at.asc",
       });
-      const pending = rows.filter((row) => String(row.status).toLowerCase() === "pending").length;
+      const pendingRows = rows.filter((row) => String(row.status).toLowerCase() === "pending" && row.id);
       await sendMessage(chatId, [
         `طلبات التسجيل — ${periodLabel(parsedQuestion.period === "all" ? "today" : parsedQuestion.period)}`,
         `إجمالي الطلبات: ${rows.length}`,
-        `بانتظار المراجعة: ${pending}`,
+        `بانتظار المراجعة: ${pendingRows.length}`,
       ].join("\n"));
+
+      for (const row of pendingRows.slice(0, 10)) {
+        await sendMessage(
+          chatId,
+          `📝 طلب تسجيل معلق
+ولي الأمر: ${row.parent_full_name || "غير محدد"}
+تاريخ الإرسال: ${row.submitted_at || "غير محدد"}`,
+          {
+            inline_keyboard: [[
+              { text: "✅ موافقة", callback_data: `reg:approve:${row.id}` },
+              { text: "👀 مراجعة في الموقع", callback_data: `reg:review:${row.id}` },
+            ]],
+          },
+        );
+      }
       return Response.json({ ok: true });
     }
 
