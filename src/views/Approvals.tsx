@@ -37,7 +37,13 @@ export function Approvals({ staff, onStaffChange, onRefresh, activeRole, lang }:
     catch { setApplicationError(isAr ? 'تعذر تحميل طلبات الانضمام.' : 'Could not load staff applications.'); }
   };
 
-  useEffect(() => { void loadApplications(); }, [activeRole]);
+  useEffect(() => {
+    void loadApplications();
+    const refreshVisible = () => { if (document.visibilityState === 'visible') void loadApplications(); };
+    const timer = setInterval(refreshVisible, 60000);
+    window.addEventListener('focus', refreshVisible);
+    return () => { clearInterval(timer); window.removeEventListener('focus', refreshVisible); };
+  }, [activeRole, lang]);
 
   if (activeRole !== 'manager') {
     return (
@@ -94,8 +100,10 @@ export function Approvals({ staff, onStaffChange, onRefresh, activeRole, lang }:
 
   const handleApplicationReview = async () => {
     if (!reviewTarget || processingId) return;
-    if (reviewTarget.action === 'needs_info' && !reviewNotes.trim()) {
-      setApplicationError(isAr ? 'اكتب ملاحظة توضّح التعديل المطلوب.' : 'Add a note describing the requested change.');
+    if (!reviewNotes.trim()) {
+      setApplicationError(reviewTarget.action === 'needs_info'
+        ? (isAr ? 'اكتب ملاحظة توضّح التعديل المطلوب.' : 'Add a note describing the requested change.')
+        : (isAr ? 'اكتب سبب الرفض قبل التأكيد.' : 'Add the rejection reason before confirming.'));
       return;
     }
     setProcessingId(reviewTarget.id); setApplicationError('');
