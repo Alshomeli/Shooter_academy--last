@@ -348,8 +348,10 @@ async function telegramVoiceToText(voice: NonNullable<NonNullable<TelegramUpdate
 }
 
 type InlineKeyboard = { inline_keyboard: Array<Array<{ text: string; callback_data?: string; url?: string }>> };
+type ReplyKeyboard = { keyboard: Array<Array<{ text: string }>>; resize_keyboard?: boolean; is_persistent?: boolean };
+type TelegramKeyboard = InlineKeyboard | ReplyKeyboard;
 
-async function sendMessage(chatId: number, text: string, replyMarkup?: InlineKeyboard) {
+async function sendMessage(chatId: number, text: string, replyMarkup?: TelegramKeyboard) {
   if (!TELEGRAM_BOT_TOKEN) throw new Error("telegram_bot_token_missing");
   const response = await fetch(
     `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
@@ -416,6 +418,37 @@ async function linkedTelegramIdentity(chatId: number): Promise<TelegramIdentity 
   } catch {
     return null;
   }
+}
+
+async function sendRoleMenu(chatId: number, role: "manager" | "coach") {
+  if (role === "coach") {
+    await sendMessage(chatId, "اختر عملية أو اكتب سؤالك مباشرة:", {
+      keyboard: [
+        [{ text: "🏃 حصة اليوم" }, { text: "📝 الحضور الناقص" }],
+        [{ text: "📊 ملخص الحضور" }, { text: "📅 جدولي" }],
+        [{ text: "⚽ مباريات فريقي" }, { text: "🆔 معرّفي" }],
+        [{ text: "ℹ️ مساعدة" }],
+      ],
+      resize_keyboard: true,
+      is_persistent: true,
+    });
+    return;
+  }
+  await sendMessage(chatId, "لوحة المدير السريعة — اختر أو اكتب أي سؤال إداري:", {
+    keyboard: [
+      [{ text: "📋 ملخص اليوم" }, { text: "🔎 تفاصيل اليوم" }],
+      [{ text: "💰 دفعات اليوم" }, { text: "⚽ مباريات اليوم" }],
+      [{ text: "📊 حضور اليوم" }, { text: "⏳ الاشتراكات المستحقة" }],
+      [{ text: "🧾 إثباتات الدفع" }, { text: "👥 طلبات التسجيل" }],
+      [{ text: "ℹ️ مساعدة" }],
+    ],
+    resize_keyboard: true,
+    is_persistent: true,
+  });
+}
+
+function stripMenuLabel(text: string): string {
+  return text.replace(/^[\p{Extended_Pictographic}\uFE0F\u200D\s]+/u, "").trim();
 }
 
 async function sendCoachToday(chatId: number, identity: TelegramIdentity) {
@@ -960,12 +993,14 @@ Deno.serve(async (req: Request) => {
 
   try {
     if (telegramIdentity.role === "coach") {
-      const value = normalize(incomingText);
-      if (isHelpCommand(incomingText)) {
+      const menuText = stripMenuLabel(incomingText);
+      const value = normalize(menuText);
+      if (isHelpCommand(menuText)) {
         await sendMessage(chatId, ["مساعد المدرب:", "• /today_class — حصة اليوم وقائمة اللاعبين", "• «قائمة حضور اليوم» — تسجيل حضر/غاب/بعذر بالأزرار", "• «ملخص حضور اليوم» — أعداد الحضور والغياب", "• «جدولي» أو «مواعيد تدريبي» — جدول فرقك", "• «من باقي ما سجلت حضوره؟» — الحالات الناقصة وإنهاء الحصة", "• «مباريات فريقي» — المباريات القادمة", "• «ملاحظة اسم اللاعب: النص» — حفظ ملاحظة تقييم كمسودة", "• /id — معرّف Telegram الداخلي", "يمكنك كتابة الطلب بصيغة طبيعية أو إرساله صوتيًا إذا كانت ميزة الصوت مفعلة."].join("\n"));
+        await sendRoleMenu(chatId, "coach");
         return Response.json({ ok: true });
       }
-      if (await saveCoachQuickNote(chatId, telegramIdentity, incomingText)) {
+      if (await saveCoachQuickNote(chatId, telegramIdentity, menuText)) {
         return Response.json({ ok: true });
       }
       if (value.includes("باقي") && (value.includes("حضور") || value.includes("سجل")) || value.includes("من ما سجلت")) {
@@ -988,7 +1023,7 @@ Deno.serve(async (req: Request) => {
         await sendCoachUpcoming(chatId, telegramIdentity);
         return Response.json({ ok: true });
       }
-      if (value === "/today_class" || value.includes("حصة اليوم") || value.includes("تدريب اليوم") || (value.includes("قائمة") && value.includes("حضور"))) {
+      if (value === "/today_class" || value.includes("حصة اليوم") || value.includes("تدريب اليوم") || value === "الحضور الناقص" || (value.includes("قائمة") && value.includes("حضور"))) {
         await sendCoachToday(chatId, telegramIdentity);
         return Response.json({ ok: true });
       }
@@ -996,7 +1031,12 @@ Deno.serve(async (req: Request) => {
       return Response.json({ ok: true });
     }
 
-    if (isHelpCommand(incomingText)) {
+    const managerMenuText = stripMenuLabel(incomingText);
+    if (normalize(managerMenuText) === "مساعدة") {
+      await sendRoleMenu(chatId, "manager");
+      return Response.json({ ok: true });
+    }
+    if (isHelpCommand(managerMenuText)) {
       await sendMessage(
         chatId,
         [
@@ -1020,8 +1060,8 @@ Deno.serve(async (req: Request) => {
 
     const today = bahrainDate();
 
-    if (isSummaryCommand(incomingText)) {
-      const detailedSummary = wantsDetailedSummary(incomingText);
+    if (isSummaryCommand(managerMenuText)) {
+      const detailedSummary = wantsDetailedSummary(managerMenuText);
       const [activePlayers, unpaid, overdueUnpaid, currentUnpaid, expiringToday, paymentRows, matches, trainings, attendanceRows, pendingRegistrations, pendingStaffApplications, pendingPaymentProofs, expiringStaffDocuments, expiredStaffDocuments] = await Promise.all([
         restCount("players", { status: "eq.active" }),
         restCount("subscriptions", { status: "eq.unpaid" }),
