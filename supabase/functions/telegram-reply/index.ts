@@ -547,6 +547,43 @@ Deno.serve(async (req: Request) => {
 
     const approveMatch = callback.data.match(/^reg:approve:([0-9a-f-]{36})$/i);
     const reviewMatch = callback.data.match(/^reg:review:([0-9a-f-]{36})$/i);
+    const staffApproveMatch = callback.data.match(/^staff:approve:([0-9a-f-]{36})$/i);
+    const staffReviewMatch = callback.data.match(/^staff:review:([0-9a-f-]{36})$/i);
+
+    if (staffApproveMatch) {
+      try {
+        const chatHash = await sha256Hex(String(callbackChatId));
+        const result = await rpc<{
+          success?: boolean; alreadyProcessed?: boolean; status?: string;
+          requestedRole?: string; reviewedByStaffId?: string; reviewedByName?: string;
+        }>("telegram_approve_staff_application", {
+          p_application_id: staffApproveMatch[1],
+          p_chat_id_hash: chatHash,
+        });
+        if (result?.success) {
+          await answerCallbackQuery(callback.id, "تم اعتماد طلب الموظف بنجاح.");
+          await sendMessage(callbackChatId, `✅ تم اعتماد طلب الانضمام بواسطة ${result.reviewedByName || "المدير"}.\nالصلاحية: ${result.requestedRole || "موظف"}.`);
+        } else {
+          let reviewer = result?.reviewedByStaffId || "مدير آخر";
+          if (result?.reviewedByStaffId) {
+            const staffRows = await restRows<{ name?: string }>("staff", { select: "name", id: `eq.${result.reviewedByStaffId}`, limit: "1" });
+            reviewer = staffRows[0]?.name?.trim() || reviewer;
+          }
+          await answerCallbackQuery(callback.id, "الطلب تمت معالجته مسبقًا.");
+          await sendMessage(callbackChatId, `ℹ️ طلب الموظف تمت معالجته مسبقًا. الحالة: ${result?.status || "غير معروفة"}. بواسطة: ${reviewer}.`);
+        }
+      } catch (error) {
+        console.error("Telegram staff approval failed", error instanceof Error ? error.message : "unknown");
+        await answerCallbackQuery(callback.id, "تعذر اعتماد طلب الموظف. راجعه في الموقع.");
+      }
+      return Response.json({ ok: true });
+    }
+
+    if (staffReviewMatch) {
+      await answerCallbackQuery(callback.id, "راجع الطلب من شاشة الموافقات لإضافة سبب أو طلب تعديل.");
+      await sendMessage(callbackChatId, `👀 طلب الموظف ${staffReviewMatch[1]} يحتاج مراجعة من شاشة الموافقات في الموقع.`);
+      return Response.json({ ok: true });
+    }
 
     if (approveMatch) {
       try {
