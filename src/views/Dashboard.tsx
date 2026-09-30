@@ -24,10 +24,15 @@ interface DashboardProps {
   lang: Lang;
 }
 
-export function Dashboard({ players, subscriptions, matches, transactions, staff, teams, parents, evaluations, setCurrentTab, lang }: DashboardProps) {
+export function Dashboard({ players, subscriptions, matches, transactions, staff, teams, parents, evaluations, setCurrentTab, activeRole, lang }: DashboardProps) {
   const t = tr(lang);
   const isAr = lang === 'ar';
   const MONTHS = monthsArray(lang);
+  const canSeeFinance = activeRole === 'manager' || activeRole === 'accountant';
+  const canSeeSubscriptions = activeRole === 'manager' || activeRole === 'accountant' || activeRole === 'receptionist';
+  const canSeeTechnical = activeRole === 'manager' || activeRole === 'coach';
+  const canSeeStaff = activeRole === 'manager';
+  const canSeeEvaluations = activeRole === 'manager' || activeRole === 'coach';
 
   const reminders = useMemo(
     () => getSubscriptionReminders(subscriptions, players, parents),
@@ -117,14 +122,22 @@ export function Dashboard({ players, subscriptions, matches, transactions, staff
 
   return (
     <div className="space-y-6 text-right" dir={isAr ? 'rtl' : 'ltr'}>
-      <PageHeader title={t.dashboard} subtitle={isAr ? 'نظرة شاملة على مؤشرات الأكاديمية والمالية والفنية' : 'Overview of academy, financial, and performance metrics'} />
+      <PageHeader title={t.dashboard} subtitle={
+        activeRole === 'manager'
+          ? (isAr ? 'نظرة شاملة على مؤشرات الأكاديمية والمالية والفنية' : 'Overview of academy, financial, and performance metrics')
+          : activeRole === 'accountant'
+          ? (isAr ? 'نظرة على المؤشرات المالية والاشتراكات' : 'Overview of financial and subscription metrics')
+          : activeRole === 'coach'
+          ? (isAr ? 'نظرة على اللاعبين والأداء الفني لفريقك' : 'Overview of your players and team performance')
+          : (isAr ? 'نظرة على اللاعبين والاشتراكات والمتابعة اليومية' : 'Overview of players, subscriptions, and daily follow-up')
+      } />
 
       {/* KPI cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard icon={<Users className="h-5 w-5" />} label={t.activePlayers} value={stats.activePlayers} sublabel={`${t.activePlayersSub} ${stats.totalTeams} ${t.teamsLabel}`} color="emerald" onClick={() => setCurrentTab('players')} />
-        <StatCard icon={<Wallet className="h-5 w-5" />} label={t.netProfit} value={`${stats.netProfit.toLocaleString()} ${t.currency}`} sublabel={`${t.revenueLabel} ${stats.totalRevenue.toLocaleString()}`} color="blue" onClick={() => setCurrentTab('subscriptions')} />
-        <StatCard icon={<Trophy className="h-5 w-5" />} label={t.winRate} value={`${stats.winRate}%`} sublabel={`${stats.wins} ${t.wins} · ${stats.losses} ${t.losses}`} color="amber" onClick={() => setCurrentTab('schedules')} />
-        <StatCard icon={<Activity className="h-5 w-5" />} label={t.paidSubsLabel} value={`${stats.paidSubs}/${stats.paidSubs + stats.unpaidSubs}`} sublabel={`${stats.unpaidSubs} ${t.unpaidSubsLabel}`} color="red" onClick={() => setCurrentTab('subscriptions')} />
+        {canSeeFinance && <StatCard icon={<Wallet className="h-5 w-5" />} label={t.netProfit} value={`${stats.netProfit.toLocaleString()} ${t.currency}`} sublabel={`${t.revenueLabel} ${stats.totalRevenue.toLocaleString()}`} color="blue" onClick={() => setCurrentTab('subscriptions')} />}
+        {canSeeTechnical && <StatCard icon={<Trophy className="h-5 w-5" />} label={t.winRate} value={`${stats.winRate}%`} sublabel={`${stats.wins} ${t.wins} · ${stats.losses} ${t.losses}`} color="amber" onClick={() => setCurrentTab('schedules')} />}
+        {canSeeSubscriptions && <StatCard icon={<Activity className="h-5 w-5" />} label={t.paidSubsLabel} value={`${stats.paidSubs}/${stats.paidSubs + stats.unpaidSubs}`} sublabel={`${stats.unpaidSubs} ${t.unpaidSubsLabel}`} color="red" onClick={() => setCurrentTab('subscriptions')} />}
       </div>
 
       {/* Secondary KPIs */}
@@ -132,13 +145,13 @@ export function Dashboard({ players, subscriptions, matches, transactions, staff
         <StatCard icon={<Goal className="h-5 w-5" />} label={t.goalsScored} value={stats.goalsScored} sublabel={`${t.goalsConceded} ${stats.goalsConceded}`} color="emerald" onClick={() => setCurrentTab('schedules')} />
         <StatCard icon={<Target className="h-5 w-5" />} label={t.goalDifference} value={stats.goalsScored - stats.goalsConceded} sublabel={t.goalDifference} color="blue" onClick={() => setCurrentTab('schedules')} />
         <StatCard icon={<Calendar className="h-5 w-5" />} label={t.scheduledMatches} value={stats.scheduled} sublabel={t.scheduledMatchesHint} color="amber" onClick={() => setCurrentTab('schedules')} />
-        <StatCard icon={<Award className="h-5 w-5" />} label={t.totalStaff} value={stats.totalStaff} sublabel={t.totalStaffHint} color="slate" onClick={() => setCurrentTab('staff')} />
+        {canSeeStaff && <StatCard icon={<Award className="h-5 w-5" />} label={t.totalStaff} value={stats.totalStaff} sublabel={t.totalStaffHint} color="slate" onClick={() => setCurrentTab('staff')} />}
       </div>
 
       {/* Charts row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Revenue line chart */}
-        <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm">
+        {canSeeFinance && <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="text-sm font-black text-slate-900 dark:text-white">{t.monthlyRevenue}</h3>
@@ -150,7 +163,7 @@ export function Dashboard({ players, subscriptions, matches, transactions, staff
             </div>
           </div>
           <LineChart data={revenueByMonth} color="#10b981" height={200} />
-        </div>
+        </div>}
 
         {/* Position distribution donut */}
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm">
@@ -221,9 +234,9 @@ export function Dashboard({ players, subscriptions, matches, transactions, staff
 
       {/* Reminders panel */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <RemindersPanel reminders={reminders} onNavigate={() => setCurrentTab('subscriptions')} compact lang={lang} />
+        {canSeeSubscriptions && <RemindersPanel reminders={reminders} onNavigate={() => setCurrentTab('subscriptions')} compact lang={lang} />}
 
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm">
+        {canSeeEvaluations && <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="text-sm font-black text-slate-900 dark:text-white">{isAr ? 'إعادة تقييم اللاعبين' : 'Player reassessments'}</h3>
@@ -250,10 +263,10 @@ export function Dashboard({ players, subscriptions, matches, transactions, staff
               ))}
             </div>
           )}
-        </div>
+        </div>}
 
         {/* Quick stats summary */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm">
+        {canSeeSubscriptions && <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm">
           <h3 className="text-sm font-black text-slate-900 dark:text-white mb-4">{t.quickSummary}</h3>
           <div className="grid grid-cols-2 gap-3">
             <div className="p-3 rounded-xl bg-red-50 dark:bg-red-900/20">
@@ -275,7 +288,7 @@ export function Dashboard({ players, subscriptions, matches, transactions, staff
               </p>
             </div>
           </div>
-        </div>
+        </div>}
       </div>
 
       {/* Quick actions */}
@@ -286,10 +299,10 @@ export function Dashboard({ players, subscriptions, matches, transactions, staff
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {[
-            { label: t.addPlayer, icon: Users, tab: 'players' as ViewId },
-            { label: t.recordAttendance, icon: Percent, tab: 'attendance' as ViewId },
-            { label: t.scheduleMatch, icon: Calendar, tab: 'schedules' as ViewId },
-            { label: t.recordPayment, icon: Wallet, tab: 'subscriptions' as ViewId },
+            ...(activeRole === 'manager' || activeRole === 'receptionist' ? [{ label: t.addPlayer, icon: Users, tab: 'players' as ViewId }] : []),
+            ...(activeRole === 'manager' || activeRole === 'coach' || activeRole === 'receptionist' ? [{ label: t.recordAttendance, icon: Percent, tab: 'attendance' as ViewId }] : []),
+            ...(activeRole === 'manager' || activeRole === 'coach' ? [{ label: t.scheduleMatch, icon: Calendar, tab: 'schedules' as ViewId }] : []),
+            ...(canSeeSubscriptions ? [{ label: t.recordPayment, icon: Wallet, tab: 'subscriptions' as ViewId }] : []),
           ].map((action) => {
             const Icon = action.icon;
             return (
