@@ -30,7 +30,7 @@ function cleanPhone(phone: string): string {
   return phone.replace(/[^0-9]/g, '');
 }
 
-export function Messages({ players, teams, subscriptions, activeRole, lang }: MessagesProps) {
+export function Messages({ players, teams, subscriptions, lang }: MessagesProps) {
   const t = tr(lang);
   const isAr = lang === 'ar';
 
