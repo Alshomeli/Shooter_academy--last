@@ -24,6 +24,7 @@ interface SubscriptionsProps {
   onPayment: (sub: Subscription, method: string) => Promise<void>;
   onSubscriptionsChange: (s: Subscription[]) => Promise<void>;
   onTransactionsChange: (t: Transaction[]) => void;
+  onRefresh: () => Promise<void>;
   activeRole: Role;
   lang: Lang;
 }
@@ -84,6 +85,7 @@ export function Subscriptions({
   onSubscriptionsChange,
   onTransactionsChange,
   onPayment,
+  onRefresh,
   activeRole,
   lang,
 }: SubscriptionsProps) {
@@ -122,7 +124,7 @@ export function Subscriptions({
 
   const refreshProofs = async () => setPaymentProofs(await db.getPaymentProofs());
   const approveProof = async (proof: PaymentProof) => {
-    try { setProofBusy(proof.id); setProofError(''); await db.approvePaymentProof(proof.id); await refreshProofs(); }
+    try { setProofBusy(proof.id); setProofError(''); await db.approvePaymentProof(proof.id); await Promise.all([refreshProofs(), onRefresh()]); }
     catch (e) { setProofError(errorMessage(e, isAr)); }
     finally { setProofBusy(null); }
   };
@@ -132,7 +134,7 @@ export function Subscriptions({
   };
   const submitProofReview = async () => {
     if (!proofReview || !proofReviewNote.trim()) return;
-    try { setProofBusy(proofReview.id); await db.reviewPaymentProof(proofReview.id, proofReviewStatus, proofReviewNote); setProofReview(null); setProofReviewNote(''); await refreshProofs(); }
+    try { setProofBusy(proofReview.id); await db.reviewPaymentProof(proofReview.id, proofReviewStatus, proofReviewNote); setProofReview(null); setProofReviewNote(''); await Promise.all([refreshProofs(), onRefresh()]); }
     catch (e) { setProofError(errorMessage(e, isAr)); }
     finally { setProofBusy(null); }
   };
