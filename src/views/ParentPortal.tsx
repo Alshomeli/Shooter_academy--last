@@ -9,6 +9,13 @@ import type { Attendance, CurrentUser, Lang, PaymentProof, Player, PlayerDocumen
 import { db } from '@/lib/store';
 import { tr } from '@/lib/i18n';
 
+const bahrainToday = () => {
+  const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Bahrain', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+  const get = (type: 'year' | 'month' | 'day') => parts.find((part) => part.type === type)?.value || '';
+  return `${get('year')}-${get('month')}-${get('day')}`;
+};
+const escapeHtml = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char] || char));
+
 export function ParentPortal({ user, players, subscriptions, attendance, evaluations, settings, lang, setLang, onLogout, onRefresh, openRegistration = false }: {
   openRegistration?: boolean; user: CurrentUser; players: Player[]; subscriptions: Subscription[]; attendance: Attendance[]; evaluations: PlayerEvaluation[]; settings: Settings | null; lang: Lang;
   setLang: (lang: Lang) => void; onLogout: () => void; onRefresh: () => Promise<void>;
@@ -31,7 +38,7 @@ export function ParentPortal({ user, players, subscriptions, attendance, evaluat
   const [payingSubscription, setPayingSubscription] = useState<Subscription | null>(null);
   const [resubmittingProof, setResubmittingProof] = useState<PaymentProof | null>(null);
   const [paymentFile, setPaymentFile] = useState<File | null>(null);
-  const [transferDate, setTransferDate] = useState(new Date().toISOString().slice(0, 10));
+  const [transferDate, setTransferDate] = useState(bahrainToday());
   const [paymentNote, setPaymentNote] = useState('');
   const [paymentBusy, setPaymentBusy] = useState(false);
   const selectedPlayer = players.find((p) => p.id === selectedPlayerId) || players[0];
@@ -54,7 +61,7 @@ export function ParentPortal({ user, players, subscriptions, attendance, evaluat
     const timer = setInterval(refreshVisible, 60000);
     window.addEventListener('focus', refreshVisible);
     return () => { clearInterval(timer); window.removeEventListener('focus', refreshVisible); };
-  }, [lang]);
+  }, [load]);
   const statusLabel = (status: RegistrationApplication['status']) => ({ draft: text('مسودة', 'Draft'), pending: text('بانتظار المراجعة', 'Pending review'), under_review: text('قيد المراجعة', 'Under review'), needs_info: text('يحتاج استكمال', 'More information needed'), approved: text('مقبول', 'Approved'), rejected: text('مرفوض', 'Rejected') })[status];
   const refresh = async () => { await load(); await onRefresh(); };
   const submitProof = async () => {
@@ -72,9 +79,14 @@ export function ParentPortal({ user, players, subscriptions, attendance, evaluat
     if (!proof.receiptNumber || !selectedPlayer) return;
     const number = `SA-${String(proof.receiptNumber).padStart(6,'0')}`;
     const reviewed = proof.reviewedAt ? new Date(proof.reviewedAt).toLocaleString(lang==='ar'?'ar-BH':'en-BH') : proof.transferDate;
-    const w = window.open('', '_blank', 'noopener,noreferrer,width=760,height=900');
+    const w = window.open('', '_blank', 'width=760,height=900');
     if (!w) return;
-    w.document.write(`<!doctype html><html dir="${lang==='ar'?'rtl':'ltr'}"><head><meta charset="utf-8"><title>${number}</title><style>body{font-family:Arial,sans-serif;padding:40px;color:#172033}.box{max-width:680px;margin:auto;border:1px solid #ddd;border-radius:18px;padding:28px}.muted{color:#64748b}.row{display:flex;justify-content:space-between;gap:20px;border-top:1px solid #eee;padding:12px 0}.total{font-size:24px;font-weight:800;color:#059669}.stamp{margin-top:24px;padding:12px;background:#ecfdf5;border-radius:12px;color:#047857;font-weight:700}@media print{button{display:none}}</style></head><body><div class="box"><h1>${academyName}</h1><div class="muted">${lang==='ar'?'إيصال دفع اشتراك':'Subscription Payment Receipt'} · ${number}</div><div style="height:20px"></div><div class="row"><span>${lang==='ar'?'اللاعب':'Player'}</span><b>${selectedPlayer.name}</b></div><div class="row"><span>${lang==='ar'?'الخطة':'Plan'}</span><b>${planLabel(sub.planType,lang)}</b></div><div class="row"><span>${lang==='ar'?'فترة الاشتراك':'Subscription period'}</span><b dir="ltr">${sub.startDate} — ${sub.endDate}</b></div><div class="row"><span>${lang==='ar'?'طريقة الدفع':'Payment method'}</span><b>Benefit / IBAN</b></div><div class="row"><span>${lang==='ar'?'تاريخ التحويل':'Transfer date'}</span><b>${proof.transferDate}</b></div><div class="row"><span>${lang==='ar'?'تاريخ الاعتماد':'Approved at'}</span><b>${reviewed}</b></div><div class="row"><span>${lang==='ar'?'المبلغ':'Amount'}</span><span class="total">${proof.amount.toFixed(3)} BHD</span></div><div class="stamp">${lang==='ar'?'تم التحقق من التحويل واعتماد الدفعة من الأكاديمية.':'Transfer verified and payment approved by the academy.'}</div><p class="muted" style="font-size:11px;margin-top:20px">${lang==='ar'?'هذا الإيصال صادر إلكترونيًا من النظام.':'This receipt was issued electronically by the system.'}</p><button onclick="window.print()" style="margin-top:16px;padding:10px 18px">${lang==='ar'?'طباعة / حفظ PDF':'Print / Save PDF'}</button></div></body></html>`);
+    w.opener = null;
+    const safeAcademyName = escapeHtml(academyName);
+    const safePlayerName = escapeHtml(selectedPlayer.name);
+    const safePlan = escapeHtml(planLabel(sub.planType,lang));
+    const safeReviewed = escapeHtml(reviewed);
+    w.document.write(`<!doctype html><html dir="${lang==='ar'?'rtl':'ltr'}"><head><meta charset="utf-8"><title>${number}</title><style>body{font-family:Arial,sans-serif;padding:40px;color:#172033}.box{max-width:680px;margin:auto;border:1px solid #ddd;border-radius:18px;padding:28px}.muted{color:#64748b}.row{display:flex;justify-content:space-between;gap:20px;border-top:1px solid #eee;padding:12px 0}.total{font-size:24px;font-weight:800;color:#059669}.stamp{margin-top:24px;padding:12px;background:#ecfdf5;border-radius:12px;color:#047857;font-weight:700}@media print{button{display:none}}</style></head><body><div class="box"><h1>${safeAcademyName}</h1><div class="muted">${lang==='ar'?'إيصال دفع اشتراك':'Subscription Payment Receipt'} · ${number}</div><div style="height:20px"></div><div class="row"><span>${lang==='ar'?'اللاعب':'Player'}</span><b>${safePlayerName}</b></div><div class="row"><span>${lang==='ar'?'الخطة':'Plan'}</span><b>${safePlan}</b></div><div class="row"><span>${lang==='ar'?'فترة الاشتراك':'Subscription period'}</span><b dir="ltr">${sub.startDate} — ${sub.endDate}</b></div><div class="row"><span>${lang==='ar'?'طريقة الدفع':'Payment method'}</span><b>Benefit / IBAN</b></div><div class="row"><span>${lang==='ar'?'تاريخ التحويل':'Transfer date'}</span><b>${proof.transferDate}</b></div><div class="row"><span>${lang==='ar'?'تاريخ الاعتماد':'Approved at'}</span><b>${safeReviewed}</b></div><div class="row"><span>${lang==='ar'?'المبلغ':'Amount'}</span><span class="total">${proof.amount.toFixed(3)} BHD</span></div><div class="stamp">${lang==='ar'?'تم التحقق من التحويل واعتماد الدفعة من الأكاديمية.':'Transfer verified and payment approved by the academy.'}</div><p class="muted" style="font-size:11px;margin-top:20px">${lang==='ar'?'هذا الإيصال صادر إلكترونيًا من النظام.':'This receipt was issued electronically by the system.'}</p><button onclick="window.print()" style="margin-top:16px;padding:10px 18px">${lang==='ar'?'طباعة / حفظ PDF':'Print / Save PDF'}</button></div></body></html>`);
     w.document.close();
   };
   const proofStatus = (status: PaymentProof['status']) => ({
@@ -109,9 +121,11 @@ export function ParentPortal({ user, players, subscriptions, attendance, evaluat
           <div className="bg-white dark:bg-slate-900 border dark:border-slate-700 rounded-2xl p-5 space-y-3">
             <div className="flex items-center gap-2"><CreditCard className="h-5 w-5 text-emerald-600"/><h3 className="font-black">{text('الاشتراكات والمدفوعات','Subscriptions & payments')}</h3></div>
             {playerSubscriptions.map((sub) => {
-              const proof = paymentProofs.find((p) => p.subscriptionId === sub.id && ['pending','needs_info','approved'].includes(p.status));
+              const relatedProofs = paymentProofs.filter((p) => p.subscriptionId === sub.id).sort((a,b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+              const proof = relatedProofs.find((p) => ['pending','needs_info','approved'].includes(p.status));
+              const latestRejected = !proof ? relatedProofs.find((p) => p.status === 'rejected') : undefined;
               return <div key={sub.id} className="border-t dark:border-slate-700 pt-3 flex flex-wrap items-center justify-between gap-3">
-                <div><p className="font-bold text-sm">{planLabel(sub.planType,lang)} · {sub.amount} {text('د.ب','BHD')}</p><p className="text-xs text-slate-500" dir="ltr">{sub.startDate} — {sub.endDate}</p></div>
+                <div><p className="font-bold text-sm">{planLabel(sub.planType,lang)} · {sub.amount} {text('د.ب','BHD')}</p><p className="text-xs text-slate-500" dir="ltr">{sub.startDate} — {sub.endDate}</p>{proof?.status==='needs_info'&&proof.reviewNote&&<p className="mt-1 text-xs font-bold text-amber-700">{text('ملاحظة الإدارة: ','Academy note: ')}{proof.reviewNote}</p>}{latestRejected?.reviewNote&&<p className="mt-1 text-xs font-bold text-red-700">{text('سبب عدم الاعتماد: ','Rejection reason: ')}{latestRejected.reviewNote}</p>}</div>
                 <div className="flex items-center gap-2"><Badge color={sub.status==='paid'?'green':'amber'}>{sub.status==='paid'?text('مدفوع','Paid'):text('غير مدفوع','Unpaid')}</Badge>
                 {proof && <Badge color={proof.status==='approved'?'green':'amber'}>{proofStatus(proof.status)}</Badge>}{proof?.status==='needs_info'&&<button onClick={()=>{setResubmittingProof(proof);setPayingSubscription(sub);setPaymentNote('')}} className="px-3 py-2 rounded-lg bg-amber-600 text-white text-xs font-bold">{text('استكمال الإثبات','Resubmit proof')}</button>}
                 {sub.status==='unpaid' && !proof && <button onClick={()=>{setResubmittingProof(null);setPayingSubscription(sub)}} className="px-3 py-2 rounded-lg bg-emerald-600 text-white text-xs font-bold">{text('دفع الاشتراك','Pay subscription')}</button>}</div>
