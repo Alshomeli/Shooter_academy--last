@@ -140,3 +140,13 @@ test('Telegram staff and manager application callbacks require private authorize
   assert.match(source, /telegram_approve_staff_application/);
   assert.match(source, /answerCallbackQuery/);
 });
+
+
+test('telegram manager assistant keeps payment proof and staff document queries in daily operations', () => {
+  assert.match(source, /"payment_proofs"/);
+  assert.match(source, /"staff_documents"/);
+  assert.match(source, /إثباتات الدفع بانتظار التحقق/);
+  assert.match(source, /شهادات\/رخص الطاقم/);
+  assert.match(source, /parsedQuestion\.intent === "payment_proofs"/);
+  assert.match(source, /parsedQuestion\.intent === "staff_documents"/);
+});
