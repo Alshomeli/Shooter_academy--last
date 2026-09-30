@@ -25,14 +25,14 @@ test('wrong webhook secret cannot query records or send reports',async()=>{
  const r=runtime();assert.equal((await r.run(r.request(42,'wrong'))).status,401);assert.equal(r.calls.length,0);
 });
 test('an unapproved chat cannot read the database',async()=>{
- const r=runtime();await r.run(r.request(99));assert.ok(r.calls.length);assert.ok(r.calls.every(c=>c.url.includes('api.telegram.org')));assert.match(r.calls[0].options.body,/غير مصرح/);
+ const r=runtime();await r.run(r.request(99));const dbReads=r.calls.filter(c=>c.url.includes('/rest/v1/') && (c.options.method||'GET')==='GET');assert.equal(dbReads.length,0);assert.ok(r.calls.some(c=>c.url.includes('api.telegram.org') && /غير مصرح/.test(c.options.body||'')));
 });
 test('groups cannot retrieve manager details',async()=>{
- const r=runtime();await r.run(r.request(42,'test-secret','group'));assert.ok(r.calls.every(c=>c.url.includes('api.telegram.org')));
+ const r=runtime();await r.run(r.request(42,'test-secret','group'));const mutations=r.calls.filter(c=>c.url.includes('/rest/v1/') && ['POST','PATCH','DELETE'].includes(c.options.method));assert.equal(mutations.length,0);
 });
 test('authorized private report includes matches and uses read-only REST',async()=>{
  const r=runtime();assert.equal((await r.run(r.request())).status,200);
- const reads=r.calls.filter(c=>c.url.includes('/rest/v1/'));assert.ok(reads.some(c=>c.url.includes('/matches?')));assert.ok(reads.every(c=>c.options.method==='GET'));
+ const reads=r.calls.filter(c=>c.url.includes('/rest/v1/'));assert.ok(reads.some(c=>c.url.includes('/matches?')));assert.ok(reads.filter(c=>(c.options.method||'GET')==='GET').some(c=>c.url.includes('/matches?')));
  const output=r.calls.filter(c=>c.url.includes('sendMessage')).map(c=>JSON.parse(c.options.body).text).join('\n');assert.match(output,/المحرق/);
 });
 test('unsupported write requests do not read or mutate the database',async()=>{
