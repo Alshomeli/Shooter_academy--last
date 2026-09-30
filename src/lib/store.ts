@@ -226,6 +226,17 @@ export const db = {
     }
   },
 
+  async resubmitPaymentProof(proof: PaymentProof, transferDate: string, file: File, parentNote = ''): Promise<void> {
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) throw userError || new Error('Authentication required');
+    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+    const path = `${user.id}/${proof.subscriptionId}/${crypto.randomUUID()}.${ext}`;
+    const { error: uploadError } = await supabase.storage.from('payment-proofs').upload(path, file, { upsert: false, contentType: file.type });
+    if (uploadError) throw uploadError;
+    const { error } = await supabase.rpc('resubmit_payment_proof', { p_proof_id: proof.id, p_proof_path: path, p_transfer_date: transferDate, p_parent_note: parentNote.trim() });
+    if (error) throw error;
+  },
+
   async approvePaymentProof(id: string): Promise<void> {
     const { error } = await supabase.rpc('approve_payment_proof', { p_proof_id: id });
     if (error) throw error;
