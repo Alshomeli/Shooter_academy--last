@@ -240,7 +240,7 @@ export default function App() {
     const tables = [
       'staff', 'teams', 'players', 'parents', 'subscriptions', 'attendance',
       'matches', 'trainings', 'transactions', 'tournaments', 'player_evaluations',
-      'notifications', 'academy_settings',
+      'notifications', 'notification_reads', 'academy_settings',
     ];
     let debounce: ReturnType<typeof setTimeout> | null = null;
     const handleChange = () => {
@@ -609,9 +609,10 @@ export default function App() {
                       {data.notifications.length > 0 && (
                         <button
                           onClick={() => {
+                            const unreadIds = data.notifications.filter(n => !n.read).map(n => n.id);
                             const read = data.notifications.map((n) => ({ ...n, read: true }));
                             setData((p) => ({ ...p, notifications: read }));
-                            void db.syncNotifications(read, data.notifications).then(loadAllData).catch(handleSyncError);
+                            void db.markNotificationsRead(unreadIds).then(loadAllData).catch(handleSyncError);
                           }}
                           className="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 cursor-pointer"
                         >
