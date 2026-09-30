@@ -5,7 +5,7 @@ import { Badge, Modal } from '@/components/ui';
 import { errorMessage, fetchMyApplications } from '@/lib/registration';
 import type { RegistrationApplication } from '@/types';
 import { planLabel } from '@/lib/i18n';
-import type { Attendance, CurrentUser, Lang, PaymentProof, Player, PlayerEvaluation, Settings, Subscription } from '@/types';
+import type { Attendance, CurrentUser, Lang, PaymentProof, Player, PlayerDocument, PlayerEvaluation, Settings, Subscription } from '@/types';
 import { db } from '@/lib/store';
 import { tr } from '@/lib/i18n';
 
@@ -22,6 +22,8 @@ export function ParentPortal({ user, players, subscriptions, attendance, evaluat
   const [editor, setEditor] = useState<RegistrationApplication | 'new' | null>(openRegistration ? 'new' : null);
   const [selectedPlayerId, setSelectedPlayerId] = useState(players[0]?.id || '');
   const [paymentProofs, setPaymentProofs] = useState<PaymentProof[]>([]);
+  const [playerDocuments, setPlayerDocuments] = useState<PlayerDocument[]>([]);
+  const [photoUrls, setPhotoUrls] = useState<Record<string,string>>({});
   const [payingSubscription, setPayingSubscription] = useState<Subscription | null>(null);
   const [paymentFile, setPaymentFile] = useState<File | null>(null);
   const [transferDate, setTransferDate] = useState(new Date().toISOString().slice(0, 10));
@@ -32,7 +34,7 @@ export function ParentPortal({ user, players, subscriptions, attendance, evaluat
   const playerAttendance = selectedPlayer ? attendance.filter((a) => a.playerId === selectedPlayer.id) : [];
   const playerEvaluations = selectedPlayer ? evaluations.filter((e) => e.playerId === selectedPlayer.id && e.status === 'published').sort((a,b) => b.evaluationDate.localeCompare(a.evaluationDate)) : [];
   const load = useCallback(async () => {
-    try { const [myApps, proofs] = await Promise.all([fetchMyApplications(), db.getPaymentProofs()]); setApps(myApps); setPaymentProofs(proofs); setError(''); setReady(true); }
+    try { const [myApps, proofs, docs] = await Promise.all([fetchMyApplications(), db.getPaymentProofs(), db.getPlayerDocuments()]); setApps(myApps); setPaymentProofs(proofs); setPlayerDocuments(docs); const photos=docs.filter(d=>d.playerId&&d.fileCategory==='photo'); const pairs=await Promise.all(photos.map(async d=>[d.playerId!,await db.getPlayerDocumentUrl(d.filePath)] as const)); setPhotoUrls(Object.fromEntries(pairs)); setError(''); setReady(true); }
     catch (e) { setError(errorMessage(e, lang === 'ar')); }
   }, [lang]);
   useEffect(() => {
@@ -69,12 +71,12 @@ export function ParentPortal({ user, players, subscriptions, attendance, evaluat
       {players.length > 0 && <div className="grid lg:grid-cols-[260px_1fr] gap-5">
         <aside className="space-y-2">
           {players.map((player) => <button key={player.id} onClick={() => setSelectedPlayerId(player.id)} className={`w-full text-start rounded-2xl border p-4 transition ${selectedPlayer?.id === player.id ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/20' : 'bg-white dark:bg-slate-900 dark:border-slate-700'}`}>
-            <div className="flex items-center gap-3"><div className="h-11 w-11 rounded-full bg-slate-100 dark:bg-slate-800 grid place-items-center"><UserRound className="h-5 w-5" /></div><div><p className="font-black">{player.name}</p><p className="text-xs text-slate-500">#{player.jerseyNumber || '—'} · {player.position || text('لم يحدد المركز','Position pending')}</p></div></div>
+            <div className="flex items-center gap-3"><div className="h-11 w-11 rounded-full bg-slate-100 dark:bg-slate-800 grid place-items-center overflow-hidden">{photoUrls[player.id]?<img src={photoUrls[player.id]} alt="" className="w-full h-full object-cover"/>:<UserRound className="h-5 w-5" />}</div><div><p className="font-black">{player.name}</p><p className="text-xs text-slate-500">#{player.jerseyNumber || '—'} · {player.position || text('لم يحدد المركز','Position pending')}</p></div></div>
           </button>)}
         </aside>
         {selectedPlayer && <section className="space-y-5">
           <div className="bg-white dark:bg-slate-900 border dark:border-slate-700 rounded-2xl p-5">
-            <div className="flex flex-wrap justify-between gap-4"><div><h2 className="text-xl font-black">{selectedPlayer.name}</h2><p className="text-sm text-slate-500">{text('ملف اللاعب','Player profile')}</p></div><Badge color={selectedPlayer.status === 'active' ? 'green' : 'amber'}>{selectedPlayer.status === 'active' ? text('نشط','Active') : text('غير نشط','Inactive')}</Badge></div>
+            <div className="flex flex-wrap justify-between gap-4"><div className="flex items-center gap-3"><div className="h-16 w-16 rounded-2xl bg-slate-100 dark:bg-slate-800 grid place-items-center overflow-hidden">{photoUrls[selectedPlayer.id]?<img src={photoUrls[selectedPlayer.id]} alt="" className="w-full h-full object-cover"/>:<UserRound className="h-7 w-7"/>}</div><div><h2 className="text-xl font-black">{selectedPlayer.name}</h2><p className="text-sm text-slate-500">{text('ملف اللاعب','Player profile')}</p></div></div><Badge color={selectedPlayer.status === 'active' ? 'green' : 'amber'}>{selectedPlayer.status === 'active' ? text('نشط','Active') : text('غير نشط','Inactive')}</Badge></div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-5">
               <div className="rounded-xl bg-slate-50 dark:bg-slate-800 p-3"><p className="text-xs text-slate-500">{text('الحضور','Attendance')}</p><p className="font-black">{playerAttendance.filter(a=>a.status==='present').length}/{playerAttendance.length}</p></div>
               <div className="rounded-xl bg-slate-50 dark:bg-slate-800 p-3"><p className="text-xs text-slate-500">{text('التقييمات','Evaluations')}</p><p className="font-black">{playerEvaluations.length}</p></div>
@@ -95,6 +97,11 @@ export function ParentPortal({ user, players, subscriptions, attendance, evaluat
               </div>;
             })}
           </div>
+
+          {playerDocuments.some(d=>d.playerId===selectedPlayer.id&&d.fileCategory!=='photo') && <div className="bg-white dark:bg-slate-900 border dark:border-slate-700 rounded-2xl p-5 space-y-3">
+            <h3 className="font-black">{text('مستندات اللاعب','Player documents')}</h3>
+            {playerDocuments.filter(d=>d.playerId===selectedPlayer.id&&d.fileCategory!=='photo').map(d=><button key={d.id} onClick={async()=>window.open(await db.getPlayerDocumentUrl(d.filePath),'_blank','noopener,noreferrer')} className="w-full flex justify-between gap-3 border-t dark:border-slate-700 pt-3 text-sm"><span className="font-bold">{d.fileName}</span><span className="text-emerald-600">{text('عرض','View')}</span></button>)}
+          </div>}
 
           {playerEvaluations.length > 0 && <div className="bg-white dark:bg-slate-900 border dark:border-slate-700 rounded-2xl p-5 space-y-3"><h3 className="font-black">{tr(lang).playerEvaluations}</h3>
             {playerEvaluations.slice(0,5).map((ev)=><div key={ev.id} className="border-t dark:border-slate-700 pt-3"><div className="flex justify-between"><span className="text-xs text-slate-500">{ev.evaluationDate}</span>{ev.overallScore!=null&&<strong className="text-emerald-600">{ev.overallScore.toFixed(1)}/5</strong>}</div>{ev.strengths&&<p className="text-sm mt-1">{ev.strengths}</p>}{ev.coachRecommendation&&<p className="text-xs text-blue-600 mt-1">{ev.coachRecommendation}</p>}</div>)}
