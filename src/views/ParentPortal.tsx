@@ -43,7 +43,7 @@ export function ParentPortal({ user, players, subscriptions, attendance, evaluat
     const timer = setInterval(refreshVisible, 60000);
     window.addEventListener('focus', refreshVisible);
     return () => { clearInterval(timer); window.removeEventListener('focus', refreshVisible); };
-  }, [load]);
+  }, [lang]);
   const statusLabel = (status: RegistrationApplication['status']) => ({ draft: text('مسودة', 'Draft'), pending: text('بانتظار المراجعة', 'Pending review'), under_review: text('قيد المراجعة', 'Under review'), needs_info: text('يحتاج استكمال', 'More information needed'), approved: text('مقبول', 'Approved'), rejected: text('مرفوض', 'Rejected') })[status];
   const refresh = async () => { await load(); await onRefresh(); };
   const submitProof = async () => {
