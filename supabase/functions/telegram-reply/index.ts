@@ -461,6 +461,46 @@ function stripMenuLabel(text: string): string {
   return text.replace(/^[\p{Extended_Pictographic}\uFE0F\u200D\s]+/u, "").trim();
 }
 
+async function sendManagerAttendancePeople(chatId: number, text: string): Promise<boolean> {
+  const value = normalize(text);
+  const asksWho = value.includes("من غاب") || value.includes("من غائب") || value.includes("من الغائب") ||
+    value.includes("اسماء الغائب") || value.includes("أسماء الغائب") || value.includes("الغائبين") ||
+    value.includes("من حضر") || value.includes("من حاضر") || value.includes("الحاضرين") ||
+    value.includes("من بعذر") || value.includes("المعذور") || value.includes("بعذر من");
+  if (!asksWho) return false;
+
+  const wanted = (value.includes("حضر") || value.includes("حاضر") || value.includes("الحاضرين"))
+    ? "present" : (value.includes("بعذر") || value.includes("معذور")) ? "excused" : "absent";
+  const period = inferPeriod(value);
+  const effective = adminDateRange(period === "all" ? "today" : period)!;
+  const [attendance, players, trainings, teams] = await Promise.all([
+    restRows<{ player_id?: string; training_id?: string; status?: string; session_date?: string }>("attendance", {
+      select: "player_id,training_id,status,session_date",
+      session_date_gte: `gte.${effective.start}`, session_date_lte: `lte.${effective.end}`, order: "session_date.desc",
+    }),
+    restRows<{ id?: string; name?: string; team_id?: string; jersey_number?: number }>("players", {
+      select: "id,name,team_id,jersey_number", status: "eq.active", order: "name.asc",
+    }),
+    restRows<{ id?: string; team_id?: string; title?: string }>("trainings", { select: "id,team_id,title" }),
+    restRows<{ id?: string; name?: string }>("teams", { select: "id,name" }),
+  ]);
+  const matches = attendance.filter(a => String(a.status).toLowerCase() === wanted);
+  const label = wanted === "present" ? "الحاضرون" : wanted === "excused" ? "بعذر" : "الغائبون";
+  const lines = matches.map((a, index) => {
+    const player = players.find(p => p.id === a.player_id);
+    const training = trainings.find(t => t.id === a.training_id);
+    const teamId = training?.team_id || player?.team_id;
+    const team = teams.find(t => t.id === teamId);
+    return `${index + 1}) ${player?.name || "لاعب غير معروف"}${player?.jersey_number ? ` #${player.jersey_number}` : ""} — ${team?.name || "فريق غير محدد"}${a.session_date ? ` — ${a.session_date}` : ""}`;
+  });
+  await sendMessage(chatId, [
+    `${label} — ${periodLabel(period === "all" ? "today" : period)}`,
+    `العدد: ${matches.length}`,
+    ...(lines.length ? lines.slice(0, 40) : ["لا توجد أسماء مطابقة للفترة المطلوبة."]),
+  ].join("\n"));
+  return true;
+}
+
 async function sendManagerActionCenter(chatId: number) {
   const today=bahrainDate();
   const [registrations,staffApps,paymentProofs,expiring,missingAttendance]=await Promise.all([
@@ -1080,11 +1120,7 @@ Deno.serve(async (req: Request) => {
       await sendManagerActionCenter(chatId);
       return Response.json({ ok: true });
     }
-    if (normalize(managerMenuText) === "مساعدة") {
-      await sendRoleMenu(chatId, "manager");
-      return Response.json({ ok: true });
-    }
-    if (isHelpCommand(managerMenuText)) {
+    if (normalize(managerMenuText) === "مساعدة" || isHelpCommand(managerMenuText)) {
       await sendMessage(
         chatId,
         [
@@ -1098,11 +1134,16 @@ Deno.serve(async (req: Request) => {
           "• طلبات التسجيل الجديدة",
           "• ملخص اليوم",
           "",
-          "أمثلة: «كم مدرب عندنا؟» — «كم دخلنا هذا الشهر؟» — «كم غياب أمس؟»",
+          "أمثلة: «من هم المدربين؟» — «من غاب اليوم؟» — «أسماء الغائبين» — «كم دخلنا هذا الشهر؟» — «مباريات اليوم»",
           "",
           "طلبات التسجيل المعلقة يمكن اعتمادها من زر «موافقة»، بينما الرفض أو طلب معلومات إضافية يتم من الموقع مع تسجيل الملاحظات.",
         ].join("\n"),
       );
+      await sendRoleMenu(chatId, "manager");
+      return Response.json({ ok: true });
+    }
+
+    if (await sendManagerAttendancePeople(chatId, managerMenuText)) {
       return Response.json({ ok: true });
     }
 
