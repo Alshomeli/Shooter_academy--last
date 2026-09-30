@@ -543,7 +543,7 @@ export function Subscriptions({
           <button className="bg-emerald-600 text-white rounded-lg py-2 px-4 disabled:opacity-50" disabled={!!markingPaidId} onClick={() => void handleMarkPaid()}>{markingPaidId ? t.processing : t.confirmPayment}</button>
         </div>
       </Modal>
-      {receiptSub && <PaymentReceipt subscription={receiptSub} transactions={transactions} players={players} settings={settings} lang={lang} onClose={() => setReceiptSub(null)} />}
+      {receiptSub && <PaymentReceipt subscription={receiptSub} transactions={transactions} players={players} parents={parents} settings={settings} lang={lang} onClose={() => setReceiptSub(null)} />}
 
       {/* ---------------- Modals ---------------- */}
       {(showAddSub || editSub) && (
