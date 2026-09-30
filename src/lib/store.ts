@@ -445,8 +445,23 @@ export const db = {
     if (error) throw error;
   },
 
-  async getNotifications(): Promise<Notification[]> { return fetchAll('notifications', mapNotification as never); },
-  async saveNotification(n: Notification): Promise<Notification> { return upsertRow('notifications', notificationToRow(n) as unknown as Record<string, unknown>, mapNotification as never); },
+  async getNotifications(): Promise<Notification[]> {
+    const notifications = await fetchAll('notifications', mapNotification as never) as Notification[];
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user || notifications.length === 0) return notifications.map(n => ({ ...n, read: false }));
+    const { data: reads, error } = await supabase.from('notification_reads').select('notification_id').eq('user_id', user.id);
+    if (error) throw error;
+    const readIds = new Set((reads || []).map(r => r.notification_id));
+    return notifications.map(n => ({ ...n, read: readIds.has(n.id) }));
+  },
+  async markNotificationsRead(ids: string[]): Promise<void> {
+    if (ids.length === 0) return;
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) throw userError || new Error('Authentication required');
+    const { error } = await supabase.from('notification_reads').upsert(ids.map(notification_id => ({ notification_id, user_id: user.id })), { onConflict: 'notification_id,user_id' });
+    if (error) throw error;
+  },
+  async saveNotification(n: Notification): Promise<Notification> { return upsertRow('notifications', notificationToRow({ ...n, read: false }) as unknown as Record<string, unknown>, mapNotification as never); },
   async deleteNotification(id: string): Promise<void> { return deleteRow('notifications', id); },
 
   /* ---------- Explicit changes against the displayed snapshot ---------- */
