@@ -393,7 +393,7 @@ export default function App() {
       case 'players':
         return <Players players={data.players} parents={data.parents} teams={data.teams} evaluations={data.evaluations} onPlayersChange={savePlayers} activeRole={activeRole} lang={lang} />;
       case 'parents':
-        return <Parents parents={data.parents} players={data.players} teams={data.teams} subscriptions={data.subscriptions} onParentsChange={saveParents} activeRole={activeRole} lang={lang} />;
+        return <Parents parents={data.parents} players={data.players} teams={data.teams} subscriptions={data.subscriptions} onParentsChange={saveParents} onRefresh={loadAllData} activeRole={activeRole} lang={lang} />;
       case 'teams':
         return <Teams teams={data.teams} staff={data.staff} players={data.players} onTeamsChange={saveTeams} onRefresh={loadAllData} activeRole={activeRole} lang={lang} />;
       case 'staff':

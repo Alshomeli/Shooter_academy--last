@@ -1,11 +1,12 @@
 import { useState, useMemo, useDeferredValue, type FormEvent } from 'react';
 import {
-  UsersRound, Plus, Search, Phone, Mail, Edit2, Trash2, Eye, MessageSquare,
+  UsersRound, Plus, Search, Phone, Mail, Edit2, Trash2, Eye, MessageSquare, UserPlus, ShieldCheck,
 } from 'lucide-react';
 import type { Parent, Player, Team, Subscription, Lang, Role } from '@/types';
 import { Badge, Modal, ConfirmDialog, PageHeader, EmptyState, SaveButton } from '@/components/ui';
 import { ContactLinks } from '@/components/ContactLinks';
 import { tr, positionLabel } from '@/lib/i18n';
+import { prepareParentInvite, sendParentInvite } from '@/lib/parent-accounts';
 
 interface ParentsProps {
   parents: Parent[];
@@ -13,13 +14,14 @@ interface ParentsProps {
   teams: Team[];
   subscriptions: Subscription[];
   onParentsChange: (p: Parent[]) => void;
+  onRefresh: () => Promise<void>;
   activeRole: Role;
   lang: Lang;
 }
 
 const AVATAR_EMOJIS = ['👨', '👩', '🧔', '👱', '👴', '👵', '🧑', '👨‍🦰'];
 
-export function Parents({ parents, players, teams, subscriptions, onParentsChange, activeRole, lang }: ParentsProps) {
+export function Parents({ parents, players, teams, subscriptions, onParentsChange, onRefresh, activeRole, lang }: ParentsProps) {
   const t = tr(lang);
   const isAr = lang === 'ar';
   const [search, setSearch] = useState('');
@@ -29,6 +31,8 @@ export function Parents({ parents, players, teams, subscriptions, onParentsChang
   const [editParent, setEditParent] = useState<Parent | null>(null);
   const [viewParent, setViewParent] = useState<Parent | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [inviteTarget, setInviteTarget] = useState<{ id: string; maskedEmail: string } | null>(null);
+  const [inviteNotice, setInviteNotice] = useState('');
 
   const canEdit = activeRole === 'manager' || activeRole === 'receptionist';
 
@@ -62,6 +66,32 @@ export function Parents({ parents, players, teams, subscriptions, onParentsChang
     setDeleteId(null);
   };
 
+  const prepareInvite = async (parent: Parent) => {
+    setInviteNotice('');
+    try {
+      const preview = await prepareParentInvite(parent.id);
+      if (preview.alreadyLinked || !preview.canInvite) {
+        await onRefresh();
+        setInviteNotice(isAr ? 'حساب ولي الأمر مرتبط مسبقًا.' : 'This parent account is already linked.');
+        return;
+      }
+      setInviteTarget({ id: parent.id, maskedEmail: preview.maskedEmail });
+    } catch {
+      setInviteNotice(isAr ? 'تعذر تجهيز الدعوة. تحقق من البريد وحالة الحساب.' : 'Could not prepare the invitation. Check the email and account status.');
+    }
+  };
+
+  const confirmInvite = async () => {
+    if (!inviteTarget) return;
+    const result = await sendParentInvite(inviteTarget.id);
+    await onRefresh();
+    setInviteNotice(
+      result.status === 'linked_existing'
+        ? (isAr ? 'تم ربط حساب موجود بولي الأمر.' : 'An existing account was linked to this parent.')
+        : (isAr ? 'تم إرسال دعوة الحساب وربطها بولي الأمر.' : 'The account invitation was sent and linked to this parent.'),
+    );
+  };
+
   return (
     <div className="space-y-5 text-right" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
       <PageHeader title={t.parents} subtitle={isAr ? `${parents.length} ولي أمر مسجل في الأكاديمية` : `${parents.length} parents registered`}>
@@ -75,6 +105,8 @@ export function Parents({ parents, players, teams, subscriptions, onParentsChang
           </button>
         )}
       </PageHeader>
+
+      {inviteNotice && <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-900/20 dark:text-emerald-300">{inviteNotice}</p>}
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
@@ -137,6 +169,10 @@ export function Parents({ parents, players, teams, subscriptions, onParentsChang
                     <UsersRound className="h-3 w-3" />
                     {kids.length} {isAr ? 'أبناء' : 'children'}
                   </Badge>
+                  <Badge color={p.userId ? 'emerald' : 'slate'}>
+                    {p.userId ? <ShieldCheck className="h-3 w-3" /> : <UserPlus className="h-3 w-3" />}
+                    {p.userId ? (isAr ? 'حساب مرتبط' : 'Account linked') : (isAr ? 'بدون حساب' : 'No account')}
+                  </Badge>
                   {p.nationality && (
                     <span className="text-[11px] text-slate-400 font-semibold truncate">{p.nationality}</span>
                   )}
@@ -169,6 +205,15 @@ export function Parents({ parents, players, teams, subscriptions, onParentsChang
                     <Eye className="h-3.5 w-3.5" /> {isAr ? 'عرض' : 'View'}
                   </button>
                   <ContactLinks phone={p.phone} whatsapp={p.whatsappPhone} email={p.email} address={p.address} small />
+                  {activeRole === 'manager' && !p.userId && p.status === 'active' && p.email && (
+                    <button
+                      onClick={() => void prepareInvite(p)}
+                      className="flex items-center justify-center gap-1 py-1.5 px-2.5 rounded-lg text-[11px] font-bold text-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition cursor-pointer"
+                      title={isAr ? 'دعوة حساب ولي الأمر' : 'Invite parent account'}
+                    >
+                      <UserPlus className="h-3.5 w-3.5" />
+                    </button>
+                  )}
                   {canEdit && (
                     <>
                       <button
@@ -217,6 +262,20 @@ export function Parents({ parents, players, teams, subscriptions, onParentsChang
           />
         </Modal>
       )}
+
+      <ConfirmDialog
+        open={!!inviteTarget}
+        onClose={() => setInviteTarget(null)}
+        onConfirm={confirmInvite}
+        title={isAr ? 'دعوة حساب ولي الأمر' : 'Invite parent account'}
+        message={inviteTarget
+          ? (isAr
+            ? `سيتم إرسال دعوة تسجيل الدخول إلى ${inviteTarget.maskedEmail}. لن تُرسل أي دعوة قبل تأكيدك.`
+            : `A sign-in invitation will be sent to ${inviteTarget.maskedEmail}. Nothing is sent until you confirm.`)
+          : ''}
+        confirmLabel={isAr ? 'إرسال الدعوة' : 'Send invitation'}
+        cancelLabel={isAr ? 'إلغاء' : 'Cancel'}
+      />
 
       {/* Delete confirmation */}
       <ConfirmDialog
