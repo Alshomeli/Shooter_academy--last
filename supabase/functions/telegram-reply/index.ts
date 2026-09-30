@@ -7,6 +7,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 const SUPABASE_SECRET_KEYS = Deno.env.get("SUPABASE_SECRET_KEYS");
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+const TELEGRAM_DISPATCH_SECRET = optionalServerEnv("TELEGRAM", "DISPATCH", "SECRET");
 const MAX_VOICE_BYTES = 20 * 1024 * 1024;
 const MANAGER_CHAT_IDS = new Set(
   (optionalServerEnv("TELEGRAM", "MANAGER", "CHAT", "IDS") || "")
@@ -495,7 +496,14 @@ Deno.serve(async (req: Request) => {
   }
 
   const providedSecret = req.headers.get("X-Telegram-Bot-Api-Secret-Token");
-  if (!(await isAuthorizedWebhookSecret(providedSecret))) {
+  const providedDispatchSecret = req.headers.get("X-Shooter-Dispatch-Secret");
+  const telegramWebhookAuthorized = await isAuthorizedWebhookSecret(providedSecret);
+  const dispatchAuthorized = Boolean(
+    TELEGRAM_DISPATCH_SECRET
+    && providedDispatchSecret
+    && TELEGRAM_DISPATCH_SECRET === providedDispatchSecret
+  );
+  if (!telegramWebhookAuthorized && !dispatchAuthorized) {
     return new Response("Unauthorized", { status: 401 });
   }
 
@@ -511,12 +519,19 @@ Deno.serve(async (req: Request) => {
     && "action" in rawPayload
     && (rawPayload as { action?: unknown }).action === "flush_registration_notifications"
   ) {
+    if (!dispatchAuthorized && !telegramWebhookAuthorized) {
+      return new Response("Unauthorized", { status: 401 });
+    }
     try {
       return Response.json({ ok: true, ...(await deliverPendingRegistrationNotifications()) });
     } catch (error) {
       console.error("Telegram notification flush failed", error instanceof Error ? error.message : "unknown");
       return Response.json({ ok: false }, { status: 500 });
     }
+  }
+
+  if (!telegramWebhookAuthorized) {
+    return new Response("Unauthorized", { status: 401 });
   }
 
   const update = rawPayload as TelegramUpdate;
