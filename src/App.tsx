@@ -427,7 +427,7 @@ export default function App() {
       case 'staff':
         return <StaffView staff={data.staff} teams={data.teams} players={data.players} onStaffChange={saveStaff} onRefresh={loadAllData} activeRole={activeRole} lang={lang} />;
       case 'subscriptions':
-        return <Subscriptions onPayment={async (sub, method) => { await db.recordPayment(sub, method); await loadAllData(); }} subscriptions={data.subscriptions} transactions={data.transactions} players={data.players} parents={data.parents} staff={data.staff} settings={data.settings} onSubscriptionsChange={saveSubscriptions} onTransactionsChange={saveTransactions} activeRole={activeRole} lang={lang} />;
+        return <Subscriptions onPayment={async (sub, method) => { await db.recordPayment(sub, method); await loadAllData(); }} subscriptions={data.subscriptions} transactions={data.transactions} players={data.players} parents={data.parents} staff={data.staff} settings={data.settings} onSubscriptionsChange={saveSubscriptions} onTransactionsChange={saveTransactions} onRefresh={loadAllData} activeRole={activeRole} lang={lang} />;
       case 'attendance':
         return <AttendanceView players={data.players} teams={data.teams} matches={data.matches} trainings={data.trainings} attendance={data.attendance} onAttendanceChange={saveAttendance} activeRole={activeRole} lang={lang} />;
       case 'schedules':
