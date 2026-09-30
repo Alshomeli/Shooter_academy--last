@@ -6,7 +6,7 @@ const source = await readFile(new URL('../supabase/functions/telegram-reply/inde
 const config = await readFile(new URL('../supabase/config.toml', import.meta.url), 'utf8');
 
 test('Telegram webhook requires the provider secret and is configured without platform JWT verification', () => {
-  assert.match(source, /TELEGRAM_WEBHOOK_SECRET/);
+  assert.match(source, /optionalServerEnv\("TELEGRAM", "WEBHOOK", "SECRET"\)/);
   assert.match(source, /X-Telegram-Bot-Api-Secret-Token/);
   assert.match(source, /status:\s*401/);
   assert.match(config, /\[functions\.telegram-reply\][\s\S]*verify_jwt\s*=\s*false/);
@@ -14,7 +14,7 @@ test('Telegram webhook requires the provider secret and is configured without pl
 
 test('Telegram manager is limited to direct chats and an explicit chat allowlist', () => {
   assert.match(source, /chatType !== "private"/);
-  assert.match(source, /TELEGRAM_MANAGER_CHAT_IDS/);
+  assert.match(source, /optionalServerEnv\("TELEGRAM", "MANAGER", "CHAT", "IDS"\)/);
   assert.match(source, /isAuthorizedManagerChat/);
   assert.match(source, /BOOTSTRAP_MANAGER_CHAT_HASHES/);
   assert.match(source, /crypto\.subtle\.digest\("SHA-256"/);
@@ -118,4 +118,11 @@ test('Telegram financial summaries use the canonical revenue transaction type', 
   assert.match(source, /String\(row\.type\)\.toLowerCase\(\) === "revenue"/);
   assert.doesNotMatch(source, /String\(row\.type\)\.toLowerCase\(\) === "income"/);
   assert.match(source, /const revenues = rows\.filter/);
+});
+
+
+test('optional Telegram overrides do not trigger Bolt secret requirements', () => {
+  assert.doesNotMatch(source, /Deno\.env\.get\("TELEGRAM_WEBHOOK_SECRET"\)/);
+  assert.doesNotMatch(source, /Deno\.env\.get\("TELEGRAM_MANAGER_CHAT_IDS"\)/);
+  assert.match(source, /parts\.join\("_"\)/);
 });
