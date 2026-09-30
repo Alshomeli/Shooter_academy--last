@@ -108,6 +108,156 @@ function isHelpCommand(text: string): boolean {
   return ["/start", "/help", "help", "مساعدة", "الأوامر", "اوامر"].includes(normalize(text));
 }
 
+type AdminIntent =
+  | "active_players"
+  | "coaches"
+  | "staff"
+  | "teams"
+  | "parents"
+  | "unpaid_subscriptions"
+  | "expiring_subscriptions"
+  | "revenue"
+  | "attendance"
+  | "registrations"
+  | "unknown";
+
+type AdminPeriod = "today" | "yesterday" | "this_week" | "this_month" | "last_month" | "next_7_days" | "all";
+
+type ParsedAdminQuestion = { intent: AdminIntent; period: AdminPeriod };
+
+const ADMIN_INTENTS = new Set<AdminIntent>([
+  "active_players", "coaches", "staff", "teams", "parents", "unpaid_subscriptions",
+  "expiring_subscriptions", "revenue", "attendance", "registrations", "unknown",
+]);
+const ADMIN_PERIODS = new Set<AdminPeriod>([
+  "today", "yesterday", "this_week", "this_month", "last_month", "next_7_days", "all",
+]);
+
+function inferPeriod(text: string): AdminPeriod {
+  const value = normalize(text);
+  if (value.includes("أمس") || value.includes("امس") || value.includes("البارح")) return "yesterday";
+  if (value.includes("الشهر الماضي") || value.includes("الشهر اللي فات")) return "last_month";
+  if (value.includes("هذا الشهر") || value.includes("الشهر الحالي")) return "this_month";
+  if (value.includes("هذا الأسبوع") || value.includes("هذا الاسبوع") || value.includes("الأسبوع الحالي")) return "this_week";
+  if (value.includes("أسبوع") || value.includes("اسبوع") || value.includes("7 أيام") || value.includes("سبعة أيام")) return "next_7_days";
+  if (value.includes("اليوم")) return "today";
+  return "all";
+}
+
+function deterministicAdminIntent(text: string): ParsedAdminQuestion | null {
+  const value = normalize(text);
+  const period = inferPeriod(value);
+  if (value.includes("مدرب") || value.includes("مدربين") || value.includes("مدربون")) return { intent: "coaches", period: "all" };
+  if (value.includes("موظف") || value.includes("موظفين") || value.includes("طاقم")) return { intent: "staff", period: "all" };
+  if (value.includes("فريق") || value.includes("فرق")) return { intent: "teams", period: "all" };
+  if (value.includes("ولي أمر") || value.includes("اولياء") || value.includes("أولياء") || value.includes("أهالي")) return { intent: "parents", period: "all" };
+  if (value.includes("لاعب") || value.includes("لاعبين") || value.includes("لاعبون")) return { intent: "active_players", period: "all" };
+  if (value.includes("حضور") || value.includes("غياب") || value.includes("غائب") || value.includes("حاضر")) return { intent: "attendance", period: period === "all" ? "today" : period };
+  if (value.includes("تسجيل") || value.includes("طلبات") || value.includes("طلب جديد")) return { intent: "registrations", period: period === "all" ? "today" : period };
+  if ((value.includes("دخل") || value.includes("إيراد") || value.includes("ايراد") || value.includes("مبيعات")) && !value.includes("اشتراك")) {
+    return { intent: "revenue", period: period === "all" ? "today" : period };
+  }
+  if (value.includes("اشتراك") && (value.includes("غير مدفوع") || value.includes("ما دفع") || value.includes("لم يدفع"))) {
+    return { intent: "unpaid_subscriptions", period: "all" };
+  }
+  if (value.includes("اشتراك") && (value.includes("ينتهي") || value.includes("تنتهي") || value.includes("انتهاء") || value.includes("منته"))) {
+    return { intent: "expiring_subscriptions", period: period === "all" ? "next_7_days" : period };
+  }
+  return null;
+}
+
+async function classifyAdminQuestion(text: string): Promise<ParsedAdminQuestion> {
+  const deterministic = deterministicAdminIntent(text);
+  if (deterministic) return deterministic;
+  if (!OPENAI_API_KEY) return { intent: "unknown", period: "all" };
+
+  const prompt = [
+    "صنّف سؤال مدير أكاديمية رياضية إلى مقصد واحد وفترة زمنية.",
+    "المقاصد المسموحة فقط: active_players, coaches, staff, teams, parents, unpaid_subscriptions, expiring_subscriptions, revenue, attendance, registrations, unknown.",
+    "الفترات المسموحة فقط: today, yesterday, this_week, this_month, last_month, next_7_days, all.",
+    "لا تنشئ SQL ولا أوامر ولا أسماء جداول. أرجع JSON فقط بالشكل: {\"intent\":\"...\",\"period\":\"...\"}.",
+    "إذا لم يذكر المستخدم فترة: revenue/attendance/registrations = today، expiring_subscriptions = next_7_days، والبقية = all.",
+  ].join("\n");
+
+  try {
+    const response = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "gpt-5.6-luna",
+        instructions: prompt,
+        input: text.slice(0, 1000),
+        max_output_tokens: 120,
+      }),
+    });
+    if (!response.ok) {
+      console.error("Admin intent classification failed", response.status);
+      return { intent: "unknown", period: "all" };
+    }
+    const data = await response.json();
+    const outputText = Array.isArray(data?.output)
+      ? data.output.flatMap((item: { content?: Array<{ type?: string; text?: string }> }) => item.content || [])
+        .find((part: { type?: string; text?: string }) => part.type === "output_text")?.text
+      : undefined;
+    if (typeof outputText !== "string") return { intent: "unknown", period: "all" };
+    const match = outputText.match(/\{[\s\S]*\}/);
+    if (!match) return { intent: "unknown", period: "all" };
+    const parsed = JSON.parse(match[0]) as { intent?: string; period?: string };
+    const intent = ADMIN_INTENTS.has(parsed.intent as AdminIntent) ? parsed.intent as AdminIntent : "unknown";
+    const period = ADMIN_PERIODS.has(parsed.period as AdminPeriod) ? parsed.period as AdminPeriod : "all";
+    return { intent, period };
+  } catch {
+    return { intent: "unknown", period: "all" };
+  }
+}
+
+function isoDateShift(date: string, days: number): string {
+  const d = new Date(`${date}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+function adminDateRange(period: AdminPeriod): { start: string; end: string } | null {
+  const today = bahrainDate();
+  if (period === "all") return null;
+  if (period === "today") return { start: today, end: today };
+  if (period === "yesterday") {
+    const yesterday = isoDateShift(today, -1);
+    return { start: yesterday, end: yesterday };
+  }
+  if (period === "next_7_days") return { start: isoDateShift(today, 1), end: isoDateShift(today, 7) };
+
+  const current = new Date(`${today}T12:00:00Z`);
+  if (period === "this_week") {
+    const day = current.getUTCDay();
+    return { start: isoDateShift(today, -day), end: today };
+  }
+  if (period === "this_month") return { start: `${today.slice(0, 8)}01`, end: today };
+
+  const firstThisMonth = new Date(Date.UTC(current.getUTCFullYear(), current.getUTCMonth(), 1, 12));
+  const lastPrevMonth = new Date(firstThisMonth.getTime() - 86_400_000);
+  const startPrevMonth = new Date(Date.UTC(lastPrevMonth.getUTCFullYear(), lastPrevMonth.getUTCMonth(), 1, 12));
+  return {
+    start: startPrevMonth.toISOString().slice(0, 10),
+    end: lastPrevMonth.toISOString().slice(0, 10),
+  };
+}
+
+function periodLabel(period: AdminPeriod): string {
+  return ({
+    today: "اليوم",
+    yesterday: "أمس",
+    this_week: "هذا الأسبوع",
+    this_month: "هذا الشهر",
+    last_month: "الشهر الماضي",
+    next_7_days: "خلال 7 أيام القادمة",
+    all: "الإجمالي",
+  } as Record<AdminPeriod, string>)[period];
+}
+
 async function telegramVoiceToText(voice: NonNullable<NonNullable<TelegramUpdate["message"]>["voice"]>): Promise<string> {
   if (!TELEGRAM_BOT_TOKEN) throw new Error("telegram_bot_token_missing");
   if (!OPENAI_API_KEY) throw new Error("voice_transcription_not_configured");
@@ -200,7 +350,7 @@ function restUrl(table: string, params: Record<string, string>): URL {
   if (!SUPABASE_URL) throw new Error("supabase_url_unavailable");
   const url = new URL(`${SUPABASE_URL}/rest/v1/${table}`);
   for (const [key, value] of Object.entries(params)) {
-    const paramName = key === "end_date_lte" ? "end_date" : key;
+    const paramName = key.replace(/_(gte|lte|gt|lt)$/, "");
     url.searchParams.append(paramName, value);
   }
   return url;
@@ -313,14 +463,18 @@ Deno.serve(async (req: Request) => {
       await sendMessage(
         chatId,
         [
-          "أوامر Shooter Academy:",
+          "مساعد Shooter Academy الإداري:",
+          "اسألني كتابة أو صوتًا عن:",
+          "• اللاعبين والمدربين والموظفين والفرق",
+          "• الاشتراكات غير المدفوعة والقريبة من الانتهاء",
+          "• الإيرادات اليوم أو هذا الأسبوع أو هذا الشهر",
+          "• الحضور والغياب",
+          "• طلبات التسجيل الجديدة",
           "• ملخص اليوم",
-          "• من دفع اليوم؟",
-          "• اشتراكات تنتهي اليوم",
-          "• /whoami",
-          "• ويمكنك إرسال نفس الطلبات كرسالة صوتية",
           "",
-          "الإصدار الحالي قراءة فقط. أي تعديل إداري سيحتاج تأكيد صريح قبل التنفيذ في المرحلة التالية.",
+          "أمثلة: «كم مدرب عندنا؟» — «كم دخلنا هذا الشهر؟» — «كم غياب أمس؟»",
+          "",
+          "المساعد حاليًا للقراءة فقط. أي تعديل إداري يحتاج مسار تأكيد منفصل.",
         ].join("\n"),
       );
       return Response.json({ ok: true });
@@ -394,7 +548,110 @@ Deno.serve(async (req: Request) => {
       return Response.json({ ok: true });
     }
 
-    await sendMessage(chatId, "الأمر غير معروف. أرسل «مساعدة» لعرض الأوامر المتاحة.");
+    const parsedQuestion = await classifyAdminQuestion(incomingText);
+    const range = adminDateRange(parsedQuestion.period);
+
+    if (parsedQuestion.intent === "active_players") {
+      const count = await restCount("players", { status: "eq.active" });
+      await sendMessage(chatId, `عدد اللاعبين النشطين: ${count}`);
+      return Response.json({ ok: true });
+    }
+
+    if (parsedQuestion.intent === "coaches") {
+      const count = await restCount("staff", { role: "eq.coach", status: "eq.active" });
+      await sendMessage(chatId, `عدد المدربين النشطين: ${count}`);
+      return Response.json({ ok: true });
+    }
+
+    if (parsedQuestion.intent === "staff") {
+      const count = await restCount("staff", { status: "eq.active" });
+      await sendMessage(chatId, `عدد الموظفين النشطين: ${count}`);
+      return Response.json({ ok: true });
+    }
+
+    if (parsedQuestion.intent === "teams") {
+      const count = await restCount("teams", {});
+      await sendMessage(chatId, `عدد الفرق: ${count}`);
+      return Response.json({ ok: true });
+    }
+
+    if (parsedQuestion.intent === "parents") {
+      const count = await restCount("parents", {});
+      await sendMessage(chatId, `عدد حسابات أولياء الأمور: ${count}`);
+      return Response.json({ ok: true });
+    }
+
+    if (parsedQuestion.intent === "unpaid_subscriptions") {
+      const count = await restCount("subscriptions", { status: "eq.unpaid" });
+      await sendMessage(chatId, `الاشتراكات غير المدفوعة: ${count}`);
+      return Response.json({ ok: true });
+    }
+
+    if (parsedQuestion.intent === "expiring_subscriptions") {
+      const effectiveRange = range || adminDateRange("next_7_days")!;
+      const count = await restCount("subscriptions", {
+        end_date_gte: `gte.${effectiveRange.start}`,
+        end_date_lte: `lte.${effectiveRange.end}`,
+      });
+      await sendMessage(chatId, `الاشتراكات التي تنتهي ${periodLabel(parsedQuestion.period === "all" ? "next_7_days" : parsedQuestion.period)}: ${count}`);
+      return Response.json({ ok: true });
+    }
+
+    if (parsedQuestion.intent === "revenue") {
+      const effectiveRange = range || adminDateRange("today")!;
+      const rows = await restRows<{ amount?: number | string; type?: string }>("transactions", {
+        select: "amount,type",
+        transaction_date_gte: `gte.${effectiveRange.start}`,
+        transaction_date_lte: `lte.${effectiveRange.end}`,
+      });
+      const incomes = rows.filter((row) => String(row.type).toLowerCase() === "income");
+      const total = incomes.reduce((sum, row) => sum + Number(row.amount || 0), 0);
+      await sendMessage(chatId, [
+        `الإيرادات — ${periodLabel(parsedQuestion.period === "all" ? "today" : parsedQuestion.period)}`,
+        `عدد العمليات: ${incomes.length}`,
+        `الإجمالي: ${formatMoney(total)} د.ب`,
+      ].join("\n"));
+      return Response.json({ ok: true });
+    }
+
+    if (parsedQuestion.intent === "attendance") {
+      const effectiveRange = range || adminDateRange("today")!;
+      const rows = await restRows<{ status?: string }>("attendance", {
+        select: "status",
+        session_date_gte: `gte.${effectiveRange.start}`,
+        session_date_lte: `lte.${effectiveRange.end}`,
+      });
+      const present = rows.filter((row) => ["present", "حاضر"].includes(String(row.status).toLowerCase())).length;
+      const absent = rows.filter((row) => ["absent", "غائب"].includes(String(row.status).toLowerCase())).length;
+      await sendMessage(chatId, [
+        `الحضور — ${periodLabel(parsedQuestion.period === "all" ? "today" : parsedQuestion.period)}`,
+        `سجلات الحضور: ${rows.length}`,
+        `حاضر: ${present}`,
+        `غائب: ${absent}`,
+      ].join("\n"));
+      return Response.json({ ok: true });
+    }
+
+    if (parsedQuestion.intent === "registrations") {
+      const effectiveRange = range || adminDateRange("today")!;
+      const rows = await restRows<{ status?: string }>("registration_applications", {
+        select: "status",
+        submitted_at_gte: `gte.${effectiveRange.start}T00:00:00+03:00`,
+        submitted_at_lte: `lte.${effectiveRange.end}T23:59:59+03:00`,
+      });
+      const pending = rows.filter((row) => String(row.status).toLowerCase() === "pending").length;
+      await sendMessage(chatId, [
+        `طلبات التسجيل — ${periodLabel(parsedQuestion.period === "all" ? "today" : parsedQuestion.period)}`,
+        `إجمالي الطلبات: ${rows.length}`,
+        `بانتظار المراجعة: ${pending}`,
+      ].join("\n"));
+      return Response.json({ ok: true });
+    }
+
+    await sendMessage(
+      chatId,
+      "اسألني عن اللاعبين، المدربين، الموظفين، الفرق، الاشتراكات، الإيرادات، الحضور أو طلبات التسجيل. يمكنك السؤال كتابةً أو صوتًا.",
+    );
     return Response.json({ ok: true });
   } catch (error) {
     const code = typeof error === "object" && error && "code" in error ? String((error as { code?: unknown }).code || "unknown") : "unknown";

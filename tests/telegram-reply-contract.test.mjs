@@ -78,3 +78,37 @@ test('Voice transcription happens only after manager authorization', () => {
   assert.ok(authIndex >= 0);
   assert.ok(transcribeCallIndex > authIndex);
 });
+
+
+test('Telegram Smart Admin v2 supports safe natural-language read queries', () => {
+  assert.match(source, /classifyAdminQuestion/);
+  assert.match(source, /deterministicAdminIntent/);
+  assert.match(source, /gpt-5\.6-luna/);
+  assert.match(source, /\/v1\/responses/);
+  assert.match(source, /"coaches"/);
+  assert.match(source, /"attendance"/);
+  assert.match(source, /"registrations"/);
+  assert.match(source, /"revenue"/);
+  assert.match(source, /role:\s*"eq\.coach"/);
+});
+
+test('Smart Admin v2 keeps model output away from SQL and database identifiers', () => {
+  assert.match(source, /لا تنشئ SQL/);
+  assert.match(source, /ADMIN_INTENTS/);
+  assert.match(source, /ADMIN_PERIODS/);
+  assert.doesNotMatch(source, /execute_sql/i);
+  assert.doesNotMatch(source, /\.insert\(/);
+  assert.doesNotMatch(source, /\.update\(/);
+  assert.doesNotMatch(source, /\.delete\(/);
+  assert.doesNotMatch(source, /\.rpc\(/);
+});
+
+test('Smart Admin v2 supports bounded Bahrain date ranges', () => {
+  assert.match(source, /adminDateRange/);
+  assert.match(source, /this_month/);
+  assert.match(source, /last_month/);
+  assert.match(source, /next_7_days/);
+  assert.match(source, /transaction_date_gte/);
+  assert.match(source, /session_date_gte/);
+  assert.match(source, /submitted_at_gte/);
+});
