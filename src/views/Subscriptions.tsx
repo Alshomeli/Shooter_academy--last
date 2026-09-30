@@ -105,6 +105,7 @@ export function Subscriptions({
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [paymentError, setPaymentError] = useState('');
   const canPay = activeRole === 'manager' || activeRole === 'accountant';
+  const canSeeFinance = activeRole === 'manager' || activeRole === 'accountant';
   const isManager = activeRole === 'manager';
   const canManage = activeRole === 'manager' || activeRole === 'accountant' || activeRole === 'receptionist';
   const recorderName = staff.find((s) => s.role === activeRole)?.name || (isAr ? 'النظام' : 'System');
@@ -189,8 +190,8 @@ export function Subscriptions({
       <PageHeader
         title={t.subscriptions}
         subtitle={isAr
-          ? `${subscriptions.length} اشتراك · ${transactions.length} معاملة مالية`
-          : `${subscriptions.length} subscriptions · ${transactions.length} transactions`}
+          ? (canSeeFinance ? `${subscriptions.length} اشتراك · ${transactions.length} معاملة مالية` : `${subscriptions.length} اشتراك`)
+          : (canSeeFinance ? `${subscriptions.length} subscriptions · ${transactions.length} transactions` : `${subscriptions.length} subscriptions`)}
       >
         {((activeTab === 'subscriptions' && canManage) || (activeTab === 'transactions' && canPay)) && (
           <button
@@ -205,27 +206,27 @@ export function Subscriptions({
 
       {/* ---------------- KPIs ---------------- */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <StatCard
+        {canSeeFinance && <StatCard
           icon={<DollarSign className="h-5 w-5" />}
           label={t.totalRevenue}
           value={`${totalRevenue.toLocaleString()} ${t.currency}`}
           color="emerald"
           sublabel={t.financialInput}
-        />
-        <StatCard
+        />}
+        {canSeeFinance && <StatCard
           icon={<Receipt className="h-5 w-5" />}
           label={t.totalExpenses}
           value={`${totalExpenses.toLocaleString()} ${t.currency}`}
           color="red"
           sublabel={t.operatingExpenses}
-        />
-        <StatCard
+        />}
+        {canSeeFinance && <StatCard
           icon={<Wallet className="h-5 w-5" />}
           label={t.netProfit}
           value={`${netProfit >= 0 ? '+' : '−'}${Math.abs(netProfit).toLocaleString()} ${t.currency}`}
           color={netProfitColor}
           sublabel={netProfit >= 0 ? t.netProfitPositive : t.netProfitNegative}
-        />
+        />}
         <StatCard
           icon={<CheckCircle className="h-5 w-5" />}
           label={t.paidSubscriptions}
@@ -251,7 +252,7 @@ export function Subscriptions({
             {subscriptions.length}
           </span>
         </button>
-        <button
+        {canSeeFinance && <button
           onClick={() => setActiveTab('transactions')}
           className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold transition cursor-pointer ${
             activeTab === 'transactions'
@@ -264,7 +265,7 @@ export function Subscriptions({
           <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
             {transactions.length}
           </span>
-        </button>
+        </button>}
         <button
           onClick={() => setActiveTab('reminders')}
           className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold transition cursor-pointer ${
