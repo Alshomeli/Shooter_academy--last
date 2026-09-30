@@ -422,6 +422,18 @@ export const db = {
     return mapEvaluation(data as never);
   },
 
+  async getTelegramConnection(): Promise<{ telegram_user_code: string; role: string; linked_at: string; last_seen_at: string; is_active: boolean } | null> {
+    const { data, error } = await supabase.rpc('telegram_my_connection');
+    if (error) throw error;
+    return Array.isArray(data) && data.length ? data[0] : null;
+  },
+
+  async disconnectTelegram(): Promise<boolean> {
+    const { data, error } = await supabase.rpc('disconnect_my_telegram');
+    if (error) throw error;
+    return Boolean(data);
+  },
+
   async createTelegramLinkCode(): Promise<string> {
     const { data, error } = await supabase.rpc('create_telegram_link_code');
     if (error) throw error;
