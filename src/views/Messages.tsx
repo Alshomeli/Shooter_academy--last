@@ -30,7 +30,7 @@ function cleanPhone(phone: string): string {
   return phone.replace(/[^0-9]/g, '');
 }
 
-export function Messages({ players, teams, subscriptions, lang }: MessagesProps) {
+export function Messages({ players, teams, subscriptions, activeRole, lang }: MessagesProps) {
   const t = tr(lang);
   const isAr = lang === 'ar';
 
@@ -41,7 +41,7 @@ export function Messages({ players, teams, subscriptions, lang }: MessagesProps)
   const [search, setSearch] = useState('');
   const [customTitle, setCustomTitle] = useState('');
   const [customBody, setCustomBody] = useState('');
-  const [sentLog, setSentLog] = useState<string[]>([]);
+  const [openedLog, setOpenedLog] = useState<string[]>([]);
 
   const teamMap = useMemo(() => {
     const m = new Map<string, string>();
@@ -124,7 +124,7 @@ export function Messages({ players, teams, subscriptions, lang }: MessagesProps)
     if (!phone) return;
     const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
     window.open(url, '_blank');
-    setSentLog((prev) => [...prev, player.id]);
+    setOpenedLog((prev) => [...prev, player.id]);
   }
 
   function handleSendEmail(player: Player) {
@@ -136,24 +136,21 @@ export function Messages({ players, teams, subscriptions, lang }: MessagesProps)
       : customTitle || (isAr ? 'تعميم من الأكاديمية' : 'Academy Announcement');
     const url = `mailto:${player.parentEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(msg)}`;
     window.open(url, '_blank');
-    setSentLog((prev) => [...prev, player.id]);
+    setOpenedLog((prev) => [...prev, player.id]);
   }
 
   function handleCopyMessage(player: Player) {
     const msg = buildMessage(player);
     navigator.clipboard.writeText(msg).catch(() => {});
-    setSentLog((prev) => [...prev, `${player.id}-copy`]);
+    setOpenedLog((prev) => [...prev, `${player.id}-copy`]);
   }
 
   function handleBulkWhatsApp() {
-    recipients.forEach((player, idx) => {
-      const msg = buildMessage(player);
-      const phone = cleanPhone(player.parentPhone);
-      if (!phone) return;
-      const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
-      setTimeout(() => window.open(url, '_blank'), idx * 300);
-    });
-    setSentLog((prev) => [...prev, ...recipients.map((p) => p.id)]);
+    // Browsers commonly block multiple popups from one click. Open the first
+    // recipient and let staff continue individually from the visible list.
+    const first = recipients.find((player) => cleanPhone(player.parentPhone));
+    if (!first) return;
+    handleSendWhatsApp(first);
   }
 
   const previewMessage = recipients.length > 0 ? buildMessage(recipients[0]) : '';
@@ -292,7 +289,7 @@ export function Messages({ players, teams, subscriptions, lang }: MessagesProps)
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-64 overflow-y-auto">
               {filteredPlayers.map((p) => {
                 const isSelected = selectedPlayerId === p.id;
-                const isSent = sentLog.includes(p.id);
+                const isSent = openedLog.includes(p.id);
                 return (
                   <button
                     key={p.id}
@@ -310,7 +307,7 @@ export function Messages({ players, teams, subscriptions, lang }: MessagesProps)
                       <p className="text-xs font-bold text-slate-800 dark:text-white truncate">{p.name}</p>
                       <p className="text-[10px] text-slate-400 truncate">{p.parentName}</p>
                     </div>
-                    {isSent && <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />}
+                    {isSent && <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" aria-label={isAr ? 'تم فتح قناة الإرسال' : 'Sending channel opened'} />}
                   </button>
                 );
               })}
@@ -341,14 +338,14 @@ export function Messages({ players, teams, subscriptions, lang }: MessagesProps)
           {recipientMode !== 'individual' && (
             <div className="flex items-center justify-between">
               <p className="text-xs font-bold text-slate-600 dark:text-slate-300">
-                {isAr ? `سيتم إرسال الرسالة إلى ${recipients.length} ولي أمر` : `Will send to ${recipients.length} parents`}
+                {isAr ? `تم تجهيز الرسالة لـ ${recipients.length} ولي أمر — افتح المستلمين واحدًا تلو الآخر لتجنب حظر النوافذ` : `Message prepared for ${recipients.length} parents — open recipients one by one to avoid popup blocking`}
               </p>
               <button
                 onClick={handleBulkWhatsApp}
                 className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold transition cursor-pointer shadow-sm"
               >
                 <Send className="h-4 w-4" />
-                {isAr ? 'إرسال جماعي عبر واتساب' : 'Bulk Send via WhatsApp'}
+                {isAr ? 'فتح أول مستلم في واتساب' : 'Open first recipient in WhatsApp'}
               </button>
             </div>
           )}
@@ -356,7 +353,7 @@ export function Messages({ players, teams, subscriptions, lang }: MessagesProps)
           {/* Individual send list */}
           <div className="max-h-56 overflow-y-auto space-y-1.5">
             {recipients.map((player) => {
-              const isSent = sentLog.includes(player.id);
+              const isSent = openedLog.includes(player.id);
               const teamName = teamMap.get(player.teamId) || '—';
               return (
                 <div
