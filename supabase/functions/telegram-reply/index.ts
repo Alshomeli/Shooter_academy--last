@@ -121,6 +121,8 @@ type AdminIntent =
   | "revenue"
   | "attendance"
   | "registrations"
+  | "matches"
+  | "trainings"
   | "unknown";
 
 type AdminPeriod = "today" | "yesterday" | "this_week" | "this_month" | "last_month" | "next_7_days" | "all";
@@ -129,7 +131,7 @@ type ParsedAdminQuestion = { intent: AdminIntent; period: AdminPeriod };
 
 const ADMIN_INTENTS = new Set<AdminIntent>([
   "active_players", "coaches", "staff", "teams", "parents", "unpaid_subscriptions",
-  "expiring_subscriptions", "revenue", "attendance", "registrations", "unknown",
+  "expiring_subscriptions", "revenue", "attendance", "registrations", "matches", "trainings", "unknown",
 ]);
 const ADMIN_PERIODS = new Set<AdminPeriod>([
   "today", "yesterday", "this_week", "this_month", "last_month", "next_7_days", "all",
@@ -154,6 +156,8 @@ function deterministicAdminIntent(text: string): ParsedAdminQuestion | null {
   if (value.includes("فريق") || value.includes("فرق")) return { intent: "teams", period: "all" };
   if (value.includes("ولي أمر") || value.includes("اولياء") || value.includes("أولياء") || value.includes("أهالي")) return { intent: "parents", period: "all" };
   if (value.includes("لاعب") || value.includes("لاعبين") || value.includes("لاعبون")) return { intent: "active_players", period: "all" };
+  if (value.includes("مباراة") || value.includes("مباريات") || value.includes("ماتش")) return { intent: "matches", period: period === "all" ? "today" : period };
+  if (value.includes("تدريب") || value.includes("تمرين") || value.includes("تمارين") || value.includes("حصة")) return { intent: "trainings", period: period === "all" ? "today" : period };
   if (value.includes("حضور") || value.includes("غياب") || value.includes("غائب") || value.includes("حاضر")) return { intent: "attendance", period: period === "all" ? "today" : period };
   if (value.includes("تسجيل") || value.includes("طلبات") || value.includes("طلب جديد")) return { intent: "registrations", period: period === "all" ? "today" : period };
   if ((value.includes("دخل") || value.includes("إيراد") || value.includes("ايراد") || value.includes("مبيعات")) && !value.includes("اشتراك")) {
@@ -175,7 +179,7 @@ async function classifyAdminQuestion(text: string): Promise<ParsedAdminQuestion>
 
   const prompt = [
     "صنّف سؤال مدير أكاديمية رياضية إلى مقصد واحد وفترة زمنية.",
-    "المقاصد المسموحة فقط: active_players, coaches, staff, teams, parents, unpaid_subscriptions, expiring_subscriptions, revenue, attendance, registrations, unknown.",
+    "المقاصد المسموحة فقط: active_players, coaches, staff, teams, parents, unpaid_subscriptions, expiring_subscriptions, revenue, attendance, registrations, matches, trainings, unknown.",
     "الفترات المسموحة فقط: today, yesterday, this_week, this_month, last_month, next_7_days, all.",
     "لا تنشئ SQL ولا أوامر ولا أسماء جداول. أرجع JSON فقط بالشكل: {\"intent\":\"...\",\"period\":\"...\"}.",
     "إذا لم يذكر المستخدم فترة: revenue/attendance/registrations = today، expiring_subscriptions = next_7_days، والبقية = all.",
@@ -471,6 +475,7 @@ Deno.serve(async (req: Request) => {
           "• الاشتراكات غير المدفوعة والقريبة من الانتهاء",
           "• الإيرادات اليوم أو هذا الأسبوع أو هذا الشهر",
           "• الحضور والغياب",
+          "• المباريات والتدريبات",
           "• طلبات التسجيل الجديدة",
           "• ملخص اليوم",
           "",
@@ -485,14 +490,15 @@ Deno.serve(async (req: Request) => {
     const today = bahrainDate();
 
     if (isSummaryCommand(incomingText)) {
-      const [activePlayers, unpaid, expiringToday, paymentRows] = await Promise.all([
+      const [activePlayers, unpaid, expiringToday, paymentRows, matches, trainings, attendanceRows, pendingRegistrations] = await Promise.all([
         restCount("players", { status: "eq.active" }),
         restCount("subscriptions", { status: "eq.unpaid" }),
         restCount("subscriptions", { end_date: `eq.${today}` }),
-        restRows<{ amount?: number | string; type?: string }>("transactions", {
-          select: "amount,type",
-          transaction_date: `eq.${today}`,
-        }),
+        restRows<{ amount?: number | string; type?: string }>("transactions", { select: "amount,type", transaction_date: `eq.${today}` }),
+        restRows<{ opponent?: string; location?: string; result?: string }>("matches", { select: "opponent,location,result", match_date: `eq.${today}`, order: "created_at.asc" }),
+        restRows<{ title?: string; duration_minutes?: number }>("trainings", { select: "title,duration_minutes", session_date: `eq.${today}`, order: "created_at.asc" }),
+        restRows<{ status?: string }>("attendance", { select: "status", session_date: `eq.${today}` }),
+        restCount("registration_applications", { status: "eq.pending" }),
       ]);
       const incomingTotal = paymentRows
         .filter((row) => String(row.type).toLowerCase() === "revenue")
@@ -506,15 +512,22 @@ Deno.serve(async (req: Request) => {
           `اشتراكات غير مدفوعة: ${unpaid}`,
           `اشتراكات تنتهي اليوم: ${expiringToday}`,
           `إيرادات مسجلة اليوم: ${formatMoney(incomingTotal)} د.ب`,
+          `المباريات اليوم: ${matches.length}`,
+          ...matches.slice(0, 5).map((m) => `⚽ ضد ${m.opponent || "غير محدد"} — ${m.location || "الموقع غير محدد"} — ${m.result || "scheduled"}`),
+          `التدريبات اليوم: ${trainings.length}`,
+          ...trainings.slice(0, 5).map((t) => `🏃 ${t.title || "تدريب"} — ${Number(t.duration_minutes || 0)} دقيقة`),
+          `الحضور المسجل اليوم: ${attendanceRows.length} (حاضر ${attendanceRows.filter((r) => r.status === "present").length} / غائب ${attendanceRows.filter((r) => r.status === "absent").length})`,
+          `طلبات التسجيل المعلقة: ${pendingRegistrations}`,
         ].join("\n"),
       );
       return Response.json({ ok: true });
     }
 
     if (isPaymentsCommand(incomingText)) {
-      const rows = await restRows<{ amount?: number | string; type?: string }>("transactions", {
-        select: "amount,type",
+      const rows = await restRows<{ amount?: number | string; type?: string; category?: string; description?: string }>("transactions", {
+        select: "amount,type,category,description",
         transaction_date: `eq.${today}`,
+        order: "created_at.asc",
       });
       const revenues = rows.filter((row) => String(row.type).toLowerCase() === "revenue");
       const total = revenues.reduce((sum, row) => sum + Number(row.amount || 0), 0);
@@ -526,7 +539,7 @@ Deno.serve(async (req: Request) => {
           `عدد عمليات الإيراد: ${revenues.length}`,
           `الإجمالي: ${formatMoney(total)} د.ب`,
           "",
-          "لا أعرض أسماء اللاعبين أو بياناتهم الشخصية في الملخص السريع.",
+          ...revenues.slice(0, 20).map((row, index) => `${index + 1}) ${formatMoney(Number(row.amount || 0))} د.ب — ${row.category || "إيراد"}${row.description ? ` — ${row.description}` : ""}`),
         ].join("\n"),
       );
       return Response.json({ ok: true });
@@ -650,9 +663,22 @@ Deno.serve(async (req: Request) => {
       return Response.json({ ok: true });
     }
 
+    if (parsedQuestion.intent === "matches") {
+      const effectiveRange = range || adminDateRange("today")!;
+      const rows = await restRows<{ match_date?: string; opponent?: string; location?: string; result?: string }>("matches", { select: "match_date,opponent,location,result", match_date_gte: `gte.${effectiveRange.start}`, match_date_lte: `lte.${effectiveRange.end}`, order: "match_date.asc" });
+      await sendMessage(chatId, [`المباريات — ${periodLabel(parsedQuestion.period === "all" ? "today" : parsedQuestion.period)}`, `العدد: ${rows.length}`, ...rows.slice(0,20).map((m)=>`⚽ ${m.match_date || ""} — ضد ${m.opponent || "غير محدد"} — ${m.location || "الموقع غير محدد"} — ${m.result || "scheduled"}`)].join("\n"));
+      return Response.json({ ok: true });
+    }
+    if (parsedQuestion.intent === "trainings") {
+      const effectiveRange = range || adminDateRange("today")!;
+      const rows = await restRows<{ session_date?: string; title?: string; duration_minutes?: number }>("trainings", { select: "session_date,title,duration_minutes", session_date_gte: `gte.${effectiveRange.start}`, session_date_lte: `lte.${effectiveRange.end}`, order: "session_date.asc" });
+      await sendMessage(chatId, [`التدريبات — ${periodLabel(parsedQuestion.period === "all" ? "today" : parsedQuestion.period)}`, `العدد: ${rows.length}`, ...rows.slice(0,20).map((t)=>`🏃 ${t.session_date || ""} — ${t.title || "تدريب"} — ${Number(t.duration_minutes || 0)} دقيقة`)].join("\n"));
+      return Response.json({ ok: true });
+    }
+
     await sendMessage(
       chatId,
-      "اسألني عن اللاعبين، المدربين، الموظفين، الفرق، الاشتراكات، الإيرادات، الحضور أو طلبات التسجيل. يمكنك السؤال كتابةً أو صوتًا.",
+      "اسألني عن اللاعبين، المدربين، الموظفين، الفرق، المباريات، التدريبات، الاشتراكات، الإيرادات، الحضور أو طلبات التسجيل. يمكنك السؤال كتابةً أو صوتًا.",
     );
     return Response.json({ ok: true });
   } catch (error) {
