@@ -158,13 +158,21 @@ export function Approvals({ staff, onStaffChange, onRefresh, activeRole, lang }:
                   <Badge color={app.status === 'approved' ? 'emerald' : app.status === 'rejected' ? 'red' : app.status === 'needs_info' ? 'amber' : 'blue'}>{staffApplicationStatus(app.status)}</Badge>
                   <Badge color="blue">{roleLabel(app.requestedRole, lang)}</Badge>
                 </div>
-                <p className="mt-1 text-xs text-slate-500" dir="ltr">{app.email} · {app.phone}</p>
-                {app.specialization && <p className="mt-1 text-xs text-slate-500">{app.specialization}</p>}
+                <div className="mt-3 grid grid-cols-1 gap-2 rounded-xl bg-slate-50 p-3 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300 sm:grid-cols-2">
+                  <p><b>{isAr ? 'البريد الإلكتروني:' : 'Email:'}</b> <span dir="ltr">{app.email}</span></p>
+                  <p><b>{isAr ? 'رقم الهاتف:' : 'Phone:'}</b> <span dir="ltr">{app.phone}</span></p>
+                  <p><b>{isAr ? 'الصفة المطلوبة:' : 'Requested role:'}</b> {roleLabel(app.requestedRole, lang)}</p>
+                  <p><b>{isAr ? 'التخصص:' : 'Specialization:'}</b> {app.specialization || '—'}</p>
+                  <p><b>{isAr ? 'سنوات الخبرة:' : 'Experience:'}</b> {app.experienceYears ?? '—'}</p>
+                  <p><b>{isAr ? 'الرقم الشخصي:' : 'National ID:'}</b> {app.nationalId ? ('***' + app.nationalId.slice(-4)) : '—'}</p>
+                  <p className="sm:col-span-2"><b>{isAr ? 'الشهادات / التراخيص:' : 'Certificates / licenses:'}</b> {app.licenses.length ? app.licenses.join('، ') : '—'}</p>
+                  <p className="sm:col-span-2"><b>{isAr ? 'ملاحظات المتقدم:' : 'Applicant notes:'}</b> {app.applicantNotes || '—'}</p>
+                </div>
                 {app.reviewNotes && <p className="mt-2 rounded-lg bg-amber-50 p-2 text-xs text-amber-800"><b>{isAr ? 'ملاحظة المراجعة:' : 'Review note:'}</b> {app.reviewNotes}</p>}
               </div>
               {app.status === 'pending' && (
                 <div className="flex flex-wrap gap-2">
-                  <button disabled={processingId === app.id} onClick={() => void handleApplicationApproval(app.id)} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">{isAr ? 'موافقة' : 'Approve'}</button>
+                  <button disabled={processingId === app.id} onClick={() => void handleApplicationApproval(app.id)} className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-black text-white shadow-sm hover:bg-emerald-500 disabled:opacity-50"><CheckCircle className="h-4 w-4" />{isAr ? 'قبول وتفعيل الحساب' : 'Approve & activate account'}</button>
                   <button disabled={!!processingId} onClick={() => { setReviewTarget({ id: app.id, action: 'needs_info' }); setReviewNotes(''); }} className="rounded-lg bg-amber-100 px-3 py-2 text-xs font-bold text-amber-800">{isAr ? 'طلب تعديل' : 'Request changes'}</button>
                   <button disabled={!!processingId} onClick={() => { setReviewTarget({ id: app.id, action: 'rejected' }); setReviewNotes(''); }} className="rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-700">{isAr ? 'رفض' : 'Reject'}</button>
                 </div>
