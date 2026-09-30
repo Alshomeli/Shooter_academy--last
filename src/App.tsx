@@ -262,7 +262,7 @@ export default function App() {
     const updateClock = () => {
       try {
         const formatter = new Intl.DateTimeFormat(lang === 'ar' ? 'ar-SA' : 'en-US', {
-          timeZone: 'Asia/Riyadh',
+          timeZone: 'Asia/Bahrain',
           year: 'numeric', month: '2-digit', day: '2-digit',
           hour: '2-digit', minute: '2-digit', second: '2-digit',
           hour12: true,
@@ -601,7 +601,7 @@ export default function App() {
               {showNotifications && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setShowNotifications(false)} />
-                  <div className={`absolute left-0 mt-2 w-80 rounded-2xl shadow-2xl border z-50 animate-fadeIn ${
+                  <div className={`fixed sm:absolute left-3 right-3 sm:right-auto sm:left-0 sm:w-80 mt-2 rounded-2xl shadow-2xl border z-50 animate-fadeIn ${
                     darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'
                   }`}>
                     <div className={`px-4 py-3 border-b flex items-center justify-between ${darkMode ? 'border-slate-800' : 'border-slate-100'}`}>
