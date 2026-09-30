@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import {
   ClipboardCheck, Plus, Search, Check, X, Clock, Calendar, Users, Trash2, TrendingUp,
 } from 'lucide-react';
-import type { Attendance, Player, Team, Lang, Role } from '@/types';
+import type { Attendance, Player, Team, Match, Training, Lang, Role } from '@/types';
 import { Badge, Modal, ConfirmDialog, PageHeader, EmptyState, StatCard } from '@/components/ui';
 import { tr, positionLabel } from '@/lib/i18n';
 
@@ -10,6 +10,8 @@ interface AttendanceProps {
   players: Player[];
   teams: Team[];
   attendance: Attendance[];
+  matches: Match[];
+  trainings: Training[];
   onAttendanceChange: (a: Attendance[]) => void;
   activeRole: Role;
   lang: Lang;
@@ -21,7 +23,7 @@ type SessionType = 'training' | 'match';
 const inputCls =
   'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-800 dark:text-white';
 
-export function AttendanceView({ players, teams, attendance, onAttendanceChange, activeRole, lang }: AttendanceProps) {
+export function AttendanceView({ players, teams, attendance, matches, trainings, onAttendanceChange, activeRole, lang }: AttendanceProps) {
   const t = tr(lang);
   const isAr = lang === 'ar';
   const [search, setSearch] = useState('');
@@ -275,6 +277,8 @@ export function AttendanceView({ players, teams, attendance, onAttendanceChange,
         <BatchAttendanceForm
           players={players}
           teams={teams}
+          matches={matches}
+          trainings={trainings}
           defaultDate={today}
           onSave={handleBatchSave}
           onClose={() => setShowAdd(false)}
@@ -300,6 +304,8 @@ export function AttendanceView({ players, teams, attendance, onAttendanceChange,
 function BatchAttendanceForm({
   players,
   teams,
+  matches,
+  trainings,
   defaultDate,
   onSave,
   onClose,
@@ -307,6 +313,8 @@ function BatchAttendanceForm({
 }: {
   players: Player[];
   teams: Team[];
+  matches: Match[];
+  trainings: Training[];
   defaultDate: string;
   onSave: (records: Omit<Attendance, 'id'>[]) => void;
   onClose: () => void;
@@ -317,6 +325,7 @@ function BatchAttendanceForm({
   const [teamId, setTeamId] = useState('');
   const [sessionDate, setSessionDate] = useState(defaultDate);
   const [sessionType, setSessionType] = useState<SessionType>('training');
+  const [sessionId, setSessionId] = useState('');
   const [marks, setMarks] = useState<Record<string, Status>>({});
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
@@ -326,6 +335,13 @@ function BatchAttendanceForm({
     () => players.filter((p) => p.teamId === teamId),
     [players, teamId],
   );
+
+  const availableSessions = useMemo(() => {
+    if (!teamId) return [];
+    const trainingSessions = trainings.filter((x) => x.teamId === teamId).map((x) => ({ id: x.id, type: 'training' as const, date: x.sessionDate, label: x.title }));
+    const matchSessions = matches.filter((x) => x.teamId === teamId).map((x) => ({ id: x.id, type: 'match' as const, date: x.matchDate, label: isAr ? `مباراة ضد ${x.opponent}` : `Match vs ${x.opponent}` }));
+    return [...trainingSessions, ...matchSessions].sort((a, b) => b.date.localeCompare(a.date));
+  }, [teamId, trainings, matches, isAr]);
 
   const markedCount = Object.keys(marks).length;
   const presentCount = Object.values(marks).filter((s) => s === 'present').length;
@@ -360,10 +376,12 @@ function BatchAttendanceForm({
         playerId: p.id,
         sessionDate,
         sessionType,
+        trainingId: sessionType === 'training' ? sessionId || undefined : undefined,
+        matchId: sessionType === 'match' ? sessionId || undefined : undefined,
         status: marks[p.id],
         notes: notes || undefined,
       }));
-    if (records.length === 0) return;
+    if (!sessionId || records.length === 0) return;
     if (saving) return; setSaving(true); setSaveError('');
     try { await onSave(records); }
     catch { setSaveError(isAr ? 'تعذر حفظ الحضور. راجع السجلات قبل إعادة المحاولة.' : 'Could not save attendance. Review the records before retrying.'); }
@@ -380,7 +398,7 @@ function BatchAttendanceForm({
             <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">{t.team}</label>
             <select
               value={teamId}
-              onChange={(e) => { setTeamId(e.target.value); setMarks({}); }}
+              onChange={(e) => { setTeamId(e.target.value); setSessionId(''); setMarks({}); }}
               className={inputCls}
             >
               <option value="">{isAr ? 'اختر الفريق...' : 'Select team...'}</option>
@@ -401,12 +419,18 @@ function BatchAttendanceForm({
           <div>
             <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">{t.sessionType}</label>
             <select
-              value={sessionType}
-              onChange={(e) => setSessionType(e.target.value as SessionType)}
+              value={sessionId}
+              onChange={(e) => {
+                const selected = availableSessions.find((s) => s.id === e.target.value);
+                setSessionId(e.target.value);
+                if (selected) { setSessionType(selected.type); setSessionDate(selected.date); }
+              }}
               className={inputCls}
             >
-              <option value="training">{t.training}</option>
-              <option value="match">{t.match}</option>
+              <option value="">{isAr ? 'اختر التدريب أو المباراة...' : 'Select training or match...'}</option>
+              {availableSessions.map((s) => (
+                <option key={s.id} value={s.id}>{s.date} — {s.label}</option>
+              ))}
             </select>
           </div>
         </div>
