@@ -493,7 +493,7 @@ Deno.serve(async (req: Request) => {
         }),
       ]);
       const incomingTotal = paymentRows
-        .filter((row) => String(row.type).toLowerCase() === "income")
+        .filter((row) => String(row.type).toLowerCase() === "revenue")
         .reduce((sum, row) => sum + Number(row.amount || 0), 0);
 
       await sendMessage(
@@ -514,14 +514,14 @@ Deno.serve(async (req: Request) => {
         select: "amount,type",
         transaction_date: `eq.${today}`,
       });
-      const incomes = rows.filter((row) => String(row.type).toLowerCase() === "income");
-      const total = incomes.reduce((sum, row) => sum + Number(row.amount || 0), 0);
+      const revenues = rows.filter((row) => String(row.type).toLowerCase() === "revenue");
+      const total = revenues.reduce((sum, row) => sum + Number(row.amount || 0), 0);
 
       await sendMessage(
         chatId,
         [
           `دفعات اليوم — ${today}`,
-          `عدد عمليات الإيراد: ${incomes.length}`,
+          `عدد عمليات الإيراد: ${revenues.length}`,
           `الإجمالي: ${formatMoney(total)} د.ب`,
           "",
           "لا أعرض أسماء اللاعبين أو بياناتهم الشخصية في الملخص السريع.",
@@ -604,11 +604,11 @@ Deno.serve(async (req: Request) => {
         transaction_date_gte: `gte.${effectiveRange.start}`,
         transaction_date_lte: `lte.${effectiveRange.end}`,
       });
-      const incomes = rows.filter((row) => String(row.type).toLowerCase() === "income");
-      const total = incomes.reduce((sum, row) => sum + Number(row.amount || 0), 0);
+      const revenues = rows.filter((row) => String(row.type).toLowerCase() === "revenue");
+      const total = revenues.reduce((sum, row) => sum + Number(row.amount || 0), 0);
       await sendMessage(chatId, [
         `الإيرادات — ${periodLabel(parsedQuestion.period === "all" ? "today" : parsedQuestion.period)}`,
-        `عدد العمليات: ${incomes.length}`,
+        `عدد العمليات: ${revenues.length}`,
         `الإجمالي: ${formatMoney(total)} د.ب`,
       ].join("\n"));
       return Response.json({ ok: true });
