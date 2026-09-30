@@ -54,7 +54,7 @@ export function Login({ onLogin, lang, setLang, recovery = false, registrationEn
         return;
       }
       if (screen === 'register') {
-        const staffFlow = staffRegistrationEntry || registrationKind === 'staff';
+        const staffFlow = registrationKind === 'staff';
         const { data, error } = await signUp(email.trim(), password, staffFlow ? 'staff-registration' : 'registration');
         if (error) throw error;
         if (!data.session) {
@@ -70,7 +70,7 @@ export function Login({ onLogin, lang, setLang, recovery = false, registrationEn
       } else {
         const { data, error } = await signIn(email.trim(), password);
         if (error) throw new Error(text('تعذر الدخول. تحقق من البريد وكلمة المرور وتأكيد الحساب.', 'Unable to sign in. Check your email, password and email confirmation.'));
-        if (data.user && (staffRegistrationEntry || registrationKind === 'staff') && data.user.user_metadata?.onboarding_mode !== 'staff') {
+        if (data.user && registrationKind === 'staff' && data.user.user_metadata?.onboarding_mode !== 'staff') {
           await supabase.auth.updateUser({ data: { ...data.user.user_metadata, onboarding_mode: 'staff' } });
         }
       }
@@ -85,7 +85,7 @@ export function Login({ onLogin, lang, setLang, recovery = false, registrationEn
     } finally { setRegistering(false); setBusy(false); }
   };
   const titles = {
-    login: text('تسجيل الدخول', 'Sign in'), register: (staffRegistrationEntry || registrationKind === 'staff') ? text('حساب مدير / موظف / مدرب جديد', 'Create a manager / staff / coach account') : text('حساب ولي أمر جديد', 'Create a parent account'),
+    login: text('تسجيل الدخول', 'Sign in'), register: registrationKind === 'staff' ? text('حساب مدير / موظف / مدرب جديد', 'Create a manager / staff / coach account') : text('حساب ولي أمر جديد', 'Create a parent account'),
     forgot: text('استعادة كلمة المرور', 'Reset password'), reset: text('كلمة مرور جديدة', 'Choose a new password'),
   };
   return <main className="min-h-screen flex items-center justify-center bg-slate-950 p-4" dir={ar ? 'rtl' : 'ltr'}>
@@ -114,7 +114,7 @@ export function Login({ onLogin, lang, setLang, recovery = false, registrationEn
       <div className="mt-5 flex flex-wrap gap-4 text-sm text-emerald-700 font-bold">
         {screen === 'login' ? <><button disabled={busy} onClick={() => { window.location.search = '?view=registration'; }}>{text('تسجيل ولي أمر وأبنائه', 'Register parent and children')}</button><button disabled={busy} onClick={() => { window.location.search = '?view=staff-registration'; }}>{text('طلب مدير / موظف / مدرب', 'Manager / staff / coach application')}</button><button disabled={busy} onClick={() => changeScreen('forgot')}>{text('نسيت كلمة المرور؟', 'Forgot password?')}</button></> : screen !== 'reset' && <button disabled={busy} onClick={() => changeScreen('login')}>{text('العودة للدخول', 'Back to sign in')}</button>}
       </div>
-      {screen === 'register' && <p className="mt-4 text-xs text-slate-500">{(staffRegistrationEntry || registrationKind === 'staff')
+      {screen === 'register' && <p className="mt-4 text-xs text-slate-500">{registrationKind === 'staff'
         ? text('تراجع الإدارة طلب الموظف أو المدرب ويمكنها الموافقة أو الرفض أو إعادته للتعديل قبل تفعيل أي صلاحية.', 'The academy reviews staff applications and may approve, reject, or request changes before any staff access is activated.')
         : text('تراجع الإدارة طلب تسجيل الأبناء قبل تفعيلهم.', 'The academy reviews children’s applications before activation.')}</p>}
     </div>
