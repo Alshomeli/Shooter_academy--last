@@ -420,6 +420,7 @@ async function linkedTelegramIdentity(chatId: number): Promise<TelegramIdentity 
 
 async function sendCoachToday(chatId: number, identity: TelegramIdentity) {
   const today = bahrainDate();
+  await rpc<number>("telegram_ensure_today_trainings", { p_chat_id: chatId });
   const teams = await restRows<{ id?: string; name?: string; training_time?: string }>("teams", {
     select: "id,name,training_time", coach_id: `eq.${identity.staff_id || ""}`, order: "name.asc",
   });
@@ -719,6 +720,25 @@ Deno.serve(async (req: Request) => {
           p_status: status,
         });
         await answerCallbackQuery(callback.id, status === "present" ? "تم تسجيل الحضور ✅" : status === "absent" ? "تم تسجيل الغياب ❌" : "تم التسجيل بعذر 🟡");
+        if (status === "absent") {
+          try {
+            const playerRows = await restRows<{ name?: string; parent_id?: string }>("players", { select: "name,parent_id", id: `eq.${attendanceMatch[3]}`, limit: "1" });
+            const player = playerRows[0];
+            if (player?.parent_id) {
+              const parentRows = await restRows<{ user_id?: string }>("parents", { select: "user_id", id: `eq.${player.parent_id}`, limit: "1" });
+              const parentUserId = parentRows[0]?.user_id;
+              if (parentUserId) {
+                const links = await restRows<{ chat_id?: number | string }>("telegram_user_links", { select: "chat_id", user_id: `eq.${parentUserId}`, role: "eq.parent", is_active: "eq.true", limit: "1" });
+                const parentChat = Number(links[0]?.chat_id);
+                if (Number.isFinite(parentChat)) {
+                  await sendMessage(parentChat, `تنبيه حضور: تم تسجيل غياب ${player.name || "ابنك"} عن تدريب اليوم. يمكنك مراجعة الأكاديمية إذا كانت الحالة تحتاج تصحيحًا.`);
+                }
+              }
+            }
+          } catch (notificationError) {
+            console.error("Parent absence notification failed", notificationError instanceof Error ? notificationError.message : "unknown");
+          }
+        }
       } catch {
         await answerCallbackQuery(callback.id, "تعذر تحديث الحضور. تحقق من أن الحصة تخص فريقك واليوم.");
       }
