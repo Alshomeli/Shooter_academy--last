@@ -1,4 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { reportRequest, detailedReport, splitMessages } from "./reports.ts";
 const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN");
 // These two settings are optional runtime overrides for the Supabase Edge Function.
 const optionalServerEnv = (...parts: string[]) => Deno.env.get(parts.join("_"));
@@ -1148,6 +1149,16 @@ Deno.serve(async (req: Request) => {
     }
 
     const today = bahrainDate();
+
+    // Detailed read-only reports are handled before legacy summary routes.
+    // This adds dated reports, matches, trainings, evaluations, tournaments and pagination
+    // while preserving the newer manager/coach workflows already present in main.
+    const detailedRequest = reportRequest(managerMenuText, today);
+    if (detailedRequest && (detailedRequest.topics.some((topic) => ["overview","matches","trainings","evaluations","tournaments"].includes(topic)) || /(?:صفحة|page)\s*\d+/i.test(managerMenuText) || /\d{4}-\d{2}-\d{2}/.test(managerMenuText))) {
+      const report = await detailedReport(detailedRequest, restRows);
+      for (const chunk of splitMessages(report)) await sendMessage(chatId, chunk);
+      return Response.json({ ok: true });
+    }
 
     if (isSummaryCommand(managerMenuText)) {
       const detailedSummary = wantsDetailedSummary(managerMenuText);
