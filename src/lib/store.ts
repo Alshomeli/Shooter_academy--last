@@ -39,7 +39,14 @@ export async function signIn(email: string, password: string) {
 export async function signUp(email: string, password: string, redirectView?: 'registration' | 'staff-registration') {
   const redirect = new URL(window.location.origin + window.location.pathname);
   if (redirectView) redirect.searchParams.set('view', redirectView);
-  return supabase.auth.signUp({ email, password, options: { emailRedirectTo: redirect.toString() } });
+  return supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      emailRedirectTo: redirect.toString(),
+      data: { onboarding_mode: redirectView === 'staff-registration' ? 'staff' : 'parent' },
+    },
+  });
 }
 
 export async function signOut() {
@@ -179,7 +186,16 @@ export const db = {
       };
     }
 
-    return { id: user.id, authUserId: user.id, name: user.email || '', email: user.email || '', role: 'parent', registrationOnly: true, registrationMode: 'parent' };
+    const onboardingMode = user.user_metadata?.onboarding_mode === 'staff' ? 'staff' : 'parent';
+    return {
+      id: user.id,
+      authUserId: user.id,
+      name: user.email || '',
+      email: user.email || '',
+      role: onboardingMode === 'staff' ? 'coach' : 'parent',
+      registrationOnly: true,
+      registrationMode: onboardingMode,
+    };
   },
 
   async recordPayment(subscription: Subscription, method: string): Promise<Transaction> {
