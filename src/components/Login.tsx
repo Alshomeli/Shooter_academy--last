@@ -68,8 +68,11 @@ export function Login({ onLogin, lang, setLang, recovery = false, registrationEn
         const { error } = await supabase.auth.updateUser({ password });
         if (error) throw error;
       } else {
-        const { error } = await signIn(email.trim(), password);
+        const { data, error } = await signIn(email.trim(), password);
         if (error) throw new Error(text('تعذر الدخول. تحقق من البريد وكلمة المرور وتأكيد الحساب.', 'Unable to sign in. Check your email, password and email confirmation.'));
+        if (data.user && (staffRegistrationEntry || registrationKind === 'staff') && data.user.user_metadata?.onboarding_mode !== 'staff') {
+          await supabase.auth.updateUser({ data: { ...data.user.user_metadata, onboarding_mode: 'staff' } });
+        }
       }
       const member = await db.getCurrentUser();
       if (!member) throw new Error(text('تعذر تحميل حسابك. حاول مجددًا.', 'Could not load your account. Please try again.'));
