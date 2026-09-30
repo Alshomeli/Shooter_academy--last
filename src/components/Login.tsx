@@ -57,7 +57,9 @@ export function Login({ onLogin, lang, setLang, recovery = false, registrationEn
         if (error) throw error;
         if (!data.session) {
           setPassword(''); setConfirm('');
-          setMessage(text('راجع بريدك لتأكيد الحساب، ثم سجّل الدخول لإكمال بيانات ولي الأمر والأبناء.', 'Check your email to confirm your account, then sign in to complete the parent and children application.'));
+          setMessage(staffRegistrationEntry
+            ? text('راجع بريدك لتأكيد الحساب، ثم سجّل الدخول لإكمال طلب الموظف أو المدرب.', 'Check your email to confirm your account, then sign in to complete the staff or coach application.')
+            : text('راجع بريدك لتأكيد الحساب، ثم سجّل الدخول لإكمال بيانات ولي الأمر والأبناء.', 'Check your email to confirm your account, then sign in to complete the parent and children application.'));
           return;
         }
       } else if (screen === 'reset') {
@@ -103,7 +105,9 @@ export function Login({ onLogin, lang, setLang, recovery = false, registrationEn
       <div className="mt-5 flex flex-wrap gap-4 text-sm text-emerald-700 font-bold">
         {screen === 'login' ? <><button disabled={busy} onClick={() => { window.location.search = '?view=registration'; }}>{text('تسجيل ولي أمر وأبنائه', 'Register parent and children')}</button><button disabled={busy} onClick={() => { window.location.search = '?view=staff-registration'; }}>{text('طلب موظف / مدرب', 'Staff / coach application')}</button><button disabled={busy} onClick={() => changeScreen('forgot')}>{text('نسيت كلمة المرور؟', 'Forgot password?')}</button></> : screen !== 'reset' && <button disabled={busy} onClick={() => changeScreen('login')}>{text('العودة للدخول', 'Back to sign in')}</button>}
       </div>
-      {screen === 'register' && <p className="mt-4 text-xs text-slate-500">{text('تراجع الإدارة طلب تسجيل الأبناء قبل تفعيلهم. لإنشاء حساب موظف، تواصل مع إدارة الأكاديمية.', 'The academy reviews children’s applications before activation. Contact the academy to set up a staff account.')}</p>}
+      {screen === 'register' && <p className="mt-4 text-xs text-slate-500">{staffRegistrationEntry
+        ? text('تراجع الإدارة طلب الموظف أو المدرب ويمكنها الموافقة أو الرفض أو إعادته للتعديل قبل تفعيل أي صلاحية.', 'The academy reviews staff applications and may approve, reject, or request changes before any staff access is activated.')
+        : text('تراجع الإدارة طلب تسجيل الأبناء قبل تفعيلهم.', 'The academy reviews children’s applications before activation.')}</p>}
     </div>
   </main>;
 }
