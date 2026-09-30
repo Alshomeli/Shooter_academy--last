@@ -248,7 +248,13 @@ export const db = {
     const { error: uploadError } = await supabase.storage.from('payment-proofs').upload(path, file, { upsert: false, contentType: file.type });
     if (uploadError) throw uploadError;
     const { error } = await supabase.rpc('resubmit_payment_proof', { p_proof_id: proof.id, p_proof_path: path, p_transfer_date: transferDate, p_parent_note: parentNote.trim() });
-    if (error) throw error;
+    if (error) {
+      await supabase.storage.from('payment-proofs').remove([path]);
+      throw error;
+    }
+    if (proof.proofPath && proof.proofPath !== path) {
+      await supabase.storage.from('payment-proofs').remove([proof.proofPath]);
+    }
   },
 
   async approvePaymentProof(id: string): Promise<void> {
