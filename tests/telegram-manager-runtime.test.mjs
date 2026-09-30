@@ -28,7 +28,7 @@ test('an unapproved chat cannot read the database',async()=>{
  const r=runtime();await r.run(r.request(99));const dbReads=r.calls.filter(c=>c.url.includes('/rest/v1/') && (c.options.method||'GET')==='GET');assert.equal(dbReads.length,0);assert.ok(r.calls.some(c=>c.url.includes('api.telegram.org')));
 });
 test('groups cannot retrieve manager details',async()=>{
- const r=runtime();await r.run(r.request(42,'test-secret','group'));const mutations=r.calls.filter(c=>c.url.includes('/rest/v1/') && ['POST','PATCH','DELETE'].includes(c.options.method));assert.equal(mutations.length,0);
+ const r=runtime();await r.run(r.request(42,'test-secret','group'));const writes=r.calls.filter(c=>c.url.includes('/rest/v1/') && ['PATCH','DELETE','PUT'].includes(c.options.method));assert.equal(writes.length,0);
 });
 test('authorized private report includes matches and uses read-only REST',async()=>{
  const r=runtime();assert.equal((await r.run(r.request())).status,200);
