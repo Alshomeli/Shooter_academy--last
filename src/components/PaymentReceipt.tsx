@@ -9,16 +9,19 @@ type Props = {
   parents: Parent[];
   settings?: Settings | null;
   lang: Lang;
+  officialReceiptNumber?: number;
   onClose: () => void;
 };
 
-export function PaymentReceipt({ subscription, transactions, players, parents, settings, lang, onClose }: Props) {
+export function PaymentReceipt({ subscription, transactions, players, parents, settings, lang, officialReceiptNumber, onClose }: Props) {
   const ar = lang === 'ar';
   const player = players.find((p) => p.id === subscription.playerId);
   const parent = parents.find((p) => p.id === player?.parentId);
   const tx = transactions.find((t) => t.subscriptionId === subscription.id);
   const rawReference = tx?.id || subscription.id;
-  const number = rawReference.replace(/^txn-/, '').slice(0, 12).toUpperCase();
+  const number = officialReceiptNumber != null
+    ? `SA-${String(officialReceiptNumber).padStart(6, '0')}`
+    : rawReference.replace(/^txn-/, '').slice(0, 12).toUpperCase();
   const date = tx?.transactionDate || subscription.paidAt?.slice(0, 10) || '-';
   const payer = parent?.name || player?.parentName || player?.name || '-';
   const method = subscription.paymentMethod || 'cash';
