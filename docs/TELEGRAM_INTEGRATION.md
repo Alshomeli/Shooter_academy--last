@@ -12,7 +12,7 @@ Security model:
 - Allowed chats can be configured server-side in `TELEGRAM_MANAGER_CHAT_IDS`.
 - The initial manager is bootstrapped using a one-way SHA-256 digest of the approved chat ID; the raw chat ID is not committed to source control.
 - Bot token, webhook secret, and Supabase service role key stay in Edge Function secrets.
-- The function does not expose player names, guardian details, national IDs, notes, or contact information.
+- Authorized private manager chats may receive player names and operational/payment details following owner approval. National IDs, guardian contact information, medical data, salaries and private notes are excluded by explicit query projections.
 - Telegram Manager v1 performs no inserts, updates, deletes, or RPC mutations.
 
 ## Commands
@@ -23,9 +23,9 @@ Security model:
 - `اشتراكات تنتهي اليوم` or `/expiring` — counts expiring today and during the next seven days.
 - `مساعدة` or `/help` — command help.
 
-## Required secret
+## Optional manager override
 
-Set `TELEGRAM_MANAGER_CHAT_IDS` to a comma-separated allowlist of authorized private Telegram chat IDs.
+Optionally set `TELEGRAM_MANAGER_CHAT_IDS` to a comma-separated allowlist of authorized private Telegram chat IDs.
 
 For future managers, place the approved chat ID in the Edge Function secret. Do not authorize based on Telegram username. The initial approved manager does not need `/whoami`; only its digest is stored in source control.
 
@@ -48,3 +48,11 @@ If the hosted Edge Function secret cannot be updated through the connected tooli
 Authorized managers can send Telegram voice notes instead of typing supported administrative questions. The webhook uses Telegram `getFile`, downloads the voice note server-side, and transcribes it with OpenAI speech-to-text before passing the transcript through the same read-only intent routing used for text messages.
 
 Required server secret: `OPENAI_API_KEY`. Never expose this key to the browser, Telegram messages, source control, or logs. Voice files are processed in memory and are not persisted by this function. Telegram bot downloads are limited to 20 MB.
+
+## Detailed reports
+
+`ملخص اليوم` and `تفاصيل اليوم` include scheduled matches, recorded training sessions, revenue, expenses, attendance, registration requests and expiring subscriptions. Queries also support players, teams, staff/coaches, evaluations and tournaments. Data stays read-only and uses fixed column projections; the model only classifies unsupported phrasing, never chooses SQL or database columns. Database records are not sent to the model.
+
+Examples: `مباريات غدا`, `تفاصيل دفعات اليوم`, `تقييمات اللاعبين 2026-09-30`, `تفاصيل يوم 2026-09-30`, `دفعات اللاعب «الاسم الكامل» اليوم`. Use an ISO date or two ISO dates for a range. Named player/team filters require quoted exact registered names. Unknown questions return a clarification instead of an invented answer. This is not an unrestricted general-purpose database agent.
+
+Each section shows 15 records per page; append `صفحة 2` to the original question for the next page. Financial page sums are explicitly labeled as sums of displayed transactions only, not full-period totals. Transaction IDs are labeled as operation references, not invented receipt numbers. Missing match times and remaining balances are not inferred. Training reports use dated training records; recurring team schedules are available through the teams report. Long responses are split into Telegram-safe messages. Section failures are reported explicitly.

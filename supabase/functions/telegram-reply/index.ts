@@ -1,4 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { reportRequest, detailedReport, splitMessages } from "./reports.ts";
 const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN");
 // These two settings are optional runtime overrides for the Supabase Edge Function.
 const optionalServerEnv = (...parts: string[]) => Deno.env.get(parts.join("_"));
@@ -121,6 +122,7 @@ type AdminIntent =
   | "revenue"
   | "attendance"
   | "registrations"
+  | "matches" | "trainings" | "evaluations" | "tournaments" | "overview" | "expenses" | "subscriptions"
   | "unknown";
 
 type AdminPeriod = "today" | "yesterday" | "this_week" | "this_month" | "last_month" | "next_7_days" | "all";
@@ -129,7 +131,7 @@ type ParsedAdminQuestion = { intent: AdminIntent; period: AdminPeriod };
 
 const ADMIN_INTENTS = new Set<AdminIntent>([
   "active_players", "coaches", "staff", "teams", "parents", "unpaid_subscriptions",
-  "expiring_subscriptions", "revenue", "attendance", "registrations", "unknown",
+  "expiring_subscriptions", "revenue", "attendance", "registrations", "matches", "trainings", "evaluations", "tournaments", "overview", "expenses", "subscriptions", "unknown",
 ]);
 const ADMIN_PERIODS = new Set<AdminPeriod>([
   "today", "yesterday", "this_week", "this_month", "last_month", "next_7_days", "all",
@@ -175,7 +177,7 @@ async function classifyAdminQuestion(text: string): Promise<ParsedAdminQuestion>
 
   const prompt = [
     "صنّف سؤال مدير أكاديمية رياضية إلى مقصد واحد وفترة زمنية.",
-    "المقاصد المسموحة فقط: active_players, coaches, staff, teams, parents, unpaid_subscriptions, expiring_subscriptions, revenue, attendance, registrations, unknown.",
+    "المقاصد المسموحة فقط: active_players, coaches, staff, teams, parents, unpaid_subscriptions, expiring_subscriptions, revenue, attendance, registrations, matches, trainings, evaluations, tournaments, overview, expenses, subscriptions, unknown.",
     "الفترات المسموحة فقط: today, yesterday, this_week, this_month, last_month, next_7_days, all.",
     "لا تنشئ SQL ولا أوامر ولا أسماء جداول. أرجع JSON فقط بالشكل: {\"intent\":\"...\",\"period\":\"...\"}.",
     "إذا لم يذكر المستخدم فترة: revenue/attendance/registrations = today، expiring_subscriptions = next_7_days، والبقية = all.",
@@ -308,6 +310,10 @@ async function telegramVoiceToText(voice: NonNullable<NonNullable<TelegramUpdate
 }
 
 async function sendMessage(chatId: number, text: string) {
+  for (const chunk of splitMessages(text)) await sendMessageChunk(chatId, chunk);
+}
+
+async function sendMessageChunk(chatId: number, text: string) {
   if (!TELEGRAM_BOT_TOKEN) throw new Error("telegram_bot_token_missing");
   const response = await fetch(
     `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
@@ -316,7 +322,7 @@ async function sendMessage(chatId: number, text: string) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         chat_id: chatId,
-        text: text.slice(0, 4096),
+        text,
         disable_web_page_preview: true,
       }),
     },
@@ -382,6 +388,7 @@ async function restRows<T>(table: string, params: Record<string, string>): Promi
     headers: {
       apikey: serverApiKey(),
       Accept: "application/json",
+      Prefer: "count=exact",
     },
   });
   if (!response.ok) {
@@ -389,7 +396,11 @@ async function restRows<T>(table: string, params: Record<string, string>): Promi
     throw new Error(`rest_rows_failed_${response.status}`);
   }
   const data = await response.json();
-  return Array.isArray(data) ? data as T[] : [];
+  if (!Array.isArray(data)) throw new Error("invalid_rest_response");
+  const rows = data as T[] & { total?: number };
+  const totalText = response.headers.get("content-range")?.split("/")[1];
+  if (totalText && totalText !== "*" && Number.isFinite(Number(totalText))) rows.total = Number(totalText);
+  return rows;
 }
 
 Deno.serve(async (req: Request) => {
@@ -461,6 +472,21 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+    // Authorization above applies equally to names, payments, text and voice reports.
+    if (!isHelpCommand(incomingText)) {
+      const today = bahrainDate();
+      let request = reportRequest(incomingText, today);
+      if (!request) {
+        const classification = await classifyAdminQuestion(incomingText);
+        request = reportRequest(incomingText, today, classification);
+      }
+      if (request) {
+        await sendMessage(chatId, await detailedReport(request, restRows));
+        return Response.json({ ok: true });
+      }
+      await sendMessage(chatId, "لم أستطع تحديد تقرير موثوق لهذا السؤال. أستطيع قراءة تفاصيل اليوم والمباريات والتدريبات والدفعات والمصروفات والاشتراكات واللاعبين والفرق والطاقم والحضور والتسجيل والتقييمات والبطولات. اذكر الموضوع والتاريخ بصيغة YYYY-MM-DD. التعديل والحذف غير متاحين من البوت.");
+      return Response.json({ ok: true });
+    }
     if (isHelpCommand(incomingText)) {
       await sendMessage(
         chatId,
@@ -472,7 +498,9 @@ Deno.serve(async (req: Request) => {
           "• الإيرادات اليوم أو هذا الأسبوع أو هذا الشهر",
           "• الحضور والغياب",
           "• طلبات التسجيل الجديدة",
-          "• ملخص اليوم",
+          "• ملخص اليوم أو تفاصيل اليوم، بما فيها المباريات والتدريبات",
+          "• تفاصيل دفعات اليوم، تقييمات اللاعبين، والبطولات",
+          "• تحديد تاريخ YYYY-MM-DD أو أمس أو غدًا؛ وللمزيد أضف صفحة 2",
           "",
           "أمثلة: «كم مدرب عندنا؟» — «كم دخلنا هذا الشهر؟» — «كم غياب أمس؟»",
           "",
@@ -656,9 +684,14 @@ Deno.serve(async (req: Request) => {
     );
     return Response.json({ ok: true });
   } catch (error) {
+    if (error instanceof Error && ['invalid_report_date', 'invalid_report_page'].includes(error.message)) {
+      await sendMessage(chatId, "حدد تاريخًا صحيحًا بصيغة YYYY-MM-DD وفترة نهايتها بعد بدايتها، ورقم صفحة بين 1 و1000.");
+      return Response.json({ ok: false });
+    }
     const code = typeof error === "object" && error && "code" in error ? String((error as { code?: unknown }).code || "unknown") : "unknown";
     console.error("Telegram manager query failed", code);
     await sendMessage(chatId, "تعذر جلب البيانات الآن. حاول مرة أخرى بعد قليل.");
     return Response.json({ ok: false }, { status: 500 });
   }
 });
+
