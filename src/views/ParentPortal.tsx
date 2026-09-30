@@ -10,7 +10,7 @@ import { db } from '@/lib/store';
 import { tr } from '@/lib/i18n';
 
 export function ParentPortal({ user, players, subscriptions, attendance, evaluations, settings, lang, setLang, onLogout, onRefresh, openRegistration = false }: {
-  openRegistration?: boolean; user: CurrentUser; players: Player[]; subscriptions: Subscription[]; attendance: Attendance[]; evaluations: PlayerEvaluation[]; settings: Settings; lang: Lang;
+  openRegistration?: boolean; user: CurrentUser; players: Player[]; subscriptions: Subscription[]; attendance: Attendance[]; evaluations: PlayerEvaluation[]; settings: Settings | null; lang: Lang;
   setLang: (lang: Lang) => void; onLogout: () => void; onRefresh: () => Promise<void>;
 }) {
   const ar = lang === 'ar';
