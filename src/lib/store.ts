@@ -36,8 +36,10 @@ export async function signIn(email: string, password: string) {
   return supabase.auth.signInWithPassword({ email, password });
 }
 
-export async function signUp(email: string, password: string) {
-  return supabase.auth.signUp({ email, password, options: { emailRedirectTo: window.location.origin } });
+export async function signUp(email: string, password: string, redirectView?: 'registration' | 'staff-registration') {
+  const redirect = new URL(window.location.origin + window.location.pathname);
+  if (redirectView) redirect.searchParams.set('view', redirectView);
+  return supabase.auth.signUp({ email, password, options: { emailRedirectTo: redirect.toString() } });
 }
 
 export async function signOut() {
@@ -157,7 +159,27 @@ export const db = {
       .select('id,name,email,status').eq('user_id', user.id).maybeSingle();
     if (parentError) throw parentError;
     if (parent?.status === 'active') return { ...parent, role: 'parent', authUserId: user.id };
-    return { id: user.id, authUserId: user.id, name: user.email || '', email: user.email || '', role: 'parent', registrationOnly: true };
+
+    const { data: staffApplication, error: staffApplicationError } = await supabase.from('staff_applications')
+      .select('requested_role,full_name,email,status')
+      .eq('applicant_user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (staffApplicationError && staffApplicationError.code !== '42P01') throw staffApplicationError;
+    if (staffApplication) {
+      return {
+        id: user.id,
+        authUserId: user.id,
+        name: staffApplication.full_name || user.email || '',
+        email: staffApplication.email || user.email || '',
+        role: staffApplication.requested_role as CurrentUser['role'],
+        registrationOnly: true,
+        registrationMode: 'staff',
+      };
+    }
+
+    return { id: user.id, authUserId: user.id, name: user.email || '', email: user.email || '', role: 'parent', registrationOnly: true, registrationMode: 'parent' };
   },
 
   async recordPayment(subscription: Subscription, method: string): Promise<Transaction> {

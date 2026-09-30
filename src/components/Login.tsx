@@ -6,10 +6,10 @@ import { FormField, inputCls } from '@/components/ui';
 import type { CurrentUser, Lang } from '@/types';
 
 type Screen = 'login' | 'register' | 'forgot' | 'reset';
-export function Login({ onLogin, lang, setLang, recovery = false, registrationEntry = false }: {
-  onLogin: (user: CurrentUser) => void; lang: Lang; setLang: (lang: Lang) => void; recovery?: boolean; registrationEntry?: boolean;
+export function Login({ onLogin, lang, setLang, recovery = false, registrationEntry = false, staffRegistrationEntry = false }: {
+  onLogin: (user: CurrentUser) => void; lang: Lang; setLang: (lang: Lang) => void; recovery?: boolean; registrationEntry?: boolean; staffRegistrationEntry?: boolean;
 }) {
-  const [screen, setScreen] = useState<Screen>(recovery ? 'reset' : registrationEntry ? 'register' : 'login');
+  const [screen, setScreen] = useState<Screen>(recovery ? 'reset' : (registrationEntry || staffRegistrationEntry) ? 'register' : 'login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -53,11 +53,13 @@ export function Login({ onLogin, lang, setLang, recovery = false, registrationEn
         return;
       }
       if (screen === 'register') {
-        const { data, error } = await signUp(email.trim(), password);
+        const { data, error } = await signUp(email.trim(), password, staffRegistrationEntry ? 'staff-registration' : 'registration');
         if (error) throw error;
         if (!data.session) {
           setPassword(''); setConfirm('');
-          setMessage(text('راجع بريدك لتأكيد الحساب، ثم سجّل الدخول لإكمال بيانات ولي الأمر والأبناء.', 'Check your email to confirm your account, then sign in to complete the parent and children application.'));
+          setMessage(staffRegistrationEntry
+            ? text('راجع بريدك لتأكيد الحساب، ثم سجّل الدخول لإكمال طلب الموظف أو المدرب.', 'Check your email to confirm your account, then sign in to complete the staff or coach application.')
+            : text('راجع بريدك لتأكيد الحساب، ثم سجّل الدخول لإكمال بيانات ولي الأمر والأبناء.', 'Check your email to confirm your account, then sign in to complete the parent and children application.'));
           return;
         }
       } else if (screen === 'reset') {
@@ -78,7 +80,7 @@ export function Login({ onLogin, lang, setLang, recovery = false, registrationEn
     } finally { setRegistering(false); setBusy(false); }
   };
   const titles = {
-    login: text('تسجيل الدخول', 'Sign in'), register: text('حساب ولي أمر جديد', 'Create a parent account'),
+    login: text('تسجيل الدخول', 'Sign in'), register: staffRegistrationEntry ? text('حساب موظف / مدرب جديد', 'Create a staff / coach account') : text('حساب ولي أمر جديد', 'Create a parent account'),
     forgot: text('استعادة كلمة المرور', 'Reset password'), reset: text('كلمة مرور جديدة', 'Choose a new password'),
   };
   return <main className="min-h-screen flex items-center justify-center bg-slate-950 p-4" dir={ar ? 'rtl' : 'ltr'}>
@@ -101,9 +103,11 @@ export function Login({ onLogin, lang, setLang, recovery = false, registrationEn
       </form>
       {(screen === 'login' || screen === 'register') && <button type="button" disabled={busy} onClick={() => void googleLogin()} className="mt-4 w-full rounded-lg border border-slate-300 dark:border-slate-600 px-4 py-3 text-sm font-bold hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50">{text('المتابعة باستخدام Google', 'Continue with Google')}</button>}
       <div className="mt-5 flex flex-wrap gap-4 text-sm text-emerald-700 font-bold">
-        {screen === 'login' ? <><button disabled={busy} onClick={() => changeScreen('register')}>{text('تسجيل ولي أمر وأبنائه', 'Register parent and children')}</button><button disabled={busy} onClick={() => changeScreen('forgot')}>{text('نسيت كلمة المرور؟', 'Forgot password?')}</button></> : screen !== 'reset' && <button disabled={busy} onClick={() => changeScreen('login')}>{text('العودة للدخول', 'Back to sign in')}</button>}
+        {screen === 'login' ? <><button disabled={busy} onClick={() => { window.location.search = '?view=registration'; }}>{text('تسجيل ولي أمر وأبنائه', 'Register parent and children')}</button><button disabled={busy} onClick={() => { window.location.search = '?view=staff-registration'; }}>{text('طلب موظف / مدرب', 'Staff / coach application')}</button><button disabled={busy} onClick={() => changeScreen('forgot')}>{text('نسيت كلمة المرور؟', 'Forgot password?')}</button></> : screen !== 'reset' && <button disabled={busy} onClick={() => changeScreen('login')}>{text('العودة للدخول', 'Back to sign in')}</button>}
       </div>
-      {screen === 'register' && <p className="mt-4 text-xs text-slate-500">{text('تراجع الإدارة طلب تسجيل الأبناء قبل تفعيلهم. لإنشاء حساب موظف، تواصل مع إدارة الأكاديمية.', 'The academy reviews children’s applications before activation. Contact the academy to set up a staff account.')}</p>}
+      {screen === 'register' && <p className="mt-4 text-xs text-slate-500">{staffRegistrationEntry
+        ? text('تراجع الإدارة طلب الموظف أو المدرب ويمكنها الموافقة أو الرفض أو إعادته للتعديل قبل تفعيل أي صلاحية.', 'The academy reviews staff applications and may approve, reject, or request changes before any staff access is activated.')
+        : text('تراجع الإدارة طلب تسجيل الأبناء قبل تفعيلهم.', 'The academy reviews children’s applications before activation.')}</p>}
     </div>
   </main>;
 }

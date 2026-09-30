@@ -34,6 +34,7 @@ const Evaluations = lazy(() => import('@/views/Evaluations').then(m => ({ defaul
 const AuditLogs = lazy(() => import('@/views/AuditLogs').then(m => ({ default: m.AuditLogs })));
 const Messages = lazy(() => import('@/views/Messages').then(m => ({ default: m.Messages })));
 const Registration = lazy(() => import('@/views/Registration').then(m => ({ default: m.Registration })));
+const StaffRegistration = lazy(() => import('@/views/StaffRegistration').then(m => ({ default: m.StaffRegistration })));
 const RegistrationAdmin = lazy(() => import('@/views/RegistrationAdmin').then(m => ({ default: m.RegistrationAdmin })));
 
 /* ── Error Boundary ── */
@@ -108,7 +109,7 @@ export default function App() {
   const [currentTab, setCurrentTab] = useState<ViewId>(() => {
     const params = new URLSearchParams(window.location.search);
     const view = params.get('view') || window.location.hash.replace('#', '');
-    if (view === 'registration' || view === 'registration-admin') return view as ViewId;
+    if (view === 'registration' || view === 'staff-registration' || view === 'registration-admin') return view as ViewId;
     return 'dashboard';
   });
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -148,7 +149,10 @@ export default function App() {
         void db.getCurrentUser().then(member => {
           if (request !== generation) return;
           setCurrentUser(member);
-          if (member) setActiveRole(member.role);
+          if (member) {
+            setActiveRole(member.role);
+            if (member.registrationOnly && member.registrationMode === 'staff') setCurrentTab('staff-registration');
+          }
           setAuthReady(true);
         }).catch(() => {
           if (request === generation) { setCurrentUser(null); setAuthReady(true); }
@@ -296,7 +300,10 @@ export default function App() {
   const handleLogin = (user: CurrentUser) => {
     setCurrentUser(user);
     setActiveRole(user.role);
-    setCurrentTab(new URLSearchParams(window.location.search).get('view') === 'registration' ? 'registration' : 'dashboard');
+    const view = new URLSearchParams(window.location.search).get('view');
+    setCurrentTab(user.registrationOnly && user.registrationMode === 'staff'
+      ? 'staff-registration'
+      : (view === 'registration' || view === 'staff-registration' ? view : 'dashboard'));
   };
 
   const handleLogout = async () => {
@@ -372,6 +379,7 @@ export default function App() {
     'ai-center': t.aiCenter,
     messages: t.messages,
     registration: t.registration,
+    'staff-registration': lang === 'ar' ? 'طلب موظف / مدرب' : 'Staff / coach application',
     'registration-admin': t.registrationAdmin,
     settings: t.settings,
   };
@@ -422,6 +430,11 @@ export default function App() {
         return data.settings ? <SettingsView settings={data.settings} onSettingsChange={saveSettings} activeRole={activeRole} lang={lang} /> : null;
       case 'registration':
         return <Registration lang={lang} />;
+      case 'staff-registration':
+        return currentUser ? <StaffRegistration user={currentUser} lang={lang} onLogout={handleLogout} onApproved={async () => {
+          const member = await db.getCurrentUser();
+          if (member && !member.registrationOnly) { setCurrentUser(member); setActiveRole(member.role); setCurrentTab('dashboard'); await loadAllData(); }
+        }} /> : null;
       case 'registration-admin':
         return <RegistrationAdmin lang={lang} activeRole={activeRole} teams={data.teams} players={data.players} onRefresh={loadAllData} />;
       default:
@@ -440,7 +453,7 @@ export default function App() {
   }
 
   if (!currentUser || recovery) {
-    return <Login registrationEntry={currentTab === 'registration'} recovery={recovery} onLogin={(user) => { setRecovery(false); handleLogin(user); }} lang={lang} setLang={setLang} />;
+    return <Login registrationEntry={currentTab === 'registration'} staffRegistrationEntry={currentTab === 'staff-registration'} recovery={recovery} onLogin={(user) => { setRecovery(false); handleLogin(user); }} lang={lang} setLang={setLang} />;
   }
 
   if (loading) {
@@ -466,6 +479,13 @@ export default function App() {
         </div>
       </div>
     );
+  }
+
+  if (currentUser.registrationOnly && currentUser.registrationMode === 'staff') {
+    return <StaffRegistration user={currentUser} lang={lang} onLogout={handleLogout} onApproved={async () => {
+      const member = await db.getCurrentUser();
+      if (member && !member.registrationOnly) { setCurrentUser(member); setActiveRole(member.role); setCurrentTab('dashboard'); await loadAllData(); }
+    }} />;
   }
 
   if (currentUser.role === 'parent') {

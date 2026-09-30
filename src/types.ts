@@ -208,10 +208,32 @@ export interface Settings {
 export interface CurrentUser {
   authUserId?: string;
   registrationOnly?: boolean;
+  registrationMode?: 'parent' | 'staff';
   id: string;
   name: string;
   email: string;
   role: Role;
+}
+
+export interface StaffApplication {
+  id: string;
+  applicantUserId: string;
+  requestedRole: 'coach' | 'accountant' | 'receptionist';
+  fullName: string;
+  email: string;
+  phone: string;
+  nationalId: string;
+  specialization: string;
+  experienceYears: number | null;
+  licenses: string[];
+  applicantNotes: string;
+  status: 'draft' | 'pending' | 'needs_info' | 'approved' | 'rejected';
+  reviewNotes: string;
+  submittedAt: string | null;
+  reviewedAt: string | null;
+  approvedStaffId: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export type Lang = 'ar' | 'en';
@@ -234,6 +256,7 @@ export type ViewId =
   | 'messages'
   | 'settings'
   | 'registration'
+  | 'staff-registration'
   | 'registration-admin';
 
 /* ---- Registration module ---- */
