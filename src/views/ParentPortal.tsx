@@ -8,7 +8,6 @@ import { planLabel } from '@/lib/i18n';
 import type { Attendance, CurrentUser, Lang, PaymentProof, Player, PlayerDocument, PlayerEvaluation, Settings, Subscription } from '@/types';
 import { db } from '@/lib/store';
 import { tr } from '@/lib/i18n';
-import { TelegramLinkCard } from '@/components/TelegramLinkCard';
 
 const bahrainToday = () => {
   const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Bahrain', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
@@ -100,7 +99,6 @@ export function ParentPortal({ user, players, subscriptions, attendance, evaluat
     <div className="max-w-5xl mx-auto space-y-6">
       <header className="flex flex-wrap items-center justify-between gap-4"><div><h1 className="text-2xl font-black">{text('بوابة ولي الأمر', 'Parent portal')}</h1><p className="text-sm text-slate-500">{user.name}</p></div><div className="flex gap-4 items-center text-sm"><button onClick={() => setLang(ar ? 'en' : 'ar')}>{ar ? 'English' : 'العربية'}</button><button onClick={onLogout} className="flex gap-1 items-center"><LogOut className="h-4 w-4" />{text('خروج', 'Sign out')}</button></div></header>
       {error && <p role="alert" className="text-red-700 bg-red-50 p-3 rounded-lg">{error}</p>}
-      <TelegramLinkCard lang={lang} />
       <div className="flex flex-wrap items-center justify-between gap-4"><h2 className="text-lg font-bold">{text('الأبناء', 'Children')}</h2><div className="flex gap-3"><button onClick={() => void refresh()} aria-label={text('تحديث', 'Refresh')}><RefreshCw className="h-5 w-5" /></button><button disabled={!ready} onClick={() => setEditor('new')} className="flex gap-2 items-center bg-emerald-600 text-white rounded-lg px-4 py-2 disabled:opacity-50"><Plus className="h-4 w-4" />{text('طلب تسجيل أبناء', 'Register children')}</button></div></div>
       {!players.length && <p className="text-slate-500">{text('ستظهر بيانات الأبناء هنا بعد اعتماد الطلب وربط الحساب.', 'Your children will appear here after the academy approves the application and links your account.')}</p>}
       {players.length > 0 && <div className="grid lg:grid-cols-[260px_1fr] gap-5">
