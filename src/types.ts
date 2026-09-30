@@ -218,7 +218,7 @@ export interface CurrentUser {
 export interface StaffApplication {
   id: string;
   applicantUserId: string;
-  requestedRole: 'coach' | 'accountant' | 'receptionist';
+  requestedRole: 'manager' | 'coach' | 'accountant' | 'receptionist';
   fullName: string;
   email: string;
   phone: string;
