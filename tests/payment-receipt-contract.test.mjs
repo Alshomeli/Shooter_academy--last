@@ -28,3 +28,11 @@ test('subscriptions passes parent data and printing stays receipt-only', () => {
   assert.match(css, /receipt-print-root/);
   assert.match(css, /receipt-no-print/);
 });
+
+
+test('approved transfer receipts print the official SA sequence number', () => {
+  assert.match(receipt, /officialReceiptNumber/);
+  assert.match(receipt, /SA-/);
+  assert.match(subscriptions, /proof\.status === 'approved'/);
+  assert.match(subscriptions, /officialReceiptNumber=/);
+});
