@@ -283,6 +283,16 @@ export const db = {
   },
 
   async uploadStaffDocument(staffId: string, file: File, title: string, documentType = 'certificate', expiryDate?: string, notes = ''): Promise<void> {
+    if (documentType === 'profile_photo') {
+      const { data: existing, error: existingError } = await supabase.from('staff_documents').select('id,file_path').eq('staff_id', staffId).eq('document_type', 'profile_photo').maybeSingle();
+      if (existingError) throw existingError;
+      if (existing) {
+        const { error: removeError } = await supabase.storage.from('staff-documents').remove([existing.file_path]);
+        if (removeError) throw removeError;
+        const { error: deleteError } = await supabase.from('staff_documents').delete().eq('id', existing.id);
+        if (deleteError) throw deleteError;
+      }
+    }
     const ext = (file.name.split('.').pop() || 'bin').toLowerCase();
     const path = `${staffId}/${documentType}/${crypto.randomUUID()}.${ext}`;
     const { error: uploadError } = await supabase.storage.from('staff-documents').upload(path, file, { upsert: false, contentType: file.type });
