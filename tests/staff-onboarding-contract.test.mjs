@@ -18,10 +18,12 @@ test('staff applicants can request only non-manager roles and approval is manage
 });
 
 test('staff self-onboarding preserves operational staff table until manager approval', () => {
-  const approval = migration.indexOf('insert into public.staff');
-  const submit = migration.indexOf("set status='pending'");
-  assert.ok(submit >= 0);
-  assert.ok(approval > submit);
+  const approvalStart = migration.indexOf('create or replace function internal.approve_staff_application');
+  const approvalEnd = migration.indexOf('create or replace function public.approve_staff_application', approvalStart);
+  const approvalBody = migration.slice(approvalStart, approvalEnd);
+  assert.ok(approvalStart >= 0);
+  assert.match(approvalBody, /v_row\.status <> 'pending'/);
+  assert.match(approvalBody, /insert into public\.staff/);
   assert.match(migration, /applicant_user_id = \(select auth\.uid\(\)\)/);
   assert.match(migration, /grant select on public\.staff_applications to authenticated/);
   assert.doesNotMatch(migration, /grant insert on public\.staff_applications to authenticated/);
