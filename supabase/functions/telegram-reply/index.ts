@@ -407,7 +407,7 @@ async function rememberAuthorizedManagerChat(chatId: number) {
   }
 }
 
-type TelegramIdentity = { user_id?: string; role?: "manager" | "coach" | "parent"; staff_id?: string | null; parent_id?: string | null; display_name?: string };
+type TelegramIdentity = { user_id?: string; role?: "manager" | "coach"; staff_id?: string | null; parent_id?: string | null; display_name?: string };
 
 async function linkedTelegramIdentity(chatId: number): Promise<TelegramIdentity | null> {
   try {
@@ -461,29 +461,36 @@ async function sendCoachToday(chatId: number, identity: TelegramIdentity) {
   }
 }
 
-async function sendParentKids(chatId: number, identity: TelegramIdentity) {
-  if (!identity.parent_id) return;
-  const kids = await restRows<{ id?: string; name?: string; team_id?: string }>("players", {
-    select: "id,name,team_id", parent_id: `eq.${identity.parent_id}`, status: "eq.active", order: "name.asc",
+async function sendTelegramAccountId(chatId: number, identity: TelegramIdentity) {
+  if (!identity.user_id) return;
+  const rows = await restRows<{ telegram_user_code?: string; role?: string }>("telegram_user_links", {
+    select: "telegram_user_code,role", user_id: `eq.${identity.user_id}`, is_active: "eq.true", limit: "1",
   });
-  if (!kids.length) {
-    await sendMessage(chatId, "لا يوجد لاعب نشط مرتبط بحساب ولي الأمر حاليًا.");
-    return;
-  }
+  const code = rows[0]?.telegram_user_code;
+  await sendMessage(chatId, code
+    ? `معرّف Telegram الداخلي: ${code}\nنوع الحساب: ${identity.role === "manager" ? "مدير" : "مدرب"}\nهذا المعرّف للتعريف والمتابعة فقط ولا يمنح صلاحية بمفرده.`
+    : "الحساب مرتبط، لكن تعذر قراءة المعرّف الداخلي الآن.");
+}
+
+async function sendCoachAttendanceSummary(chatId: number, identity: TelegramIdentity) {
   const today = bahrainDate();
-  const weekEnd = bahrainDate(7);
-  const teamIds = Array.from(new Set(kids.map((k) => k.team_id).filter(Boolean))) as string[];
-  const trainings = await restRows<{ team_id?: string; session_date?: string; title?: string }>("trainings", {
-    select: "team_id,session_date,title", session_date_gte: `gte.${today}`, session_date_lte: `lte.${weekEnd}`, order: "session_date.asc",
-  });
-  const upcoming = trainings.filter((t) => t.team_id && teamIds.includes(t.team_id));
-  await sendMessage(chatId, [
-    `👨‍👩‍👧‍👦 أبنائي — ${identity.display_name || "ولي الأمر"}`,
-    ...kids.map((kid) => `• ${kid.name || "لاعب"}`),
-    "",
-    `التدريبات المسجلة خلال 7 أيام: ${upcoming.length}`,
-    ...upcoming.slice(0, 15).map((t) => `🏃 ${t.session_date || ""} — ${t.title || "تدريب"}`),
-  ].join("\n"));
+  await rpc<number>("telegram_ensure_today_trainings", { p_chat_id: chatId });
+  const teams = await restRows<{ id?: string; name?: string }>("teams", { select: "id,name", coach_id: `eq.${identity.staff_id || ""}`, order: "name.asc" });
+  const teamIds = teams.map(t => t.id).filter(Boolean) as string[];
+  const trainings = await restRows<{ id?: string; team_id?: string }>("trainings", { select: "id,team_id", session_date: `eq.${today}` });
+  const trainingIds = trainings.filter(t => t.team_id && teamIds.includes(t.team_id)).map(t => t.id).filter(Boolean) as string[];
+  if (!trainingIds.length) { await sendMessage(chatId, "لا توجد حصة تخص فرقك اليوم."); return; }
+  const rows = await restRows<{ player_id?: string; status?: string; training_id?: string }>("attendance", { select: "player_id,status,training_id", session_date: `eq.${today}` });
+  const mine = rows.filter(r => r.training_id && trainingIds.includes(r.training_id));
+  const present = mine.filter(r=>r.status==="present").length, absent=mine.filter(r=>r.status==="absent").length, excused=mine.filter(r=>r.status==="excused").length;
+  await sendMessage(chatId, `📊 حضور اليوم لفرقك\n✅ حضر: ${present}\n❌ غاب: ${absent}\n🟡 بعذر: ${excused}\n📝 تم تسجيل حالة ${mine.length} لاعب حتى الآن.`);
+}
+
+async function sendCoachUpcoming(chatId: number, identity: TelegramIdentity) {
+  const today=bahrainDate(), end=bahrainDate(7);
+  const teams=await restRows<{id?:string;name?:string;training_days?:string[];training_time?:string}>("teams",{select:"id,name,training_days,training_time",coach_id:`eq.${identity.staff_id||""}`,order:"name.asc"});
+  if(!teams.length){await sendMessage(chatId,"لا يوجد فريق مرتبط بحسابك.");return;}
+  await sendMessage(chatId,["📅 جدول فرقك:",...teams.map(t=>`• ${t.name||"فريق"} — ${(t.training_days||[]).join("، ")||"الأيام غير محددة"}${t.training_time?` — ${t.training_time}`:""}`),`\nالفترة المرجعية: ${today} إلى ${end}`].join("\n"));
 }
 
 async function configuredManagerChats(): Promise<number[]> {
@@ -876,7 +883,7 @@ Deno.serve(async (req: Request) => {
         if (!linked?.length) {
           await sendMessage(chatId, "رمز الربط غير صحيح أو انتهت صلاحيته. أنشئ رمزًا جديدًا من حسابك في المنصة.");
         } else {
-          const roleLabel = linked[0].role === "manager" ? "مدير" : linked[0].role === "coach" ? "مدرب" : "ولي أمر";
+          const roleLabel = linked[0].role === "manager" ? "مدير" : "مدرب";
           await sendMessage(chatId, `✅ تم ربط Telegram بحسابك بنجاح. نوع الحساب: ${roleLabel}. أرسل /help لرؤية الأدوات المتاحة لك.`);
         }
       } catch {
@@ -919,28 +926,26 @@ Deno.serve(async (req: Request) => {
     if (telegramIdentity.role === "coach") {
       const value = normalize(incomingText);
       if (isHelpCommand(incomingText)) {
-        await sendMessage(chatId, ["مساعد المدرب:", "• /today_class — حصة اليوم وقائمة اللاعبين", "• «حصة اليوم» أو «قائمة حضور اليوم»", "• تسجيل حضر/غاب/بعذر من الأزرار مباشرة"].join("\n"));
+        await sendMessage(chatId, ["مساعد المدرب:", "• /today_class — حصة اليوم وقائمة اللاعبين", "• «قائمة حضور اليوم» — تسجيل حضر/غاب/بعذر بالأزرار", "• «ملخص حضور اليوم» — أعداد الحضور والغياب", "• «جدولي» أو «مواعيد تدريبي» — جدول فرقك", "• /id — معرّف Telegram الداخلي", "يمكنك كتابة الطلب بصيغة طبيعية أو إرساله صوتيًا إذا كانت ميزة الصوت مفعلة."].join("\n"));
+        return Response.json({ ok: true });
+      }
+      if (value === "/id" || value.includes("معرف تيليجرام") || value.includes("معرف telegram")) {
+        await sendTelegramAccountId(chatId, telegramIdentity);
+        return Response.json({ ok: true });
+      }
+      if (value.includes("ملخص") && (value.includes("حضور") || value.includes("غياب")) || value.includes("كم حضر") || value.includes("كم غاب")) {
+        await sendCoachAttendanceSummary(chatId, telegramIdentity);
+        return Response.json({ ok: true });
+      }
+      if (value === "/schedule" || value.includes("جدولي") || value.includes("مواعيد تدريبي") || value.includes("مواعيد الحصص")) {
+        await sendCoachUpcoming(chatId, telegramIdentity);
         return Response.json({ ok: true });
       }
       if (value === "/today_class" || value.includes("حصة اليوم") || value.includes("تدريب اليوم") || (value.includes("قائمة") && value.includes("حضور"))) {
         await sendCoachToday(chatId, telegramIdentity);
         return Response.json({ ok: true });
       }
-      await sendMessage(chatId, "يمكنك طلب «حصة اليوم» أو «قائمة حضور اليوم»، ثم تسجيل الحضور من الأزرار.");
-      return Response.json({ ok: true });
-    }
-
-    if (telegramIdentity.role === "parent") {
-      const value = normalize(incomingText);
-      if (isHelpCommand(incomingText)) {
-        await sendMessage(chatId, ["مساعد ولي الأمر:", "• /my_kids — الأبناء المرتبطون بالحساب", "• المواعيد التدريبية المسجلة خلال 7 أيام", "لن يعرض البوت بيانات لاعبين غير مرتبطين بحسابك."].join("\n"));
-        return Response.json({ ok: true });
-      }
-      if (value === "/my_kids" || value.includes("أبنائي") || value.includes("ابنائي") || value.includes("مواعيد")) {
-        await sendParentKids(chatId, telegramIdentity);
-        return Response.json({ ok: true });
-      }
-      await sendMessage(chatId, "أرسل /my_kids لمعرفة أبنائك والمواعيد التدريبية القادمة.");
+      await sendMessage(chatId, "اسألني عن حصة اليوم، قائمة الحضور، ملخص الحضور، جدولك، أو أرسل /help.");
       return Response.json({ ok: true });
     }
 
