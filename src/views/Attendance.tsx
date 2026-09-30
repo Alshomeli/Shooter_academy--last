@@ -412,12 +412,12 @@ function BatchAttendanceForm({
             <input
               type="date"
               value={sessionDate}
-              onChange={(e) => setSessionDate(e.target.value)}
-              className={inputCls}
+              readOnly
+              className={`${inputCls} opacity-80 cursor-not-allowed`}
             />
           </div>
           <div>
-            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">{t.sessionType}</label>
+            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">{isAr ? 'الجلسة' : 'Session'}</label>
             <select
               value={sessionId}
               onChange={(e) => {
