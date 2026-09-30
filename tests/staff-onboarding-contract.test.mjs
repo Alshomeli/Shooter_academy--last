@@ -44,3 +44,13 @@ test('authentication routes unapproved staff back to staff onboarding without gr
   assert.match(app, /StaffRegistration/);
   assert.match(staffRegistration, /No staff permissions are activated before manager approval/);
 });
+
+
+test('manager review writes run through a checked security-definer implementation', async () => {
+  const fix = await readFile(new URL('../supabase/migrations/20260930021000_fix_staff_application_review_rpc.sql', import.meta.url), 'utf8');
+  assert.match(fix, /create or replace function internal\.review_staff_application/);
+  assert.match(fix, /security definer/);
+  assert.match(fix, /internal\.is_academy_admin\(\)/);
+  assert.match(fix, /select internal\.review_staff_application\(\$1,\$2,\$3\)/);
+  assert.match(fix, /grant execute on function public\.review_staff_application\(uuid,text,text\) to authenticated/);
+});
