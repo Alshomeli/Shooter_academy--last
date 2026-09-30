@@ -25,6 +25,7 @@ export function ParentPortal({ user, players, subscriptions, attendance, evaluat
   const [playerDocuments, setPlayerDocuments] = useState<PlayerDocument[]>([]);
   const [photoUrls, setPhotoUrls] = useState<Record<string,string>>({});
   const [payingSubscription, setPayingSubscription] = useState<Subscription | null>(null);
+  const [resubmittingProof, setResubmittingProof] = useState<PaymentProof | null>(null);
   const [paymentFile, setPaymentFile] = useState<File | null>(null);
   const [transferDate, setTransferDate] = useState(new Date().toISOString().slice(0, 10));
   const [paymentNote, setPaymentNote] = useState('');
@@ -50,8 +51,9 @@ export function ParentPortal({ user, players, subscriptions, attendance, evaluat
     if (!payingSubscription || !selectedPlayer || !paymentFile) return;
     try {
       setPaymentBusy(true); setError('');
-      await db.submitPaymentProof(payingSubscription, selectedPlayer.id, transferDate, paymentFile, paymentNote);
-      setPayingSubscription(null); setPaymentFile(null); setPaymentNote('');
+      if (resubmittingProof) await db.resubmitPaymentProof(resubmittingProof, transferDate, paymentFile, paymentNote);
+      else await db.submitPaymentProof(payingSubscription, selectedPlayer.id, transferDate, paymentFile, paymentNote);
+      setPayingSubscription(null); setResubmittingProof(null); setPaymentFile(null); setPaymentNote('');
       await refresh();
     } catch (e) { setError(errorMessage(e, ar)); }
     finally { setPaymentBusy(false); }
@@ -92,8 +94,8 @@ export function ParentPortal({ user, players, subscriptions, attendance, evaluat
               return <div key={sub.id} className="border-t dark:border-slate-700 pt-3 flex flex-wrap items-center justify-between gap-3">
                 <div><p className="font-bold text-sm">{planLabel(sub.planType,lang)} · {sub.amount} {text('د.ب','BHD')}</p><p className="text-xs text-slate-500" dir="ltr">{sub.startDate} — {sub.endDate}</p></div>
                 <div className="flex items-center gap-2"><Badge color={sub.status==='paid'?'green':'amber'}>{sub.status==='paid'?text('مدفوع','Paid'):text('غير مدفوع','Unpaid')}</Badge>
-                {proof && <Badge color={proof.status==='approved'?'green':'amber'}>{proofStatus(proof.status)}</Badge>}
-                {sub.status==='unpaid' && !proof && <button onClick={()=>setPayingSubscription(sub)} className="px-3 py-2 rounded-lg bg-emerald-600 text-white text-xs font-bold">{text('دفع الاشتراك','Pay subscription')}</button>}</div>
+                {proof && <Badge color={proof.status==='approved'?'green':'amber'}>{proofStatus(proof.status)}</Badge>}{proof?.status==='needs_info'&&<button onClick={()=>{setResubmittingProof(proof);setPayingSubscription(sub);setPaymentNote('')}} className="px-3 py-2 rounded-lg bg-amber-600 text-white text-xs font-bold">{text('استكمال الإثبات','Resubmit proof')}</button>}
+                {sub.status==='unpaid' && !proof && <button onClick={()=>{setResubmittingProof(null);setPayingSubscription(sub)}} className="px-3 py-2 rounded-lg bg-emerald-600 text-white text-xs font-bold">{text('دفع الاشتراك','Pay subscription')}</button>}</div>
               </div>;
             })}
           </div>
@@ -111,7 +113,7 @@ export function ParentPortal({ user, players, subscriptions, attendance, evaluat
       <h2 className="text-lg font-bold">{text('طلبات التسجيل', 'Registration applications')}</h2>
       {!ready && !error && <p role="status">{text('جارٍ التحميل…', 'Loading…')}</p>}
       {apps.map(app => <article key={app.id} className="bg-white dark:bg-slate-900 rounded-xl border dark:border-slate-700 p-4 space-y-2"><div className="flex justify-between gap-3"><p className="font-bold">{app.children.map(c => c.fullName).join('، ')}</p><Badge>{statusLabel(app.status)}</Badge></div>{app.reviewNotes && <p className="text-sm text-amber-700">{app.reviewNotes}</p>}{['draft', 'needs_info'].includes(app.status) && <button className="text-emerald-700 font-bold text-sm" onClick={() => setEditor(app)}>{text('استكمال الطلب', 'Continue application')}</button>}</article>)}
-      <Modal open={!!payingSubscription} closeDisabled={paymentBusy} onClose={() => !paymentBusy && setPayingSubscription(null)} title={text('إثبات دفع الاشتراك','Subscription payment proof')}>
+      <Modal open={!!payingSubscription} closeDisabled={paymentBusy} onClose={() => { if(!paymentBusy){setPayingSubscription(null);setResubmittingProof(null);} }} title={text('إثبات دفع الاشتراك','Subscription payment proof')}>
         {payingSubscription && <div className="space-y-4">
           <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/20 p-4"><p className="text-sm text-slate-500">{text('المبلغ المطلوب','Amount due')}</p><p className="text-2xl font-black">{payingSubscription.amount} {text('د.ب','BHD')}</p></div>
           {settings.benefitIban ? <div className="rounded-xl border dark:border-slate-700 p-4"><p className="text-xs text-slate-500">{text('IBAN للتحويل عبر Benefit','IBAN for Benefit transfer')}</p><div className="flex items-center justify-between gap-3 mt-1"><code className="font-bold break-all" dir="ltr">{settings.benefitIban}</code><button onClick={()=>navigator.clipboard.writeText(settings.benefitIban || '')} className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800"><Clipboard className="h-4 w-4"/></button></div>{settings.benefitAccountName&&<p className="text-xs mt-2">{settings.benefitAccountName}</p>}</div> : <div className="rounded-xl bg-amber-50 text-amber-800 p-4 text-sm font-bold">{text('لم تضف الإدارة رقم IBAN للدفع بعد.','The academy has not configured the payment IBAN yet.')}</div>}
