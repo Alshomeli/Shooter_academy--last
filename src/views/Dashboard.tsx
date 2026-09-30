@@ -1,7 +1,7 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Users, Trophy, Wallet, TrendingUp, Activity, Target,
-  Calendar, Award, Percent, Goal, ShieldCheck,
+  Calendar, Award, Percent, Goal, ShieldCheck, Receipt, FileWarning, AlertTriangle,
 } from 'lucide-react';
 import type { Player, Subscription, Match, Transaction, Staff, Team, Parent, PlayerEvaluation, Lang, Role, ViewId } from '@/types';
 import { StatCard, PageHeader } from '@/components/ui';
@@ -9,6 +9,7 @@ import { DonutChart, BarChart, LineChart } from '@/components/Charts';
 import { RemindersPanel } from '@/components/RemindersPanel';
 import { getSubscriptionReminders } from '@/lib/reminders';
 import { tr, monthsArray, statusLabel, positionLabel } from '@/lib/i18n';
+import { db } from '@/lib/store';
 
 interface DashboardProps {
   players: Player[];
@@ -34,6 +35,11 @@ export function Dashboard({ players, subscriptions, matches, transactions, staff
   const canSeeTechnical = activeRole === 'manager' || activeRole === 'coach';
   const canSeeStaff = activeRole === 'manager';
   const canSeeEvaluations = activeRole === 'manager' || activeRole === 'coach';
+  const [managementAlerts, setManagementAlerts] = useState({ pendingPaymentProofs: 0, expiringStaffDocuments: 0, expiredStaffDocuments: 0, unpaidSubscriptions: 0, dueAmount: 0, asOf: '' });
+  useEffect(() => {
+    if (!['manager','accountant'].includes(activeRole)) return;
+    db.getManagementAlertSummary().then(setManagementAlerts).catch(() => {});
+  }, [activeRole, subscriptions.length, transactions.length, staff.length]);
 
   const reminders = useMemo(
     () => getSubscriptionReminders(subscriptions, players, parents),
@@ -132,6 +138,12 @@ export function Dashboard({ players, subscriptions, matches, transactions, staff
           ? (isAr ? 'نظرة على اللاعبين والأداء الفني لفريقك' : 'Overview of your players and team performance')
           : (isAr ? 'نظرة على اللاعبين والاشتراكات والمتابعة اليومية' : 'Overview of players, subscriptions, and daily follow-up')
       } />
+
+      {(activeRole === 'manager' || activeRole === 'accountant') && (managementAlerts.pendingPaymentProofs > 0 || managementAlerts.unpaidSubscriptions > 0 || (activeRole === 'manager' && (managementAlerts.expiringStaffDocuments > 0 || managementAlerts.expiredStaffDocuments > 0))) && <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        {managementAlerts.pendingPaymentProofs > 0 && <button onClick={()=>setCurrentTab('subscriptions')} className="text-start rounded-2xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/20 p-4 flex gap-3"><Receipt className="h-5 w-5 text-amber-600 shrink-0"/><div><p className="font-black text-sm">{isAr?'إثباتات دفع بانتظار المراجعة':'Payment proofs awaiting review'}</p><p className="text-xs text-slate-500 mt-1">{managementAlerts.pendingPaymentProofs} {isAr?'طلب يحتاج قرار الإدارة':'proof(s) need a decision'}</p></div></button>}
+        {managementAlerts.unpaidSubscriptions > 0 && <button onClick={()=>setCurrentTab('subscriptions')} className="text-start rounded-2xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/20 p-4 flex gap-3"><AlertTriangle className="h-5 w-5 text-red-600 shrink-0"/><div><p className="font-black text-sm">{isAr?'اشتراكات غير مدفوعة':'Unpaid subscriptions'}</p><p className="text-xs text-slate-500 mt-1">{managementAlerts.unpaidSubscriptions} · {managementAlerts.dueAmount.toLocaleString()} {t.currency}</p></div></button>}
+        {activeRole === 'manager' && (managementAlerts.expiringStaffDocuments > 0 || managementAlerts.expiredStaffDocuments > 0) && <button onClick={()=>setCurrentTab('staff')} className="text-start rounded-2xl border border-blue-200 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/20 p-4 flex gap-3"><FileWarning className="h-5 w-5 text-blue-600 shrink-0"/><div><p className="font-black text-sm">{isAr?'شهادات ووثائق الطاقم':'Staff certificates & documents'}</p><p className="text-xs text-slate-500 mt-1">{isAr?`${managementAlerts.expiringStaffDocuments} تنتهي خلال 30 يومًا · ${managementAlerts.expiredStaffDocuments} منتهية`:`${managementAlerts.expiringStaffDocuments} expire within 30 days · ${managementAlerts.expiredStaffDocuments} expired`}</p></div></button>}
+      </div>}
 
       {/* KPI cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
