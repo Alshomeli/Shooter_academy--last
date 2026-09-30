@@ -486,6 +486,45 @@ async function sendCoachAttendanceSummary(chatId: number, identity: TelegramIden
   await sendMessage(chatId, `📊 حضور اليوم لفرقك\n✅ حضر: ${present}\n❌ غاب: ${absent}\n🟡 بعذر: ${excused}\n📝 تم تسجيل حالة ${mine.length} لاعب حتى الآن.`);
 }
 
+async function sendCoachMissingAttendance(chatId: number, identity: TelegramIdentity) {
+  const today=bahrainDate();
+  await rpc<number>("telegram_ensure_today_trainings",{p_chat_id:chatId});
+  const teams=await restRows<{id?:string;name?:string}>("teams",{select:"id,name",coach_id:`eq.${identity.staff_id||""}`});
+  for(const team of teams){
+    const trainings=await restRows<{id?:string;title?:string;status?:string}>("trainings",{select:"id,title,status",team_id:`eq.${team.id||""}`,session_date:`eq.${today}`});
+    for(const training of trainings){
+      const players=await restRows<{id?:string;name?:string}>("players",{select:"id,name",team_id:`eq.${team.id||""}`,status:"eq.active",order:"name.asc"});
+      const attendance=await restRows<{player_id?:string}>("attendance",{select:"player_id",training_id:`eq.${training.id||""}`});
+      const marked=new Set(attendance.map(a=>a.player_id));
+      const missing=players.filter(p=>p.id&&!marked.has(p.id));
+      await sendMessage(chatId,[`📝 ${team.name||"الفريق"} — ${training.title||"تدريب"}`,missing.length?`لم تسجل حالة ${missing.length} لاعب:`:"✅ تم تسجيل حالة جميع اللاعبين.",...missing.slice(0,30).map(p=>`• ${p.name||"لاعب"}`)].join("\n"), missing.length||!training.id ? undefined : {inline_keyboard:[[{text:"🏁 إنهاء الحصة",callback_data:`training:complete:${training.id}`}]]});
+    }
+  }
+}
+
+async function sendCoachMatches(chatId:number,identity:TelegramIdentity){
+  const teams=await restRows<{id?:string;name?:string}>("teams",{select:"id,name",coach_id:`eq.${identity.staff_id||""}`});
+  const ids=teams.map(t=>t.id).filter(Boolean) as string[];
+  if(!ids.length){await sendMessage(chatId,"لا يوجد فريق مرتبط بحسابك.");return;}
+  const rows=await restRows<{team_id?:string;opponent?:string;match_date?:string;location?:string;result?:string}>("matches",{select:"team_id,opponent,match_date,location,result",match_date_gte:`gte.${bahrainDate()}`,order:"match_date.asc",limit:"50"});
+  const mine=rows.filter(m=>m.team_id&&ids.includes(m.team_id)).slice(0,10);
+  await sendMessage(chatId,mine.length?["⚽ مباريات فرقك القادمة:",...mine.map(m=>`• ${m.match_date||""} — ضد ${m.opponent||"غير محدد"} — ${m.location||"الموقع غير محدد"}`)].join("\n"):"لا توجد مباريات قادمة مسجلة لفرقك.");
+}
+
+async function saveCoachQuickNote(chatId:number,identity:TelegramIdentity,raw:string){
+  const match=raw.match(/^(?:\/note\s+|ملاحظة\s+)([^:：]+)[:：]\s*(.+)$/i);
+  if(!match)return false;
+  const playerQuery=normalize(match[1]),note=match[2].trim();
+  const teams=await restRows<{id?:string}>("teams",{select:"id",coach_id:`eq.${identity.staff_id||""}`});
+  const ids=teams.map(t=>t.id).filter(Boolean) as string[];
+  const players=await restRows<{id?:string;name?:string;team_id?:string}>("players",{select:"id,name,team_id",status:"eq.active",order:"name.asc"});
+  const candidates=players.filter(p=>p.team_id&&ids.includes(p.team_id)&&normalize(p.name||"").includes(playerQuery));
+  if(candidates.length!==1){await sendMessage(chatId,candidates.length?"وجدت أكثر من لاعب مطابق. اكتب الاسم بشكل أوضح.":"لم أجد لاعبًا بهذا الاسم ضمن فرقك.");return true;}
+  await rpc<string>("telegram_quick_player_note",{p_chat_id:chatId,p_player_id:candidates[0].id,p_note:note});
+  await sendMessage(chatId,`✅ حُفظت ملاحظة تدريبية مسودة للاعب ${candidates[0].name||""}، وستظهر ضمن نظام التقييمات في الموقع.`);
+  return true;
+}
+
 async function sendCoachUpcoming(chatId: number, identity: TelegramIdentity) {
   const today=bahrainDate(), end=bahrainDate(7);
   const teams=await restRows<{id?:string;name?:string;training_days?:string[];training_time?:string}>("teams",{select:"id,name,training_days,training_time",coach_id:`eq.${identity.staff_id||""}`,order:"name.asc"});
@@ -733,6 +772,22 @@ Deno.serve(async (req: Request) => {
       return Response.json({ ok: true });
     }
 
+    const completeTrainingMatch = callback.data.match(/^training:complete:([^:]+)$/);
+    if (completeTrainingMatch) {
+      if (linkedIdentity?.role !== "coach") {
+        await answerCallbackQuery(callback.id, "هذا الإجراء متاح للمدرب المرتبط فقط.");
+        return Response.json({ ok: true });
+      }
+      try {
+        await rpc<boolean>("telegram_complete_training", { p_chat_id: callbackChatId, p_training_id: completeTrainingMatch[1] });
+        await answerCallbackQuery(callback.id, "تم إنهاء الحصة 🏁");
+        await sendMessage(callbackChatId, "🏁 تم إنهاء الحصة وتثبيت اكتمال الحضور. التحديث أصبح ظاهرًا في المنصة.");
+      } catch {
+        await answerCallbackQuery(callback.id, "لا يمكن إنهاء الحصة قبل تسجيل حالة جميع اللاعبين.");
+      }
+      return Response.json({ ok: true });
+    }
+
     const managerAuthorized = linkedIdentity?.role === "manager" || await isAuthorizedManagerChat(callbackChatId);
     if (!managerAuthorized) {
       await answerCallbackQuery(callback.id, "غير مصرح بهذا الإجراء.");
@@ -907,7 +962,18 @@ Deno.serve(async (req: Request) => {
     if (telegramIdentity.role === "coach") {
       const value = normalize(incomingText);
       if (isHelpCommand(incomingText)) {
-        await sendMessage(chatId, ["مساعد المدرب:", "• /today_class — حصة اليوم وقائمة اللاعبين", "• «قائمة حضور اليوم» — تسجيل حضر/غاب/بعذر بالأزرار", "• «ملخص حضور اليوم» — أعداد الحضور والغياب", "• «جدولي» أو «مواعيد تدريبي» — جدول فرقك", "• /id — معرّف Telegram الداخلي", "يمكنك كتابة الطلب بصيغة طبيعية أو إرساله صوتيًا إذا كانت ميزة الصوت مفعلة."].join("\n"));
+        await sendMessage(chatId, ["مساعد المدرب:", "• /today_class — حصة اليوم وقائمة اللاعبين", "• «قائمة حضور اليوم» — تسجيل حضر/غاب/بعذر بالأزرار", "• «ملخص حضور اليوم» — أعداد الحضور والغياب", "• «جدولي» أو «مواعيد تدريبي» — جدول فرقك", "• «من باقي ما سجلت حضوره؟» — الحالات الناقصة وإنهاء الحصة", "• «مباريات فريقي» — المباريات القادمة", "• «ملاحظة اسم اللاعب: النص» — حفظ ملاحظة تقييم كمسودة", "• /id — معرّف Telegram الداخلي", "يمكنك كتابة الطلب بصيغة طبيعية أو إرساله صوتيًا إذا كانت ميزة الصوت مفعلة."].join("\n"));
+        return Response.json({ ok: true });
+      }
+      if (await saveCoachQuickNote(chatId, telegramIdentity, incomingText)) {
+        return Response.json({ ok: true });
+      }
+      if (value.includes("باقي") && (value.includes("حضور") || value.includes("سجل")) || value.includes("من ما سجلت")) {
+        await sendCoachMissingAttendance(chatId, telegramIdentity);
+        return Response.json({ ok: true });
+      }
+      if (value.includes("مباريات") || value.includes("مباراة فريقي") || value === "/matches") {
+        await sendCoachMatches(chatId, telegramIdentity);
         return Response.json({ ok: true });
       }
       if (value === "/id" || value.includes("معرف تيليجرام") || value.includes("معرف telegram")) {
