@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { CheckCircle2, Clipboard, CreditCard, FileText, FileUp, LogOut, Plus, RefreshCw, Star, UserRound, CalendarCheck2, WalletCards } from 'lucide-react';
+import { CheckCircle2, Clipboard, CreditCard, FileText, FileUp, LogOut, Plus, Printer, RefreshCw, Star, UserRound, CalendarCheck2, WalletCards } from 'lucide-react';
 import { Registration } from '@/views/Registration';
 import { Badge, Modal } from '@/components/ui';
 import { errorMessage, fetchMyApplications } from '@/lib/registration';
@@ -64,6 +64,15 @@ export function ParentPortal({ user, players, subscriptions, attendance, evaluat
     } catch (e) { setError(errorMessage(e, ar)); }
     finally { setPaymentBusy(false); }
   };
+  const printReceipt = (proof: PaymentProof, sub: Subscription) => {
+    if (!proof.receiptNumber || !selectedPlayer) return;
+    const number = `SA-${String(proof.receiptNumber).padStart(6,'0')}`;
+    const reviewed = proof.reviewedAt ? new Date(proof.reviewedAt).toLocaleString(lang==='ar'?'ar-BH':'en-BH') : proof.transferDate;
+    const w = window.open('', '_blank', 'noopener,noreferrer,width=760,height=900');
+    if (!w) return;
+    w.document.write(`<!doctype html><html dir="${lang==='ar'?'rtl':'ltr'}"><head><meta charset="utf-8"><title>${number}</title><style>body{font-family:Arial,sans-serif;padding:40px;color:#172033}.box{max-width:680px;margin:auto;border:1px solid #ddd;border-radius:18px;padding:28px}.muted{color:#64748b}.row{display:flex;justify-content:space-between;gap:20px;border-top:1px solid #eee;padding:12px 0}.total{font-size:24px;font-weight:800;color:#059669}.stamp{margin-top:24px;padding:12px;background:#ecfdf5;border-radius:12px;color:#047857;font-weight:700}@media print{button{display:none}}</style></head><body><div class="box"><h1>${settings.name}</h1><div class="muted">${lang==='ar'?'إيصال دفع اشتراك':'Subscription Payment Receipt'} · ${number}</div><div style="height:20px"></div><div class="row"><span>${lang==='ar'?'اللاعب':'Player'}</span><b>${selectedPlayer.name}</b></div><div class="row"><span>${lang==='ar'?'الخطة':'Plan'}</span><b>${planLabel(sub.planType,lang)}</b></div><div class="row"><span>${lang==='ar'?'فترة الاشتراك':'Subscription period'}</span><b dir="ltr">${sub.startDate} — ${sub.endDate}</b></div><div class="row"><span>${lang==='ar'?'طريقة الدفع':'Payment method'}</span><b>Benefit / IBAN</b></div><div class="row"><span>${lang==='ar'?'تاريخ التحويل':'Transfer date'}</span><b>${proof.transferDate}</b></div><div class="row"><span>${lang==='ar'?'تاريخ الاعتماد':'Approved at'}</span><b>${reviewed}</b></div><div class="row"><span>${lang==='ar'?'المبلغ':'Amount'}</span><span class="total">${proof.amount.toFixed(3)} BHD</span></div><div class="stamp">${lang==='ar'?'تم التحقق من التحويل واعتماد الدفعة من الأكاديمية.':'Transfer verified and payment approved by the academy.'}</div><p class="muted" style="font-size:11px;margin-top:20px">${lang==='ar'?'هذا الإيصال صادر إلكترونيًا من النظام.':'This receipt was issued electronically by the system.'}</p><button onclick="window.print()" style="margin-top:16px;padding:10px 18px">${lang==='ar'?'طباعة / حفظ PDF':'Print / Save PDF'}</button></div></body></html>`);
+    w.document.close();
+  };
   const proofStatus = (status: PaymentProof['status']) => ({
     pending: text('بانتظار مراجعة الإدارة', 'Pending academy review'),
     approved: text('تم اعتماد الدفعة', 'Payment approved'),
@@ -108,7 +117,7 @@ export function ParentPortal({ user, players, subscriptions, attendance, evaluat
 
           <div className="bg-white dark:bg-slate-900 border dark:border-slate-700 rounded-2xl p-5 space-y-3">
             <div className="flex items-center gap-2"><WalletCards className="h-5 w-5 text-emerald-600"/><div><h3 className="font-black">{text('سجل المدفوعات السابقة','Payment history')}</h3><p className="text-xs text-slate-500">{text('الاشتراكات التي اعتمدت كمدفوعة','Subscriptions approved as paid')}</p></div></div>
-            {approvedPayments.length===0?<p className="text-sm text-slate-500 py-3">{text('لا توجد مدفوعات معتمدة حتى الآن.','No approved payments yet.')}</p>:approvedPayments.map(sub=><div key={sub.id} className="border-t dark:border-slate-700 pt-3 flex items-center justify-between gap-3"><div><p className="font-bold text-sm">{planLabel(sub.planType,lang)}</p><p className="text-xs text-slate-500" dir="ltr">{sub.startDate} — {sub.endDate}</p></div><div className="text-end"><p className="font-black text-emerald-600">{sub.amount} {text('د.ب','BHD')}</p><Badge color="green">{text('مدفوع','Paid')}</Badge></div></div>)}
+            {approvedPayments.length===0?<p className="text-sm text-slate-500 py-3">{text('لا توجد مدفوعات معتمدة حتى الآن.','No approved payments yet.')}</p>:approvedPayments.map(sub=><div key={sub.id} className="border-t dark:border-slate-700 pt-3 flex items-center justify-between gap-3"><div><p className="font-bold text-sm">{planLabel(sub.planType,lang)}</p><p className="text-xs text-slate-500" dir="ltr">{sub.startDate} — {sub.endDate}</p></div><div className="text-end"><p className="font-black text-emerald-600">{sub.amount} {text('د.ب','BHD')}</p><Badge color="green">{text('مدفوع','Paid')}</Badge>{(()=>{const approved=paymentProofs.find(p=>p.subscriptionId===sub.id&&p.status==='approved'&&p.receiptNumber);return approved?<button onClick={()=>printReceipt(approved,sub)} className="mt-2 flex items-center gap-1 text-xs font-bold text-blue-600"><Printer className="h-3.5 w-3.5"/>{text('الإيصال','Receipt')} SA-{String(approved.receiptNumber).padStart(6,'0')}</button>:null})()}</div></div>)}
           </div>
 
           {selectedDocuments.length > 0 && <div className="bg-white dark:bg-slate-900 border dark:border-slate-700 rounded-2xl p-5 space-y-3">
