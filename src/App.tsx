@@ -149,7 +149,10 @@ export default function App() {
         void db.getCurrentUser().then(member => {
           if (request !== generation) return;
           setCurrentUser(member);
-          if (member) setActiveRole(member.role);
+          if (member) {
+            setActiveRole(member.role);
+            if (member.registrationOnly && member.registrationMode === 'staff') setCurrentTab('staff-registration');
+          }
           setAuthReady(true);
         }).catch(() => {
           if (request === generation) { setCurrentUser(null); setAuthReady(true); }
@@ -298,7 +301,9 @@ export default function App() {
     setCurrentUser(user);
     setActiveRole(user.role);
     const view = new URLSearchParams(window.location.search).get('view');
-    setCurrentTab(view === 'registration' || view === 'staff-registration' ? view : 'dashboard');
+    setCurrentTab(user.registrationOnly && user.registrationMode === 'staff'
+      ? 'staff-registration'
+      : (view === 'registration' || view === 'staff-registration' ? view : 'dashboard'));
   };
 
   const handleLogout = async () => {
@@ -476,7 +481,7 @@ export default function App() {
     );
   }
 
-  if (currentUser.registrationOnly && currentTab === 'staff-registration') {
+  if (currentUser.registrationOnly && currentUser.registrationMode === 'staff') {
     return <StaffRegistration user={currentUser} lang={lang} onLogout={handleLogout} onApproved={async () => {
       const member = await db.getCurrentUser();
       if (member && !member.registrationOnly) { setCurrentUser(member); setActiveRole(member.role); setCurrentTab('dashboard'); await loadAllData(); }
