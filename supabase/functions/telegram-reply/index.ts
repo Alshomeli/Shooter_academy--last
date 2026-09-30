@@ -438,7 +438,42 @@ async function deliverPendingRegistrationNotifications() {
       });
     }
   }
-  return { delivered, waitingForConfiguredChatIds: false };
+  const staffRows = await rpc<Array<{ application_id: string; full_name?: string; requested_role?: string; submitted_at?: string }>>(
+    "telegram_claim_staff_application_notifications",
+    { p_limit: 10 },
+  );
+  let staffDelivered = 0;
+  for (const row of staffRows || []) {
+    try {
+      for (const chatId of managerChats) {
+        if (!(await isAuthorizedManagerChat(chatId))) continue;
+        const roleLabel = row.requested_role === "manager" ? "مدير" : row.requested_role === "coach" ? "مدرب" : row.requested_role === "accountant" ? "محاسب" : row.requested_role === "receptionist" ? "استقبال" : (row.requested_role || "موظف");
+        await sendMessage(
+          chatId,
+          `🆕 طلب انضمام جديد
+الاسم: ${row.full_name || "غير محدد"}
+الصفة المطلوبة: ${roleLabel}
+تاريخ الإرسال: ${row.submitted_at || "غير محدد"}`,
+          {
+            inline_keyboard: [[
+              { text: "✅ موافقة", callback_data: `staff:approve:${row.application_id}` },
+              { text: "👀 مراجعة في الموقع", callback_data: `staff:review:${row.application_id}` },
+            ]],
+          },
+        );
+      }
+      await rpc<void>("telegram_finish_staff_application_notification", {
+        p_application_id: row.application_id, p_success: true, p_error: null,
+      });
+      staffDelivered += 1;
+    } catch (error) {
+      await rpc<void>("telegram_finish_staff_application_notification", {
+        p_application_id: row.application_id, p_success: false,
+        p_error: error instanceof Error ? error.message : "delivery_failed",
+      });
+    }
+  }
+  return { delivered, staffDelivered, waitingForManagerChatRegistration: false };
 }
 
 function formatMoney(value: number): string {
