@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const migration = await readFile(new URL('../supabase/migrations/20260930014500_create_staff_application_workflow.sql', import.meta.url), 'utf8');
+const migration = await readFile(new URL('../supabase/migrations/20260930020528_create_staff_application_workflow.sql', import.meta.url), 'utf8');
 const app = await readFile(new URL('../src/App.tsx', import.meta.url), 'utf8');
 const login = await readFile(new URL('../src/components/Login.tsx', import.meta.url), 'utf8');
 const approvals = await readFile(new URL('../src/views/Approvals.tsx', import.meta.url), 'utf8');
@@ -47,7 +47,7 @@ test('authentication routes unapproved staff back to staff onboarding without gr
 
 
 test('manager review writes run through a checked security-definer implementation', async () => {
-  const fix = await readFile(new URL('../supabase/migrations/20260930021000_fix_staff_application_review_rpc.sql', import.meta.url), 'utf8');
+  const fix = await readFile(new URL('../supabase/migrations/20260930020957_fix_staff_application_review_rpc.sql', import.meta.url), 'utf8');
   assert.match(fix, /create or replace function internal\.review_staff_application/);
   assert.match(fix, /security definer/);
   assert.match(fix, /internal\.is_academy_admin\(\)/);
