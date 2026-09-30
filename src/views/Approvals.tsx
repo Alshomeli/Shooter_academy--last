@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ShieldCheck, CheckCircle, XCircle, Clock, UserPlus, Search, AlertCircle, Loader2,
 } from 'lucide-react';
-import type { Player, Staff, Lang, Role, Team } from '@/types';
+import type { Player, Staff, Lang, Role, Team, StaffApplication } from '@/types';
 import { Badge, PageHeader, EmptyState, ConfirmDialog } from '@/components/ui';
 import { tr, roleLabel } from '@/lib/i18n';
+import { approveStaffApplication, getStaffApplications, reviewStaffApplication } from '@/lib/staff-registration';
 
 interface ApprovalsProps {
   players: Player[];
@@ -17,7 +18,7 @@ interface ApprovalsProps {
   lang: Lang;
 }
 
-export function Approvals({ staff, onStaffChange, activeRole, lang }: ApprovalsProps) {
+export function Approvals({ staff, onStaffChange, onRefresh, activeRole, lang }: ApprovalsProps) {
   const t = tr(lang);
   const isAr = lang === 'ar';
   const isRtl = isAr;
@@ -25,6 +26,18 @@ export function Approvals({ staff, onStaffChange, activeRole, lang }: ApprovalsP
   const [search, setSearch] = useState('');
   const [actionTarget, setActionTarget] = useState<{ id: string; action: 'approve' | 'reject' } | null>(null);
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [applications, setApplications] = useState<StaffApplication[]>([]);
+  const [applicationError, setApplicationError] = useState('');
+  const [reviewTarget, setReviewTarget] = useState<{ id: string; action: 'needs_info' | 'rejected' } | null>(null);
+  const [reviewNotes, setReviewNotes] = useState('');
+
+  const loadApplications = async () => {
+    if (activeRole !== 'manager') return;
+    try { setApplications(await getStaffApplications()); setApplicationError(''); }
+    catch { setApplicationError(isAr ? 'تعذر تحميل طلبات الانضمام.' : 'Could not load staff applications.'); }
+  };
+
+  useEffect(() => { void loadApplications(); }, [activeRole]);
 
   if (activeRole !== 'manager') {
     return (
@@ -68,6 +81,44 @@ export function Approvals({ staff, onStaffChange, activeRole, lang }: ApprovalsP
     }
   };
 
+  const handleApplicationApproval = async (id: string) => {
+    if (processingId) return;
+    setProcessingId(id); setApplicationError('');
+    try {
+      await approveStaffApplication(id);
+      await Promise.all([loadApplications(), onRefresh()]);
+    } catch {
+      setApplicationError(isAr ? 'تعذر اعتماد الطلب.' : 'Could not approve the application.');
+    } finally { setProcessingId(null); }
+  };
+
+  const handleApplicationReview = async () => {
+    if (!reviewTarget || processingId) return;
+    if (reviewTarget.action === 'needs_info' && !reviewNotes.trim()) {
+      setApplicationError(isAr ? 'اكتب ملاحظة توضّح التعديل المطلوب.' : 'Add a note describing the requested change.');
+      return;
+    }
+    setProcessingId(reviewTarget.id); setApplicationError('');
+    try {
+      await reviewStaffApplication(reviewTarget.id, reviewTarget.action, reviewNotes.trim());
+      setReviewTarget(null); setReviewNotes('');
+      await loadApplications();
+    } catch {
+      setApplicationError(isAr ? 'تعذر تحديث الطلب.' : 'Could not update the application.');
+    } finally { setProcessingId(null); }
+  };
+
+  const staffApplicationStatus = (status: StaffApplication['status']) => {
+    const labels: Record<StaffApplication['status'], string> = {
+      draft: isAr ? 'مسودة' : 'Draft',
+      pending: isAr ? 'بانتظار المراجعة' : 'Pending review',
+      needs_info: isAr ? 'يحتاج تعديل' : 'Needs changes',
+      approved: isAr ? 'مقبول' : 'Approved',
+      rejected: isAr ? 'مرفوض' : 'Rejected',
+    };
+    return labels[status];
+  };
+
   const statusBadge = (status: string) => {
     if (status === 'pending') return <Badge color="amber"><Clock className="h-3 w-3" /> {t.pending}</Badge>;
     if (status === 'active') return <Badge color="emerald"><CheckCircle className="h-3 w-3" /> {t.active}</Badge>;
@@ -80,6 +131,50 @@ export function Approvals({ staff, onStaffChange, activeRole, lang }: ApprovalsP
         title={isAr ? 'الموافقات' : 'Approvals'}
         subtitle={isAr ? 'مراجعة وقبول حسابات الموظفين الجدد' : 'Review and approve new staff accounts'}
       />
+
+      {applicationError && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700">{applicationError}</p>}
+
+      <section className="space-y-3">
+        <div>
+          <h3 className="text-base font-black text-slate-900 dark:text-white">{isAr ? 'طلبات الموظفين والمدربين' : 'Staff and coach applications'}</h3>
+          <p className="text-xs text-slate-500">{isAr ? 'المتقدم يدخل بياناته بنفسه، والمدير يعتمد أو يرفض أو يعيد الطلب للتعديل.' : 'Applicants enter their own data; the manager approves, rejects, or requests changes.'}</p>
+        </div>
+        {applications.filter(a => a.status !== 'draft').length === 0 ? (
+          <div className="rounded-2xl border border-slate-100 bg-white p-5 text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900">{isAr ? 'لا توجد طلبات موظفين حالياً.' : 'No staff applications yet.'}</div>
+        ) : applications.filter(a => a.status !== 'draft').map(app => (
+          <div key={app.id} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="font-black text-slate-900 dark:text-white">{app.fullName}</p>
+                  <Badge color={app.status === 'approved' ? 'emerald' : app.status === 'rejected' ? 'red' : app.status === 'needs_info' ? 'amber' : 'blue'}>{staffApplicationStatus(app.status)}</Badge>
+                  <Badge color="blue">{roleLabel(app.requestedRole, lang)}</Badge>
+                </div>
+                <p className="mt-1 text-xs text-slate-500" dir="ltr">{app.email} · {app.phone}</p>
+                {app.specialization && <p className="mt-1 text-xs text-slate-500">{app.specialization}</p>}
+                {app.reviewNotes && <p className="mt-2 rounded-lg bg-amber-50 p-2 text-xs text-amber-800"><b>{isAr ? 'ملاحظة المراجعة:' : 'Review note:'}</b> {app.reviewNotes}</p>}
+              </div>
+              {app.status === 'pending' && (
+                <div className="flex flex-wrap gap-2">
+                  <button disabled={processingId === app.id} onClick={() => void handleApplicationApproval(app.id)} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">{isAr ? 'موافقة' : 'Approve'}</button>
+                  <button disabled={!!processingId} onClick={() => { setReviewTarget({ id: app.id, action: 'needs_info' }); setReviewNotes(''); }} className="rounded-lg bg-amber-100 px-3 py-2 text-xs font-bold text-amber-800">{isAr ? 'طلب تعديل' : 'Request changes'}</button>
+                  <button disabled={!!processingId} onClick={() => { setReviewTarget({ id: app.id, action: 'rejected' }); setReviewNotes(''); }} className="rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-700">{isAr ? 'رفض' : 'Reject'}</button>
+                </div>
+              )}
+            </div>
+            {reviewTarget?.id === app.id && (
+              <div className="mt-4 rounded-xl border border-slate-200 p-3 dark:border-slate-700">
+                <label className="mb-1 block text-xs font-bold text-slate-500">{reviewTarget.action === 'needs_info' ? (isAr ? 'ما المطلوب تعديله؟' : 'What needs to change?') : (isAr ? 'سبب الرفض / ملاحظة' : 'Rejection reason / note')}</label>
+                <textarea value={reviewNotes} onChange={e => setReviewNotes(e.target.value)} rows={3} className="w-full rounded-lg border border-slate-200 bg-slate-50 p-2 text-sm dark:border-slate-700 dark:bg-slate-800" />
+                <div className="mt-2 flex gap-2 justify-end">
+                  <button onClick={() => { setReviewTarget(null); setReviewNotes(''); }} className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-bold">{isAr ? 'إلغاء' : 'Cancel'}</button>
+                  <button disabled={processingId === app.id} onClick={() => void handleApplicationReview()} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">{isAr ? 'تأكيد' : 'Confirm'}</button>
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </section>
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
