@@ -257,6 +257,34 @@ export const db = {
     return data.signedUrl;
   },
 
+  async uploadStaffDocument(staffId: string, file: File, title: string, documentType = 'certificate', expiryDate?: string, notes = ''): Promise<void> {
+    const ext = (file.name.split('.').pop() || 'bin').toLowerCase();
+    const path = `${staffId}/${documentType}/${crypto.randomUUID()}.${ext}`;
+    const { error: uploadError } = await supabase.storage.from('staff-documents').upload(path, file, { upsert: false, contentType: file.type });
+    if (uploadError) throw uploadError;
+    const { error } = await supabase.from('staff_documents').insert({
+      staff_id: staffId, document_type: documentType, title: title.trim() || file.name,
+      file_path: path, expiry_date: expiryDate || null, notes: notes.trim(),
+    });
+    if (error) {
+      await supabase.storage.from('staff-documents').remove([path]);
+      throw error;
+    }
+  },
+
+  async getStaffDocumentUrl(path: string): Promise<string> {
+    const { data, error } = await supabase.storage.from('staff-documents').createSignedUrl(path, 300);
+    if (error) throw error;
+    return data.signedUrl;
+  },
+
+  async deleteStaffDocument(doc: StaffDocument): Promise<void> {
+    const { error: storageError } = await supabase.storage.from('staff-documents').remove([doc.filePath]);
+    if (storageError) throw storageError;
+    const { error } = await supabase.from('staff_documents').delete().eq('id', doc.id);
+    if (error) throw error;
+  },
+
   async getStaffDocuments(): Promise<StaffDocument[]> {
     const { data, error } = await supabase.from('staff_documents').select('*').order('created_at', { ascending: false });
     if (error) throw error;
