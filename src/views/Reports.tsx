@@ -132,6 +132,13 @@ export function Reports({
   }, [subscriptions, rangeFrom, rangeTo]);
 
 
+  const inRange = (date: string) => (!rangeFrom || date >= rangeFrom) && (!rangeTo || date <= rangeTo);
+  const filteredMatches = useMemo(() => matches.filter((m) => inRange(m.matchDate)), [matches, rangeFrom, rangeTo]);
+  const filteredAttendance = useMemo(() => attendance.filter((a) => inRange(a.sessionDate)), [attendance, rangeFrom, rangeTo]);
+  const filteredEvaluations = useMemo(() => evaluations.filter((e) => inRange(e.evaluationDate)), [evaluations, rangeFrom, rangeTo]);
+
+
+
   /* Financial Summary */
   const financial = useMemo(() => {
     const revenueTotal = filteredTransactions.filter((tx) => tx.type === 'revenue').reduce((s, tx) => s + tx.amount, 0);
@@ -161,14 +168,14 @@ export function Reports({
 
   /* Performance Analytics */
   const performance = useMemo(() => {
-    const completed = matches.filter((m) => m.result !== 'scheduled');
-    const wins = matches.filter((m) => m.result === 'win').length;
-    const draws = matches.filter((m) => m.result === 'draw').length;
-    const losses = matches.filter((m) => m.result === 'loss').length;
-    const scheduled = matches.filter((m) => m.result === 'scheduled').length;
+    const completed = filteredMatches.filter((m) => m.result !== 'scheduled');
+    const wins = filteredMatches.filter((m) => m.result === 'win').length;
+    const draws = filteredMatches.filter((m) => m.result === 'draw').length;
+    const losses = filteredMatches.filter((m) => m.result === 'loss').length;
+    const scheduled = filteredMatches.filter((m) => m.result === 'scheduled').length;
     const winRate = completed.length > 0 ? Math.round((wins / completed.length) * 100) : 0;
-    const totalGoals = matches.reduce((s, m) => s + m.academyScore, 0);
-    const goalsConceded = matches.reduce((s, m) => s + m.opponentScore, 0);
+    const totalGoals = filteredMatches.reduce((s, m) => s + m.academyScore, 0);
+    const goalsConceded = filteredMatches.reduce((s, m) => s + m.opponentScore, 0);
     const goalDifference = totalGoals - goalsConceded;
 
     return {
@@ -181,7 +188,7 @@ export function Reports({
         { label: t.scheduled, value: scheduled, color: '#94a3b8' },
       ],
     };
-  }, [matches, t]);
+  }, [filteredMatches, t]);
 
   /* Player Statistics */
   const playerStats = useMemo(() => {
@@ -201,13 +208,17 @@ export function Reports({
 
   /* Attendance Report */
   const attendanceStats = useMemo(() => {
-    const totalSessions = attendance.length;
-    const present = attendance.filter((a) => a.status === 'present').length;
-    const absent = attendance.filter((a) => a.status === 'absent').length;
-    const excused = attendance.filter((a) => a.status === 'excused').length;
-    const presentRate = totalSessions > 0 ? Math.round((present / totalSessions) * 100) : 0;
-    const absentRate = totalSessions > 0 ? Math.round((absent / totalSessions) * 100) : 0;
-    const excusedRate = totalSessions > 0 ? Math.round((excused / totalSessions) * 100) : 0;
+    const sessionKeys = new Set(filteredAttendance.map((a) =>
+      a.trainingId ? `training:${a.trainingId}` : a.matchId ? `match:${a.matchId}` : `legacy:${a.sessionType}:${a.sessionDate}`
+    ));
+    const totalSessions = sessionKeys.size;
+    const totalRecords = filteredAttendance.length;
+    const present = filteredAttendance.filter((a) => a.status === 'present').length;
+    const absent = filteredAttendance.filter((a) => a.status === 'absent').length;
+    const excused = filteredAttendance.filter((a) => a.status === 'excused').length;
+    const presentRate = totalRecords > 0 ? Math.round((present / totalRecords) * 100) : 0;
+    const absentRate = totalRecords > 0 ? Math.round((absent / totalRecords) * 100) : 0;
+    const excusedRate = totalRecords > 0 ? Math.round((excused / totalRecords) * 100) : 0;
     return {
       totalSessions, present, absent, excused, presentRate, absentRate, excusedRate,
       distribution: [
@@ -216,11 +227,11 @@ export function Reports({
         { label: t.excused, value: excused, color: '#f59e0b' },
       ],
     };
-  }, [attendance, t]);
+  }, [filteredAttendance, t]);
 
   /* Player Development Analytics */
   const developmentStats = useMemo(() => {
-    const published = evaluations.filter(ev => ev.status === 'published');
+    const published = filteredEvaluations.filter(ev => ev.status === 'published');
     const byPlayer = new Map<string, PlayerEvaluation[]>();
     published.forEach(ev => {
       const list = byPlayer.get(ev.playerId) || [];
@@ -248,7 +259,7 @@ export function Reports({
         { label: isAr ? 'نفسي واجتماعي' : 'Psychosocial', value: average(deltas(ev => evaluationFrameworkScores(ev).psychosocial)) },
       ],
     };
-  }, [evaluations, isAr]);
+  }, [filteredEvaluations, isAr]);
 
   /* Staff Summary */
   const staffStats = useMemo(() => {
