@@ -74,6 +74,8 @@ interface SettingsRow {
   email: string; address: string; subscription_fee_monthly: number;
   subscription_fee_quarterly: number; subscription_fee_semi_annual: number;
   subscription_fee_yearly: number;
+  benefit_iban?: string; benefit_account_name?: string;
+  payment_instructions_ar?: string; payment_instructions_en?: string;
 }
 interface AuditLogRow {
   id: string; action: string; timestamp: string; user_role: string;
@@ -172,6 +174,8 @@ export const mapSettings = (r: SettingsRow): Settings => ({
   address: r.address, subscriptionFeeMonthly: r.subscription_fee_monthly,
   subscriptionFeeQuarterly: r.subscription_fee_quarterly,
   subscriptionFeeYearly: r.subscription_fee_yearly,
+  benefitIban: r.benefit_iban ?? '', benefitAccountName: r.benefit_account_name ?? '',
+  paymentInstructionsAr: r.payment_instructions_ar ?? '', paymentInstructionsEn: r.payment_instructions_en ?? '',
 });
 
 export const mapAuditLog = (r: AuditLogRow): AuditLog => ({
@@ -254,6 +258,8 @@ export const settingsToRow = (s: Settings): SettingsRow => ({
   address: s.address, subscription_fee_monthly: s.subscriptionFeeMonthly,
   subscription_fee_quarterly: s.subscriptionFeeQuarterly,
   subscription_fee_yearly: s.subscriptionFeeYearly, subscription_fee_semi_annual: s.subscriptionFeeSemiAnnual,
+  benefit_iban: s.benefitIban ?? '', benefit_account_name: s.benefitAccountName ?? '',
+  payment_instructions_ar: s.paymentInstructionsAr ?? '', payment_instructions_en: s.paymentInstructionsEn ?? '',
 });
 
 export const auditLogToRow = (a: AuditLog): AuditLogRow => ({
