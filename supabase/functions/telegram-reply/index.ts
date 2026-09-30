@@ -90,9 +90,17 @@ function normalize(text: string): string {
 
 function isSummaryCommand(text: string): boolean {
   const value = normalize(text);
-  return ["/summary", "summary", "ملخص", "ملخص اليوم", "شنو صار اليوم", "شو صار اليوم"].includes(value)
+  return ["/summary", "summary", "ملخص", "ملخص اليوم", "تفاصيل اليوم", "شنو صار اليوم", "شو صار اليوم", "ماذا حصل اليوم", "ماذا حدث اليوم"].includes(value)
     || value.includes("ملخص")
-    || (value.includes("اليوم") && (value.includes("شنو صار") || value.includes("شو صار") || value.includes("وش صار")));
+    || (value.includes("اليوم") && (
+      value.includes("تفاصيل")
+      || value.includes("شنو صار")
+      || value.includes("شو صار")
+      || value.includes("وش صار")
+      || value.includes("ماذا حصل")
+      || value.includes("ماذا حدث")
+      || value.includes("ايش صار")
+    ));
 }
 
 function isPaymentsCommand(text: string): boolean {
@@ -772,9 +780,11 @@ Deno.serve(async (req: Request) => {
     const today = bahrainDate();
 
     if (isSummaryCommand(incomingText)) {
-      const [activePlayers, unpaid, expiringToday, paymentRows, matches, trainings, attendanceRows, pendingRegistrations, pendingStaffApplications] = await Promise.all([
+      const [activePlayers, unpaid, overdueUnpaid, currentUnpaid, expiringToday, paymentRows, matches, trainings, attendanceRows, pendingRegistrations, pendingStaffApplications] = await Promise.all([
         restCount("players", { status: "eq.active" }),
         restCount("subscriptions", { status: "eq.unpaid" }),
+        restCount("subscriptions", { status: "eq.unpaid", end_date_lt: `lt.${today}` }),
+        restCount("subscriptions", { status: "eq.unpaid", end_date_gte: `gte.${today}` }),
         restCount("subscriptions", { end_date: `eq.${today}` }),
         restRows<{ amount?: number | string; type?: string }>("transactions", { select: "amount,type", transaction_date: `eq.${today}` }),
         restRows<{ opponent?: string; location?: string; result?: string }>("matches", { select: "opponent,location,result", match_date: `eq.${today}`, order: "created_at.asc" }),
@@ -792,7 +802,7 @@ Deno.serve(async (req: Request) => {
         [
           `ملخص اليوم — ${today}`,
           `اللاعبون النشطون: ${activePlayers}`,
-          `اشتراكات غير مدفوعة: ${unpaid}`,
+          `اشتراكات غير مدفوعة: ${unpaid} (متأخرة ومنتهية: ${overdueUnpaid} / حالية أو قادمة: ${currentUnpaid})`,
           `اشتراكات تنتهي اليوم: ${expiringToday}`,
           `إيرادات مسجلة اليوم: ${formatMoney(incomingTotal)} د.ب`,
           `المباريات اليوم: ${matches.length}`,
