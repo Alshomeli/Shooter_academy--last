@@ -290,14 +290,14 @@ export const db = {
 
   async uploadStaffDocument(staffId: string, file: File, title: string, documentType = 'certificate', expiryDate?: string, notes = ''): Promise<void> {
     if (documentType === 'profile_photo') {
-      const { data: existing, error: existingError } = await supabase.from('staff_documents').select('id,file_path').eq('staff_id', staffId).eq('document_type', 'profile_photo').maybeSingle();
+      const { data: existing, error: existingError } = await supabase.from('staff_documents').select('id,file_path').eq('staff_id', staffId).eq('document_type', 'profile_photo');
       if (existingError) throw existingError;
-      if (existing) {
-        // Remove the database reference first so a storage failure can only leave an
-        // unreferenced object, never a live document row pointing at a missing file.
-        const { error: deleteError } = await supabase.from('staff_documents').delete().eq('id', existing.id);
+      for (const previous of existing || []) {
+        // Remove database references first. A storage cleanup failure can then only
+        // leave an unreferenced object, never a live row pointing at a missing file.
+        const { error: deleteError } = await supabase.from('staff_documents').delete().eq('id', previous.id);
         if (deleteError) throw deleteError;
-        const { error: removeError } = await supabase.storage.from('staff-documents').remove([existing.file_path]);
+        const { error: removeError } = await supabase.storage.from('staff-documents').remove([previous.file_path]);
         if (removeError) console.warn('Could not remove superseded staff document object', removeError.message);
       }
     }
