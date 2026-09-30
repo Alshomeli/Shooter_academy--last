@@ -140,7 +140,7 @@ export function Dashboard({ players, subscriptions, matches, transactions, staff
           : (isAr ? 'نظرة على اللاعبين والاشتراكات والمتابعة اليومية' : 'Overview of players, subscriptions, and daily follow-up')
       } />
 
-      <TelegramLinkCard lang={lang} />
+      {(activeRole === 'manager' || activeRole === 'coach') && <TelegramLinkCard lang={lang} />}
 
       {(activeRole === 'manager' || activeRole === 'accountant') && (managementAlerts.pendingPaymentProofs > 0 || managementAlerts.unpaidSubscriptions > 0 || (activeRole === 'manager' && (managementAlerts.expiringStaffDocuments > 0 || managementAlerts.expiredStaffDocuments > 0))) && <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         {managementAlerts.pendingPaymentProofs > 0 && <button onClick={()=>setCurrentTab('subscriptions')} className="text-start rounded-2xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/20 p-4 flex gap-3"><Receipt className="h-5 w-5 text-amber-600 shrink-0"/><div><p className="font-black text-sm">{isAr?'إثباتات دفع بانتظار المراجعة':'Payment proofs awaiting review'}</p><p className="text-xs text-slate-500 mt-1">{managementAlerts.pendingPaymentProofs} {isAr?'طلب يحتاج قرار الإدارة':'proof(s) need a decision'}</p></div></button>}
