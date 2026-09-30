@@ -3,7 +3,7 @@ import { collectionChanges, type Row } from '@/lib/collection-diff';
 import type {
   Staff, Team, Player, Parent, Subscription, Attendance,
   Match, Training, Transaction, Tournament, PlayerEvaluation,
-  Settings, AuditLog, Notification, Lang, CurrentUser, PaymentProof, StaffDocument,
+  Settings, AuditLog, Notification, Lang, CurrentUser, PaymentProof, PlayerDocument, StaffDocument,
 } from '@/types';
 import {
   mapStaff, mapTeam, mapPlayer, mapParent, mapSubscription, mapAttendance,
@@ -238,6 +238,21 @@ export const db = {
 
   async getPaymentProofUrl(path: string): Promise<string> {
     const { data, error } = await supabase.storage.from('payment-proofs').createSignedUrl(path, 300);
+    if (error) throw error;
+    return data.signedUrl;
+  },
+
+  async getPlayerDocuments(): Promise<PlayerDocument[]> {
+    const { data, error } = await supabase.from('player_documents').select('id,player_id,file_name,file_path,file_type,file_category,file_size,uploaded_at').order('uploaded_at', { ascending: false });
+    if (error) throw error;
+    return (data || []).map((r) => ({
+      id: r.id, playerId: r.player_id || undefined, fileName: r.file_name, filePath: r.file_path,
+      fileType: r.file_type, fileCategory: r.file_category, fileSize: Number(r.file_size) || 0, uploadedAt: r.uploaded_at,
+    })) as PlayerDocument[];
+  },
+
+  async getPlayerDocumentUrl(path: string): Promise<string> {
+    const { data, error } = await supabase.storage.from('player-documents').createSignedUrl(path, 300);
     if (error) throw error;
     return data.signedUrl;
   },
