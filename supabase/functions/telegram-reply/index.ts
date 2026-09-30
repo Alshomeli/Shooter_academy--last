@@ -372,6 +372,16 @@ async function sendMessage(chatId: number, text: string, replyMarkup?: TelegramK
   }
 }
 
+async function editMessage(chatId: number, messageId: number, text: string, replyMarkup?: InlineKeyboard) {
+  if (!TELEGRAM_BOT_TOKEN) throw new Error("telegram_bot_token_missing");
+  const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ chat_id: chatId, message_id: messageId, text: text.slice(0,4096), ...(replyMarkup ? { reply_markup: replyMarkup } : {}) }),
+  });
+  if (!response.ok) console.error("Telegram editMessageText failed", response.status);
+}
+
 async function answerCallbackQuery(callbackQueryId: string, text: string) {
   if (!TELEGRAM_BOT_TOKEN) throw new Error("telegram_bot_token_missing");
   await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
@@ -798,7 +808,18 @@ Deno.serve(async (req: Request) => {
           p_player_id: attendanceMatch[3],
           p_status: status,
         });
-        await answerCallbackQuery(callback.id, status === "present" ? "تم تسجيل الحضور ✅" : status === "absent" ? "تم تسجيل الغياب ❌" : "تم التسجيل بعذر 🟡");
+        const statusLabel = status === "present" ? "حضر ✅" : status === "absent" ? "غاب ❌" : "بعذر 🟡";
+        await answerCallbackQuery(callback.id, `تم التسجيل: ${statusLabel}`);
+        if (callback.message?.message_id) {
+          const original = String(callback.message.text || "اللاعب").replace(/\nالحالة:.*$/s, "");
+          await editMessage(callbackChatId, callback.message.message_id, `${original}\nالحالة: ${statusLabel}`, {
+            inline_keyboard: [[
+              { text: "✅ حضر", callback_data: `att:p:${attendanceMatch[2]}:${attendanceMatch[3]}` },
+              { text: "❌ غاب", callback_data: `att:a:${attendanceMatch[2]}:${attendanceMatch[3]}` },
+              { text: "🟡 بعذر", callback_data: `att:e:${attendanceMatch[2]}:${attendanceMatch[3]}` },
+            ]],
+          });
+        }
       } catch {
         await answerCallbackQuery(callback.id, "تعذر تحديث الحضور. تحقق من أن الحصة تخص فريقك واليوم.");
       }
