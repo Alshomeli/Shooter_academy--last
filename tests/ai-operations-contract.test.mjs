@@ -44,8 +44,8 @@ test('snapshot remains aggregate and role-scoped', () => {
 test('execute enforces owner, explicit confirmation, expiry, and a single pending-to-executing claim', () => {
   const owner = gateway.indexOf('action.user_id !== userData.user.id');
   const confirm = gateway.indexOf('body.confirm !== true');
-  const pending = gateway.indexOf('action.status !== "pending"');
-  const expiry = gateway.indexOf('new Date(action.expires_at).getTime() <= Date.now()');
+  const pending = gateway.indexOf('action.status !== "pending"', confirm);
+  const expiry = gateway.indexOf('new Date(action.expires_at).getTime() <= Date.now()', pending);
   const claim = gateway.indexOf('status: "executing"');
   const claimGuard = gateway.indexOf('.eq("status", "pending")', claim);
 
