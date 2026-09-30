@@ -489,6 +489,24 @@ export default function App() {
     }} />;
   }
 
+  // A staff application must belong to the applicant's own Auth account.
+  // Never render the application form using an already-active manager/parent/staff session.
+  if (currentTab === 'staff-registration' && !currentUser.registrationOnly) {
+    return (
+      <main className="min-h-screen bg-slate-950 p-4 sm:p-8 flex items-center justify-center" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+        <div className="w-full max-w-xl rounded-2xl bg-white p-6 sm:p-8 shadow-xl text-slate-900">
+          <h1 className="text-xl font-black mb-2">{lang === 'ar' ? 'طلب انضمام مدير / موظف / مدرب' : 'Manager / staff / coach application'}</h1>
+          <p className="text-sm text-slate-600 mb-5">{lang === 'ar'
+            ? 'أنت مسجل الدخول حاليًا بحساب موجود في النظام. لحماية الحسابات، يجب أن يكون طلب الانضمام مرتبطًا بحساب المتقدم نفسه، وليس بحساب المدير أو ولي الأمر الحالي.'
+            : 'You are currently signed in with an existing account. For account safety, the application must belong to the applicant’s own account, not the current manager or parent account.'}</p>
+          <button onClick={async () => { await handleLogout(); window.location.search = '?view=staff-registration'; }} className="w-full rounded-xl bg-emerald-600 py-3 font-bold text-white hover:bg-emerald-500">
+            {lang === 'ar' ? 'تسجيل الخروج والبدء بحساب المتقدم' : 'Sign out and continue with applicant account'}
+          </button>
+        </div>
+      </main>
+    );
+  }
+
   if (currentUser.role === 'parent') {
     return <ParentPortal key={currentUser.authUserId} openRegistration={currentTab === 'registration'} user={currentUser} players={data.players} subscriptions={data.subscriptions}
       attendance={data.attendance} evaluations={data.evaluations} lang={lang} setLang={setLang} onLogout={handleLogout} onRefresh={async () => { const member = await db.getCurrentUser(); if (member) setCurrentUser(member); await loadAllData(); }} />;
