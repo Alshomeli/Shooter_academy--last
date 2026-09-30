@@ -94,6 +94,19 @@ const PERSONA_COLORS: Record<Persona['color'], {
 
 const LIVE_AI_PERSONAS = new Set<PersonaId>(['financial', 'operations', 'documents', 'communication', 'players', 'training', 'matches', 'scout']);
 
+const PERSONA_ROLES: Record<PersonaId, Role[]> = {
+  technical: ['manager', 'coach'],
+  financial: ['manager', 'accountant'],
+  players: ['manager', 'coach'],
+  matches: ['manager', 'coach'],
+  documents: ['manager', 'receptionist'],
+  training: ['manager', 'coach'],
+  nutrition: ['manager', 'coach'],
+  scout: ['manager', 'coach'],
+  operations: ['manager', 'receptionist'],
+  communication: ['manager', 'receptionist'],
+};
+
 const SUGGESTIONS: Record<PersonaId, string[]> = {
   technical: ['حلل أداء الفرق', 'توصيات لتحسين الحضور', 'تقرير شامل'],
   financial: ['تقرير مالي سريع', 'تحليل الاشتراكات المتأخرة', 'توقعات مالية'],
@@ -338,20 +351,42 @@ function generateResponse(personaId: PersonaId, q: string, c: AIContext, teams: 
 
 export function AICenter({ players, subscriptions, transactions, staff, teams, matches, trainings, tournaments, parents, attendance, evaluations, activeRole, lang, onRefresh }: AICenterProps) {
   const t = tr(lang);
-  const [activePersona, setActivePersona] = useState<PersonaId>('technical');
+  const allowedPersonas = useMemo(
+    () => PERSONAS.filter((p) => PERSONA_ROLES[p.id].includes(activeRole)),
+    [activeRole],
+  );
+  const [activePersona, setActivePersona] = useState<PersonaId>(() => {
+    if (activeRole === 'accountant') return 'financial';
+    if (activeRole === 'receptionist') return 'operations';
+    return 'technical';
+  });
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [documents, setDocuments] = useState<UploadedFile[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const persona = useMemo(() => PERSONAS.find((p) => p.id === activePersona)!, [activePersona]);
+  useEffect(() => {
+    if (!PERSONA_ROLES[activePersona].includes(activeRole)) {
+      setActivePersona(allowedPersonas[0]?.id ?? 'technical');
+    }
+  }, [activeRole, activePersona, allowedPersonas]);
+
+  const persona = useMemo(() => allowedPersonas.find((p) => p.id === activePersona) ?? allowedPersonas[0] ?? PERSONAS[0], [activePersona, allowedPersonas]);
   const personaStyle = PERSONA_COLORS[persona.color];
   const PersonaIcon = persona.icon;
 
   useEffect(() => { setMessages([{ id: uid(), role: 'ai', text: persona.welcome }]); }, [persona.welcome]);
   useEffect(() => { const el = scrollRef.current; if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' }); }, [messages, isTyping]);
-  useEffect(() => { let active = true; fetchAllPlayerFiles().then((files) => { if (active) setDocuments(files); }); return () => { active = false; }; }, []);
+  useEffect(() => {
+    let active = true;
+    if (activeRole !== 'manager' && activeRole !== 'receptionist') {
+      setDocuments([]);
+      return () => { active = false; };
+    }
+    fetchAllPlayerFiles().then((files) => { if (active) setDocuments(files); });
+    return () => { active = false; };
+  }, [activeRole]);
 
   const ctx = useMemo(() => buildContext(players, subscriptions, transactions, staff, teams, matches, trainings, tournaments, parents, attendance, documents, t.currency),
     [players, subscriptions, transactions, staff, teams, matches, trainings, tournaments, parents, attendance, documents, t.currency]);
@@ -412,7 +447,7 @@ export function AICenter({ players, subscriptions, transactions, staff, teams, m
             <span className="text-[11px] font-black uppercase tracking-wider text-slate-400">المساعدون</span>
           </div>
           <div className="space-y-2 max-h-[60vh] lg:max-h-none overflow-y-auto lg:overflow-visible pr-1 -mr-1">
-            {PERSONAS.map((p) => {
+            {allowedPersonas.map((p) => {
               const styles = PERSONA_COLORS[p.color];
               const Icon = p.icon;
               const isActive = p.id === activePersona;
