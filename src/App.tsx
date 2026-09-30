@@ -395,7 +395,7 @@ export default function App() {
 
   const allowedViewsByRole: Record<Exclude<Role, 'parent'>, ViewId[]> = {
     manager: ['dashboard', 'approvals', 'registration-admin', 'players', 'parents', 'teams', 'staff', 'subscriptions', 'attendance', 'schedules', 'tournaments', 'evaluations', 'reports', 'audit-logs', 'messages', 'ai-center', 'settings'],
-    accountant: ['dashboard', 'parents', 'subscriptions', 'reports', 'messages', 'ai-center'],
+    accountant: ['dashboard', 'subscriptions', 'reports', 'messages', 'ai-center'],
     coach: ['dashboard', 'players', 'parents', 'teams', 'attendance', 'schedules', 'tournaments', 'evaluations', 'reports', 'messages', 'ai-center'],
     receptionist: ['dashboard', 'players', 'parents', 'teams', 'subscriptions', 'attendance', 'tournaments', 'reports', 'messages', 'ai-center'],
   };
