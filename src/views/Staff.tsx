@@ -169,7 +169,7 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
         <div className="rounded-2xl bg-white dark:bg-slate-900 border dark:border-slate-800 p-4"><p className="text-xs text-slate-500">{isAr?'بدون صورة شخصية':'Missing photo'}</p><p className="text-2xl font-black mt-1">{staff.filter(s=>s.role==='coach'&&!staffPhotoUrls[s.id]).length}</p></div>
         <div className="rounded-2xl bg-white dark:bg-slate-900 border dark:border-slate-800 p-4"><p className="text-xs text-slate-500">{isAr?'بدون شهادة مرفوعة':'Missing certificate'}</p><p className="text-2xl font-black mt-1">{staff.filter(s=>s.role==='coach'&&!staffDocuments.some(d=>d.staffId===s.id&&d.documentType==='certificate')).length}</p></div>
         <div className="rounded-2xl bg-white dark:bg-slate-900 border dark:border-slate-800 p-4"><p className="text-xs text-slate-500">{isAr?'إجمالي ملفات الطاقم':'Staff files'}</p><p className="text-2xl font-black mt-1">{staffDocuments.filter(d=>d.documentType!=='profile_photo').length}</p></div>
-      </div>
+      </div>}
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
