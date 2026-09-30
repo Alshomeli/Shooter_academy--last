@@ -97,7 +97,7 @@ const POSITION_COLORS: Record<string, string> = {
   };
 export function Reports({
   players, teams, staff, matches, transactions,
-  subscriptions, attendance, evaluations, settings, lang,
+  subscriptions, attendance, evaluations, settings, activeRole, lang,
 }: ReportsProps) {
   const t = tr(lang);
   const isAr = lang === 'ar';
@@ -333,7 +333,7 @@ export function Reports({
       </div>
 
       {/* Financial Summary */}
-      <SectionCard>
+      {(activeRole === 'manager' || activeRole === 'accountant') && <SectionCard>
         <SectionHeader icon={<Wallet className="h-5 w-5" />} title={t.financialSummary} subtitle={t.financialSummarySubtitle} gradient="from-blue-500 to-blue-600" />
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <StatCard icon={<TrendingUp className="h-5 w-5" />} label={t.totalRevenue} value={`${financial.revenueTotal.toLocaleString()} ${t.currency}`} color="emerald" />
@@ -355,10 +355,10 @@ export function Reports({
             <LineChart data={financial.netTrend} color="#3b82f6" height={180} />
           </div>
         </div>
-      </SectionCard>
+      </SectionCard>}
 
       {/* Performance Analytics */}
-      <SectionCard>
+      {(activeRole === 'manager' || activeRole === 'coach') && <SectionCard>
         <SectionHeader icon={<Trophy className="h-5 w-5" />} title={t.performanceAnalytics} subtitle={t.performanceAnalyticsSubtitle} gradient="from-amber-500 to-amber-600" />
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <StatCard icon={<Trophy className="h-5 w-5" />} label={t.winRate} value={`${performance.winRate}%`} sublabel={`${performance.wins} ${t.wins} · ${performance.completed.length}`} color="amber" />
@@ -381,7 +381,7 @@ export function Reports({
             </div>
           </div>
         </div>
-      </SectionCard>
+      </SectionCard>}
 
       {/* Player Statistics */}
       <SectionCard>
@@ -405,7 +405,7 @@ export function Reports({
       </SectionCard>
 
       {/* Player Development Analytics */}
-      <SectionCard>
+      {(activeRole === 'manager' || activeRole === 'coach') && <SectionCard>
         <SectionHeader icon={<TrendingUp className="h-5 w-5" />} title={isAr ? 'تحليلات تطور اللاعبين' : 'Player Development Analytics'} subtitle={isAr ? 'مؤشرات مجمعة من التقييمات المنشورة، بدون ترتيب أو مقارنة بين اللاعبين.' : 'Aggregate indicators from published reviews, without ranking or comparing players.'} gradient="from-emerald-500 to-teal-600" />
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
           <StatCard icon={<Award className="h-5 w-5" />} label={isAr ? 'التقييمات المنشورة' : 'Published reviews'} value={developmentStats.publishedCount} color="emerald" />
@@ -426,7 +426,7 @@ export function Reports({
             ))}
           </div>
         </div>
-      </SectionCard>
+      </SectionCard>}
 
       {/* Attendance Report */}
       <SectionCard>
@@ -466,7 +466,7 @@ export function Reports({
       </SectionCard>
 
       {/* Staff Summary */}
-      <SectionCard>
+      {activeRole === 'manager' && <SectionCard>
         <SectionHeader icon={<BarChart3 className="h-5 w-5" />} title={t.staffSummary} subtitle={t.staffSummarySubtitle} gradient="from-slate-600 to-slate-700" />
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
           <StatCard icon={<Users className="h-5 w-5" />} label={t.totalStaffCount} value={staffStats.totalStaff} sublabel={t.coachesAndStaff} color="slate" />
@@ -477,7 +477,7 @@ export function Reports({
           <p className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-4">{t.staffByRole}</p>
           <BarChart data={staffStats.roleBars} height={180} />
         </div>
-      </SectionCard>
+      </SectionCard>}
     </div>
   );
 }
