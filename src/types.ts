@@ -227,6 +227,17 @@ export interface PaymentProof {
   createdAt: string;
 }
 
+export interface PlayerDocument {
+  id: string;
+  playerId?: string;
+  fileName: string;
+  filePath: string;
+  fileType: string;
+  fileCategory: 'photo' | 'document';
+  fileSize: number;
+  uploadedAt: string;
+}
+
 export interface StaffDocument {
   id: string;
   staffId: string;
