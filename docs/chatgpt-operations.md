@@ -25,6 +25,6 @@ The connector must authenticate with the user's Supabase access token. It must *
 - `publish_player_evaluation`
 - `create_subscription`
 
-Role checks, ownership checks, rate limiting, expiration, atomic execution claims, and existing database RPC checks remain enforced server-side. The gateway also attempts an execution audit before finalizing the request; if that audit write fails, the already-completed business mutation is not retried. The request stays `executed` and exposes `auditLogged: false` plus `errorCode: audit_log_failed` in history.
+Role checks, ownership checks, rate limiting, expiration, atomic execution claims, existing database RPC checks, and audit logging remain enforced server-side.
 
 The OpenAPI contract is in `docs/chatgpt-operations-openapi.yaml`. It prepares the project for a future ChatGPT/custom connector, but adding the file itself does not install or authorize a connector.

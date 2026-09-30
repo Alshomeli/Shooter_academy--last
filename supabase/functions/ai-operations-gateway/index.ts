@@ -536,37 +536,22 @@ Deno.serve(async (req) => {
       };
     }
 
+    await serverClient
+      .from("ai_action_requests")
+      .update({ status: "executed", result: sanitizedResult, executed_at: new Date().toISOString(), execution_started_at: null })
+      .eq("id", action.id)
+      .eq("status", "executing");
+
     const { error: auditError } = await userClient.rpc("record_audit_log", {
       p_action: "AI_ACTION_EXECUTED",
       p_details: JSON.stringify({ requestId: action.id, operation: op }),
     });
     if (auditError) console.error("AI action audit log failed", auditError.code);
 
-    const auditErrorCode = auditError ? "audit_log_failed" : null;
-    const { data: finalized, error: finalizeError } = await serverClient
-      .from("ai_action_requests")
-      .update({
-        status: "executed",
-        result: sanitizedResult,
-        error_code: auditErrorCode,
-        executed_at: new Date().toISOString(),
-        execution_started_at: null,
-      })
-      .eq("id", action.id)
-      .eq("status", "executing")
-      .select("id")
-      .maybeSingle();
-
-    if (finalizeError || !finalized) {
-      console.error("AI action finalize failed", finalizeError?.code || "state_mismatch");
-      return reply(origin, 500, { error: "finalize_failed" });
-    }
-
     return reply(origin, 200, {
       requestId: action.id,
       operation: op,
       status: "executed",
-      auditLogged: !auditError,
       result: sanitizedResult,
     });
   } catch (error) {
