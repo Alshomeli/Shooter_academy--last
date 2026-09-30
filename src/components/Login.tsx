@@ -98,9 +98,9 @@ export function Login({ onLogin, lang, setLang, recovery = false, registrationEn
       <h2 className="font-bold mb-5 text-slate-500">{titles[screen]}</h2>
       {error && <p role="alert" className="mb-4 p-3 rounded-lg bg-red-50 text-red-700 text-sm flex gap-2"><AlertCircle className="h-5 w-5 shrink-0" />{error}</p>}
       {message && <p role="status" className="mb-4 p-3 rounded-lg bg-emerald-50 text-emerald-800 text-sm">{message}</p>}
-      {screen === 'register' && !staffRegistrationEntry && !registrationEntry && <div className="mb-4 grid grid-cols-2 gap-2">
-        <button type="button" onClick={() => setRegistrationKind('parent')} className={`rounded-lg border px-3 py-2 text-sm font-bold ${registrationKind === 'parent' ? 'border-emerald-600 bg-emerald-50 text-emerald-700' : 'border-slate-200'}`}>{text('ولي أمر', 'Parent')}</button>
-        <button type="button" onClick={() => setRegistrationKind('staff')} className={`rounded-lg border px-3 py-2 text-sm font-bold ${registrationKind === 'staff' ? 'border-emerald-600 bg-emerald-50 text-emerald-700' : 'border-slate-200'}`}>{text('مدرب / موظف', 'Coach / staff')}</button>
+      {screen === 'register' && <div className="mb-4 grid grid-cols-2 gap-2">
+        <button type="button" onClick={() => { setRegistrationKind('parent'); if (staffRegistrationEntry) window.history.replaceState({}, '', '?view=registration'); }} className={`rounded-lg border px-3 py-2 text-sm font-bold ${registrationKind === 'parent' ? 'border-emerald-600 bg-emerald-50 text-emerald-700' : 'border-slate-200'}`}>{text('ولي أمر', 'Parent')}</button>
+        <button type="button" onClick={() => { setRegistrationKind('staff'); if (registrationEntry) window.history.replaceState({}, '', '?view=staff-registration'); }} className={`rounded-lg border px-3 py-2 text-sm font-bold ${registrationKind === 'staff' ? 'border-emerald-600 bg-emerald-50 text-emerald-700' : 'border-slate-200'}`}>{text('مدير / موظف / مدرب', 'Manager / staff / coach')}</button>
       </div>}
       <form onSubmit={submit} className="space-y-4">
         <fieldset disabled={busy} className="space-y-4 disabled:opacity-60">
