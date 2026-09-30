@@ -12,7 +12,7 @@ This gateway is the server-side foundation for letting an AI assistant prepare a
 - Prepared requests expire after 10 minutes.
 - The short-lived request records are not readable or writable directly by browser clients.
 - The actual business RPC is invoked with the user's JWT, so existing role checks remain authoritative.
-- Successful executions attempt the existing audit-log RPC before the request is finalized. If that audit write fails, the business operation is **not retried**: the request remains `executed`, `auditLogged` is `false`, and history records `errorCode: audit_log_failed` so the audit gap is visible without risking a duplicate mutation.
+- Successful executions are recorded through the existing audit-log RPC.
 - The assistant must never silently execute a mutation from natural-language intent alone.
 
 ## Supported operations
