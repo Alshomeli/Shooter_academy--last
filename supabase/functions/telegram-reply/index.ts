@@ -1154,7 +1154,7 @@ Deno.serve(async (req: Request) => {
     // This adds dated reports, matches, trainings, evaluations, tournaments and pagination
     // while preserving the newer manager/coach workflows already present in main.
     const detailedRequest = reportRequest(managerMenuText, today);
-    if (detailedRequest && (detailedRequest.topics.some((topic) => ["overview","matches","trainings","evaluations","tournaments"].includes(topic)) || /(?:صفحة|page)\s*\d+/i.test(managerMenuText) || /\d{4}-\d{2}-\d{2}/.test(managerMenuText))) {
+    if (detailedRequest && (detailedRequest.topics.some((topic) => ["overview","matches","trainings","evaluations","tournaments","expenses"].includes(topic)) || /(?:صفحة|page)\s*\d+/i.test(managerMenuText) || /\d{4}-\d{2}-\d{2}/.test(managerMenuText) || /["“”«»][^"“”«»]+["“”«»]/.test(managerMenuText))) {
       const report = await detailedReport(detailedRequest, restRows);
       for (const chunk of splitMessages(report)) await sendMessage(chatId, chunk);
       return Response.json({ ok: true });
