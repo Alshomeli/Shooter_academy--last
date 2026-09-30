@@ -393,8 +393,27 @@ export default function App() {
     parent: t.parent,
   };
 
+  const allowedViewsByRole: Record<Exclude<Role, 'parent'>, ViewId[]> = {
+    manager: ['dashboard', 'approvals', 'registration-admin', 'players', 'parents', 'teams', 'staff', 'subscriptions', 'attendance', 'schedules', 'tournaments', 'evaluations', 'reports', 'audit-logs', 'messages', 'ai-center', 'settings'],
+    accountant: ['dashboard', 'parents', 'subscriptions', 'reports', 'messages', 'ai-center'],
+    coach: ['dashboard', 'players', 'parents', 'teams', 'attendance', 'schedules', 'tournaments', 'evaluations', 'reports', 'messages', 'ai-center'],
+    receptionist: ['dashboard', 'players', 'parents', 'teams', 'subscriptions', 'attendance', 'tournaments', 'reports', 'messages', 'ai-center'],
+  };
+
+  const safeCurrentTab: ViewId = activeRole === 'parent'
+    ? 'dashboard'
+    : (allowedViewsByRole[activeRole]?.includes(currentTab) ? currentTab : 'dashboard');
+
+  useEffect(() => {
+    if (!currentUser || currentUser.registrationOnly || currentUser.role === 'parent') return;
+    if (currentTab === 'staff-registration') return;
+    if (!allowedViewsByRole[currentUser.role as Exclude<Role, 'parent'>]?.includes(currentTab)) {
+      setCurrentTab('dashboard');
+    }
+  }, [currentUser, currentTab]);
+
   const renderView = () => {
-    switch (currentTab) {
+    switch (safeCurrentTab) {
       case 'dashboard':
         return <Dashboard players={data.players} subscriptions={data.subscriptions} matches={data.matches} transactions={data.transactions} staff={data.staff} teams={data.teams} parents={data.parents} evaluations={data.evaluations} setCurrentTab={setCurrentTab} activeRole={activeRole} lang={lang} />;
       case 'approvals':
@@ -551,7 +570,7 @@ export default function App() {
               <h1 className={`text-sm sm:text-lg font-black tracking-tight leading-tight ${
                 darkMode ? 'text-white' : 'text-slate-900'
               }`}>
-                {viewTitles[currentTab]}
+                {viewTitles[safeCurrentTab]}
               </h1>
               <p className="text-[10px] sm:text-xs text-slate-400 font-semibold mt-0.5 flex items-center gap-1.5">
                 <Target className="h-3 w-3 text-emerald-500" />
