@@ -219,7 +219,7 @@ export const db = {
       id: r.id, subscriptionId: r.subscription_id, playerId: r.player_id, parentUserId: r.parent_user_id,
       amount: Number(r.amount), transferDate: r.transfer_date, proofPath: r.proof_path, status: r.status,
       parentNote: r.parent_note || '', reviewNote: r.review_note || '', reviewedBy: r.reviewed_by || undefined,
-      reviewedAt: r.reviewed_at || undefined, createdAt: r.created_at,
+      reviewedAt: r.reviewed_at || undefined, receiptNumber: r.receipt_number == null ? undefined : Number(r.receipt_number), createdAt: r.created_at,
     })) as PaymentProof[];
   },
 
