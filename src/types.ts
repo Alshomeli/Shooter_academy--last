@@ -91,6 +91,8 @@ export interface Attendance {
   playerId: string;
   sessionDate: string;
   sessionType: 'training' | 'match';
+  trainingId?: string;
+  matchId?: string;
   status: 'present' | 'absent' | 'excused';
   notes?: string;
 }
