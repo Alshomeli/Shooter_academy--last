@@ -142,6 +142,8 @@ type AdminIntent =
   | "staff_applications"
   | "matches"
   | "trainings"
+  | "payment_proofs"
+  | "staff_documents"
   | "unknown";
 
 type AdminPeriod = "today" | "yesterday" | "this_week" | "this_month" | "last_month" | "next_7_days" | "all";
@@ -150,7 +152,7 @@ type ParsedAdminQuestion = { intent: AdminIntent; period: AdminPeriod };
 
 const ADMIN_INTENTS = new Set<AdminIntent>([
   "active_players", "coaches", "staff", "teams", "parents", "unpaid_subscriptions",
-  "expiring_subscriptions", "revenue", "attendance", "registrations", "staff_applications", "matches", "trainings", "unknown",
+  "expiring_subscriptions", "revenue", "attendance", "registrations", "staff_applications", "matches", "trainings", "payment_proofs", "staff_documents", "unknown",
 ]);
 const ADMIN_PERIODS = new Set<AdminPeriod>([
   "today", "yesterday", "this_week", "this_month", "last_month", "next_7_days", "all",
@@ -170,6 +172,8 @@ function inferPeriod(text: string): AdminPeriod {
 function deterministicAdminIntent(text: string): ParsedAdminQuestion | null {
   const value = normalize(text);
   const period = inferPeriod(value);
+  if ((value.includes("إثبات") || value.includes("اثبات") || value.includes("تحويل")) && (value.includes("دفع") || value.includes("دفعة") || value.includes("دفعات"))) return { intent: "payment_proofs", period: "all" };
+  if ((value.includes("شهادة") || value.includes("شهادات") || value.includes("رخصة") || value.includes("رخص")) && (value.includes("مدرب") || value.includes("موظف") || value.includes("طاقم") || value.includes("منته"))) return { intent: "staff_documents", period: "all" };
   if ((value.includes("طلب") || value.includes("طلبات") || value.includes("انضمام")) && (value.includes("مدرب") || value.includes("موظف") || value.includes("مدير") || value.includes("طاقم"))) return { intent: "staff_applications", period: period === "all" ? "today" : period };
   if (value.includes("مدرب") || value.includes("مدربين") || value.includes("مدربون")) return { intent: "coaches", period: "all" };
   if (value.includes("موظف") || value.includes("موظفين") || value.includes("طاقم")) return { intent: "staff", period: "all" };
@@ -199,10 +203,10 @@ async function classifyAdminQuestion(text: string): Promise<ParsedAdminQuestion>
 
   const prompt = [
     "صنّف سؤال مدير أكاديمية رياضية إلى مقصد واحد وفترة زمنية.",
-    "المقاصد المسموحة فقط: active_players, coaches, staff, teams, parents, unpaid_subscriptions, expiring_subscriptions, revenue, attendance, registrations, staff_applications, matches, trainings, unknown.",
+    "المقاصد المسموحة فقط: active_players, coaches, staff, teams, parents, unpaid_subscriptions, expiring_subscriptions, revenue, attendance, registrations, staff_applications, matches, trainings, payment_proofs, staff_documents, unknown.",
     "الفترات المسموحة فقط: today, yesterday, this_week, this_month, last_month, next_7_days, all.",
     "لا تنشئ SQL ولا أوامر ولا أسماء جداول. أرجع JSON فقط بالشكل: {\"intent\":\"...\",\"period\":\"...\"}.",
-    "إذا لم يذكر المستخدم فترة: revenue/attendance/registrations/staff_applications = today، expiring_subscriptions = next_7_days، والبقية = all.",
+    "إذا لم يذكر المستخدم فترة: revenue/attendance/registrations/staff_applications = today، expiring_subscriptions = next_7_days، payment_proofs/staff_documents = all، والبقية = all.",
   ].join("\n");
 
   try {
@@ -780,7 +784,7 @@ Deno.serve(async (req: Request) => {
     const today = bahrainDate();
 
     if (isSummaryCommand(incomingText)) {
-      const [activePlayers, unpaid, overdueUnpaid, currentUnpaid, expiringToday, paymentRows, matches, trainings, attendanceRows, pendingRegistrations, pendingStaffApplications] = await Promise.all([
+      const [activePlayers, unpaid, overdueUnpaid, currentUnpaid, expiringToday, paymentRows, matches, trainings, attendanceRows, pendingRegistrations, pendingStaffApplications, pendingPaymentProofs, expiringStaffDocuments, expiredStaffDocuments] = await Promise.all([
         restCount("players", { status: "eq.active" }),
         restCount("subscriptions", { status: "eq.unpaid" }),
         restCount("subscriptions", { status: "eq.unpaid", end_date_lt: `lt.${today}` }),
@@ -792,6 +796,9 @@ Deno.serve(async (req: Request) => {
         restRows<{ status?: string }>("attendance", { select: "status", session_date: `eq.${today}` }),
         restCount("registration_applications", { status: "eq.pending" }),
         restCount("staff_applications", { status: "eq.pending" }),
+        restCount("payment_proofs", { status: "eq.pending" }),
+        restCount("staff_documents", { document_type: "neq.profile_photo", expiry_date_gte: `gte.${today}`, expiry_date_lte: `lte.${bahrainDate(30)}` }),
+        restCount("staff_documents", { document_type: "neq.profile_photo", expiry_date_lt: `lt.${today}` }),
       ]);
       const incomingTotal = paymentRows
         .filter((row) => String(row.type).toLowerCase() === "revenue")
@@ -812,6 +819,9 @@ Deno.serve(async (req: Request) => {
           `الحضور المسجل اليوم: ${attendanceRows.length} (حاضر ${attendanceRows.filter((r) => r.status === "present").length} / غائب ${attendanceRows.filter((r) => r.status === "absent").length})`,
           `طلبات تسجيل اللاعبين المعلقة: ${pendingRegistrations}`,
           `طلبات انضمام الطاقم المعلقة: ${pendingStaffApplications}`,
+          `إثباتات الدفع بانتظار التحقق: ${pendingPaymentProofs}`,
+          `شهادات/رخص الطاقم تنتهي خلال 30 يومًا: ${expiringStaffDocuments}`,
+          `شهادات/رخص الطاقم المنتهية: ${expiredStaffDocuments}`,
         ].join("\n"),
       );
       return Response.json({ ok: true });
@@ -859,6 +869,50 @@ Deno.serve(async (req: Request) => {
 
     const parsedQuestion = await classifyAdminQuestion(incomingText);
     const range = adminDateRange(parsedQuestion.period);
+
+    if (parsedQuestion.intent === "payment_proofs") {
+      const rows = await restRows<{ id?: string; amount?: number | string; transfer_date?: string; status?: string; created_at?: string }>("payment_proofs", {
+        select: "id,amount,transfer_date,status,created_at",
+        status: "eq.pending",
+        order: "created_at.asc",
+      });
+      const total = rows.reduce((sum, row) => sum + Number(row.amount || 0), 0);
+      await sendMessage(chatId, [
+        "إثباتات الدفع بانتظار التحقق",
+        `العدد: ${rows.length}`,
+        `إجمالي المبالغ المعلقة: ${formatMoney(total)} د.ب`,
+        ...rows.slice(0, 20).map((row, index) => `${index + 1}) ${formatMoney(Number(row.amount || 0))} د.ب — تاريخ التحويل ${row.transfer_date || "غير محدد"}`),
+        "",
+        "اعتماد أو رفض الإثبات يتم من شاشة الاشتراكات في الموقع لضمان تسجيل المراجعة والإيصال.",
+      ].join("\n"));
+      return Response.json({ ok: true });
+    }
+
+    if (parsedQuestion.intent === "staff_documents") {
+      const [expiring, expired] = await Promise.all([
+        restRows<{ title?: string; document_type?: string; expiry_date?: string }>("staff_documents", {
+          select: "title,document_type,expiry_date",
+          document_type: "neq.profile_photo",
+          expiry_date_gte: `gte.${today}`,
+          expiry_date_lte: `lte.${bahrainDate(30)}`,
+          order: "expiry_date.asc",
+        }),
+        restRows<{ title?: string; document_type?: string; expiry_date?: string }>("staff_documents", {
+          select: "title,document_type,expiry_date",
+          document_type: "neq.profile_photo",
+          expiry_date_lt: `lt.${today}`,
+          order: "expiry_date.asc",
+        }),
+      ]);
+      await sendMessage(chatId, [
+        "حالة شهادات ورخص الطاقم",
+        `تنتهي خلال 30 يومًا: ${expiring.length}`,
+        ...expiring.slice(0, 10).map((doc) => `⚠️ ${doc.title || doc.document_type || "مستند"} — ${doc.expiry_date || "غير محدد"}`),
+        `منتهية: ${expired.length}`,
+        ...expired.slice(0, 10).map((doc) => `⛔ ${doc.title || doc.document_type || "مستند"} — ${doc.expiry_date || "غير محدد"}`),
+      ].join("\n"));
+      return Response.json({ ok: true });
+    }
 
     if (parsedQuestion.intent === "active_players") {
       const count = await restCount("players", { status: "eq.active" });
