@@ -89,7 +89,7 @@ export function StaffRegistration({ user, lang, onLogout, onApproved }: {
         <div className="mb-6 flex items-start justify-between gap-4">
           <div>
             <h1 className="text-xl font-black">{text('طلب انضمام موظف / مدرب', 'Staff / coach application')}</h1>
-            <p className="mt-1 text-sm text-slate-500">{text('أدخل بياناتك أنت. لن يتم تفعيل أي صلاحية قبل موافقة المدير.', 'Enter your own details. No staff permissions are activated before manager approval.')}</p>
+            <p className="mt-1 text-sm text-slate-500">{text('أدخل بياناتك أنت. لن يتم تفعيل أي صلاحية موظف أو مدير قبل موافقة مدير نشط موجود مسبقًا.', 'Enter your own details. No staff or manager permissions are activated before approval by an existing active manager.')}</p>
           </div>
           <button onClick={() => void onLogout()} className="flex items-center gap-1 rounded-lg bg-slate-100 px-3 py-2 text-xs font-bold text-slate-600">
             <LogOut className="h-4 w-4" /> {text('خروج', 'Sign out')}
@@ -106,6 +106,7 @@ export function StaffRegistration({ user, lang, onLogout, onApproved }: {
               <form onSubmit={submit} className="space-y-4">
                 <FormField label={text('الصفة المطلوبة', 'Requested role')}>
                   <select className={inputCls} value={form.requestedRole} onChange={e => setForm({ ...form, requestedRole: e.target.value as StaffApplication['requestedRole'] })}>
+                    <option value="manager">{text('مدير', 'Manager')}</option>
                     <option value="coach">{text('مدرب', 'Coach')}</option>
                     <option value="accountant">{text('محاسب', 'Accountant')}</option>
                     <option value="receptionist">{text('استقبال', 'Receptionist')}</option>
