@@ -335,6 +335,11 @@ export function Reports({
       {/* Financial Summary */}
       {(activeRole === 'manager' || activeRole === 'accountant') && <SectionCard>
         <SectionHeader icon={<Wallet className="h-5 w-5" />} title={t.financialSummary} subtitle={t.financialSummarySubtitle} gradient="from-blue-500 to-blue-600" />
+        <div className="mb-4 rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/20 px-4 py-3 text-xs font-semibold text-amber-800 dark:text-amber-300">
+          {isAr
+            ? 'ملاحظة: مبالغ الإيرادات والمصروفات تعتمد على الحركات المالية المسجلة فقط، بينما نسبة التحصيل تعتمد على حالة الاشتراكات. لا يتم إنشاء حركات مالية رجعية للبيانات التاريخية تلقائيًا.'
+            : 'Note: revenue and expense totals use recorded financial transactions, while collection rate uses subscription status. Historical payments are not backfilled automatically.'}
+        </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <StatCard icon={<TrendingUp className="h-5 w-5" />} label={t.totalRevenue} value={`${financial.revenueTotal.toLocaleString()} ${t.currency}`} color="emerald" />
           <StatCard icon={<Wallet className="h-5 w-5" />} label={t.totalExpenses} value={`${financial.expenseTotal.toLocaleString()} ${t.currency}`} color="red" />
