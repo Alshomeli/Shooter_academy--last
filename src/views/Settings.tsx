@@ -217,6 +217,27 @@ export function SettingsView({ settings, onSettingsChange, activeRole, lang }: S
           {isAr ? 'تُحتسب هذه الرسوم لكل لاعب وفق الفترة الزمنية المحددة للخطة.' : 'These fees are charged per player according to the plan period.'}
         </p>
 
+        <SectionHeader
+          icon={<DollarSign className="h-5 w-5" />}
+          color="emerald"
+          title={isAr ? 'الدفع عبر Benefit / IBAN' : 'Benefit / IBAN payments'}
+          subtitle={isAr ? 'البيانات التي ستظهر لولي الأمر عند دفع الاشتراك' : 'Transfer details shown to parents when paying subscriptions'}
+        />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+          <Field label={isAr ? 'رقم IBAN' : 'IBAN'}>
+            <input value={form.benefitIban ?? ''} onChange={(e)=>set('benefitIban',e.target.value.replace(/\s+/g,'').toUpperCase())} className={inputCls} dir="ltr" placeholder="BH..." />
+          </Field>
+          <Field label={isAr ? 'اسم صاحب الحساب' : 'Account name'}>
+            <input value={form.benefitAccountName ?? ''} onChange={(e)=>set('benefitAccountName',e.target.value)} className={inputCls} />
+          </Field>
+          <Field label={isAr ? 'تعليمات الدفع بالعربية' : 'Arabic payment instructions'}>
+            <textarea value={form.paymentInstructionsAr ?? ''} onChange={(e)=>set('paymentInstructionsAr',e.target.value)} className={inputCls} rows={3} />
+          </Field>
+          <Field label={isAr ? 'تعليمات الدفع بالإنجليزية' : 'English payment instructions'}>
+            <textarea value={form.paymentInstructionsEn ?? ''} onChange={(e)=>set('paymentInstructionsEn',e.target.value)} className={inputCls} rows={3} dir="ltr" />
+          </Field>
+        </div>
+
         {/* ---------------------------- Actions ---------------------------- */}
         <div className="flex justify-end pt-5 border-t border-slate-100 dark:border-slate-800">
           <button
