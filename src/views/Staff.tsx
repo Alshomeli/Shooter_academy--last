@@ -71,6 +71,7 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
   }, [staff.length]);
 
   const canManage = activeRole === 'manager';
+  const canUploadFor = (member: Staff) => canManage || (!!authUserId && member.userId === authUserId);
   const canSeeSalary = activeRole === 'manager' || activeRole === 'accountant';
 
   const filtered = useMemo(() => {
@@ -309,7 +310,7 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
                 {/* Actions */}
                 <div className="flex items-center gap-1 mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
                   <ContactLinks phone={s.phone} email={s.email} small />
-                  {canManage && <button onClick={() => { setUploadMember(s); setUploadType('certificate'); }} className="flex items-center justify-center p-1.5 rounded-lg text-emerald-700 bg-emerald-50 dark:bg-emerald-900/20" title={isAr?'إضافة صورة أو شهادة':'Add photo or document'}><FileUp className="h-3.5 w-3.5"/></button>}
+                  {canUploadFor(s) && <button onClick={() => { setUploadMember(s); setUploadType('certificate'); }} className="flex items-center justify-center p-1.5 rounded-lg text-emerald-700 bg-emerald-50 dark:bg-emerald-900/20" title={isAr?'إضافة صورة أو شهادة':'Add photo or document'}><FileUp className="h-3.5 w-3.5"/></button>}
                   <button
                     onClick={() => setViewMember(s)}
                     className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[11px] font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer"
