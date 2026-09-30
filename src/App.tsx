@@ -107,11 +107,17 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [activeRole, setActiveRole] = useState<Role>('manager');
   const [currentTab, setCurrentTab] = useState<ViewId>(() => {
+    const path = window.location.pathname.replace(/\/+$/, '') || '/';
+    if (path === '/parent') return 'registration';
+    if (path === '/coach') return 'staff-registration';
     const params = new URLSearchParams(window.location.search);
     const view = params.get('view') || window.location.hash.replace('#', '');
     if (view === 'registration' || view === 'staff-registration' || view === 'registration-admin') return view as ViewId;
     return 'dashboard';
   });
+  const entryPath = window.location.pathname.replace(/\/+$/, '') || '/';
+  const parentDirectEntry = entryPath === '/parent';
+  const coachDirectEntry = entryPath === '/coach';
   const [mobileOpen, setMobileOpen] = useState(false);
   const [lang, setLang] = useState<Lang>('ar');
   const [darkMode, setDarkMode] = useState(false);
@@ -473,7 +479,7 @@ export default function App() {
   }
 
   if (!currentUser || recovery) {
-    return <Login registrationEntry={currentTab === 'registration'} staffRegistrationEntry={currentTab === 'staff-registration'} recovery={recovery} onLogin={(user) => { setRecovery(false); handleLogin(user); }} lang={lang} setLang={setLang} />;
+    return <Login registrationEntry={parentDirectEntry || currentTab === 'registration'} staffRegistrationEntry={coachDirectEntry || currentTab === 'staff-registration'} recovery={recovery} onLogin={(user) => { setRecovery(false); handleLogin(user); }} lang={lang} setLang={setLang} />;
   }
 
   if (loading) {
