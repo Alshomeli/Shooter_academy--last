@@ -514,11 +514,14 @@ async function sendCoachToday(chatId: number, identity: TelegramIdentity) {
     ].join("\n"));
     for (const player of players.slice(0, 30)) {
       if (!training.id || !player.id) continue;
+      const attendanceToken = await rpc<string>("telegram_attendance_token", {
+        p_chat_id: chatId, p_training_id: training.id, p_player_id: player.id,
+      });
       await sendMessage(chatId, `${player.name || "لاعب"}${player.jersey_number ? ` #${player.jersey_number}` : ""}`, {
         inline_keyboard: [[
-          { text: "✅ حضر", callback_data: `att:p:${training.id}:${player.id}` },
-          { text: "❌ غاب", callback_data: `att:a:${training.id}:${player.id}` },
-          { text: "🟡 بعذر", callback_data: `att:e:${training.id}:${player.id}` },
+          { text: "✅ حضر", callback_data: `att:p:${attendanceToken}` },
+          { text: "❌ غاب", callback_data: `att:a:${attendanceToken}` },
+          { text: "🟡 بعذر", callback_data: `att:e:${attendanceToken}` },
         ]],
       });
     }
@@ -815,7 +818,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const linkedIdentity = await linkedTelegramIdentity(callbackChatId);
-    const attendanceMatch = callback.data.match(/^att:([pae]):([^:]+):([^:]+)$/);
+    const attendanceMatch = callback.data.match(/^att:([pae]):([a-f0-9]{16})$/);
     if (attendanceMatch) {
       if (linkedIdentity?.role !== "coach") {
         await answerCallbackQuery(callback.id, "هذا الإجراء متاح للمدرب المرتبط فقط.");
@@ -823,10 +826,9 @@ Deno.serve(async (req: Request) => {
       }
       const status = attendanceMatch[1] === "p" ? "present" : attendanceMatch[1] === "a" ? "absent" : "excused";
       try {
-        await rpc<boolean>("telegram_set_training_attendance", {
+        await rpc<boolean>("telegram_set_training_attendance_token", {
           p_chat_id: callbackChatId,
-          p_training_id: attendanceMatch[2],
-          p_player_id: attendanceMatch[3],
+          p_token: attendanceMatch[2],
           p_status: status,
         });
         const statusLabel = status === "present" ? "حضر ✅" : status === "absent" ? "غاب ❌" : "بعذر 🟡";
@@ -835,9 +837,9 @@ Deno.serve(async (req: Request) => {
           const original = String(callback.message.text || "اللاعب").replace(/\nالحالة:.*$/s, "");
           await editMessage(callbackChatId, callback.message.message_id, `${original}\nالحالة: ${statusLabel}`, {
             inline_keyboard: [[
-              { text: "✅ حضر", callback_data: `att:p:${attendanceMatch[2]}:${attendanceMatch[3]}` },
-              { text: "❌ غاب", callback_data: `att:a:${attendanceMatch[2]}:${attendanceMatch[3]}` },
-              { text: "🟡 بعذر", callback_data: `att:e:${attendanceMatch[2]}:${attendanceMatch[3]}` },
+              { text: "✅ حضر", callback_data: `att:p:${attendanceMatch[2]}` },
+              { text: "❌ غاب", callback_data: `att:a:${attendanceMatch[2]}` },
+              { text: "🟡 بعذر", callback_data: `att:e:${attendanceMatch[2]}` },
             ]],
           });
         }
@@ -1248,8 +1250,17 @@ Deno.serve(async (req: Request) => {
     }
 
     if (parsedQuestion.intent === "coaches") {
-      const count = await restCount("staff", { role: "eq.coach", status: "eq.active" });
-      await sendMessage(chatId, `عدد المدربين النشطين: ${count}`);
+      const coaches = await restRows<{ id?: string; name?: string; specialization?: string; experience_years?: number }>("staff", {
+        select: "id,name,specialization,experience_years", role: "eq.coach", status: "eq.active", order: "name.asc",
+      });
+      const teams = await restRows<{ name?: string; coach_id?: string }>("teams", { select: "name,coach_id", order: "name.asc" });
+      await sendMessage(chatId, [
+        `المدربون النشطون: ${coaches.length}`,
+        ...coaches.map((coach,index)=>{
+          const ownTeams=teams.filter(t=>t.coach_id===coach.id).map(t=>t.name).filter(Boolean);
+          return `${index+1}) ${coach.name || "مدرب"}${coach.specialization ? ` — ${coach.specialization}` : ""}${ownTeams.length ? ` — الفرق: ${ownTeams.join("، ")}` : ""}`;
+        }),
+      ].join("\n"));
       return Response.json({ ok: true });
     }
 
@@ -1396,6 +1407,11 @@ Deno.serve(async (req: Request) => {
       return Response.json({ ok: true });
     }
 
+    const shortFollowUp = normalize(incomingText);
+    if (["من هم", "من هم؟", "من هما", "من هما؟", "منو هم", "منو هما"].includes(shortFollowUp)) {
+      await sendMessage(chatId, "اذكر المقصود بكلمة واحدة فقط، مثل: المدربين، اللاعبين، الموظفين أو الفرق. وبعدها سأعطيك الأسماء والتفاصيل، وليس العدد فقط.");
+      return Response.json({ ok: true });
+    }
     await sendMessage(
       chatId,
       "اسألني عن اللاعبين، المدربين، الموظفين، الفرق، المباريات، التدريبات، الاشتراكات، الإيرادات، الحضور أو طلبات التسجيل. يمكنك السؤال كتابةً أو صوتًا.",
