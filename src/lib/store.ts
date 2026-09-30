@@ -3,7 +3,7 @@ import { collectionChanges, type Row } from '@/lib/collection-diff';
 import type {
   Staff, Team, Player, Parent, Subscription, Attendance,
   Match, Training, Transaction, Tournament, PlayerEvaluation,
-  Settings, AuditLog, Notification, Lang, CurrentUser,
+  Settings, AuditLog, Notification, Lang, CurrentUser, PaymentProof, StaffDocument,
 } from '@/types';
 import {
   mapStaff, mapTeam, mapPlayer, mapParent, mapSubscription, mapAttendance,
@@ -196,6 +196,59 @@ export const db = {
       registrationOnly: true,
       registrationMode: onboardingMode,
     };
+  },
+
+  async getPaymentProofs(): Promise<PaymentProof[]> {
+    const { data, error } = await supabase.from('payment_proofs').select('*').order('created_at', { ascending: false });
+    if (error) throw error;
+    return (data || []).map((r) => ({
+      id: r.id, subscriptionId: r.subscription_id, playerId: r.player_id, parentUserId: r.parent_user_id,
+      amount: Number(r.amount), transferDate: r.transfer_date, proofPath: r.proof_path, status: r.status,
+      parentNote: r.parent_note || '', reviewNote: r.review_note || '', reviewedBy: r.reviewed_by || undefined,
+      reviewedAt: r.reviewed_at || undefined, createdAt: r.created_at,
+    })) as PaymentProof[];
+  },
+
+  async submitPaymentProof(subscription: Subscription, playerId: string, transferDate: string, file: File, parentNote = ''): Promise<void> {
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) throw userError || new Error('Authentication required');
+    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+    const path = `${user.id}/${subscription.id}/${crypto.randomUUID()}.${ext}`;
+    const { error: uploadError } = await supabase.storage.from('payment-proofs').upload(path, file, { upsert: false, contentType: file.type });
+    if (uploadError) throw uploadError;
+    const { error } = await supabase.from('payment_proofs').insert({
+      subscription_id: subscription.id, player_id: playerId, parent_user_id: user.id,
+      amount: subscription.amount, transfer_date: transferDate, proof_path: path, parent_note: parentNote.trim(),
+    });
+    if (error) {
+      await supabase.storage.from('payment-proofs').remove([path]);
+      throw error;
+    }
+  },
+
+  async approvePaymentProof(id: string): Promise<void> {
+    const { error } = await supabase.rpc('approve_payment_proof', { p_proof_id: id });
+    if (error) throw error;
+  },
+
+  async reviewPaymentProof(id: string, status: 'rejected' | 'needs_info', note: string): Promise<void> {
+    const { error } = await supabase.rpc('review_payment_proof', { p_proof_id: id, p_status: status, p_note: note });
+    if (error) throw error;
+  },
+
+  async getPaymentProofUrl(path: string): Promise<string> {
+    const { data, error } = await supabase.storage.from('payment-proofs').createSignedUrl(path, 300);
+    if (error) throw error;
+    return data.signedUrl;
+  },
+
+  async getStaffDocuments(): Promise<StaffDocument[]> {
+    const { data, error } = await supabase.from('staff_documents').select('*').order('created_at', { ascending: false });
+    if (error) throw error;
+    return (data || []).map((r) => ({
+      id: r.id, staffId: r.staff_id, documentType: r.document_type, title: r.title,
+      filePath: r.file_path, expiryDate: r.expiry_date || undefined, notes: r.notes || '', createdAt: r.created_at,
+    })) as StaffDocument[];
   },
 
   async recordPayment(subscription: Subscription, method: string): Promise<Transaction> {
