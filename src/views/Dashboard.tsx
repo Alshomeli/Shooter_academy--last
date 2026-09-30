@@ -29,6 +29,7 @@ export function Dashboard({ players, subscriptions, matches, transactions, staff
   const isAr = lang === 'ar';
   const MONTHS = monthsArray(lang);
   const canSeeFinance = activeRole === 'manager' || activeRole === 'accountant';
+  const canRecordPayments = activeRole === 'manager' || activeRole === 'accountant';
   const canSeeSubscriptions = activeRole === 'manager' || activeRole === 'accountant' || activeRole === 'receptionist';
   const canSeeTechnical = activeRole === 'manager' || activeRole === 'coach';
   const canSeeStaff = activeRole === 'manager';
@@ -302,7 +303,7 @@ export function Dashboard({ players, subscriptions, matches, transactions, staff
             ...(activeRole === 'manager' || activeRole === 'receptionist' ? [{ label: t.addPlayer, icon: Users, tab: 'players' as ViewId }] : []),
             ...(activeRole === 'manager' || activeRole === 'coach' || activeRole === 'receptionist' ? [{ label: t.recordAttendance, icon: Percent, tab: 'attendance' as ViewId }] : []),
             ...(activeRole === 'manager' || activeRole === 'coach' ? [{ label: t.scheduleMatch, icon: Calendar, tab: 'schedules' as ViewId }] : []),
-            ...(canSeeSubscriptions ? [{ label: t.recordPayment, icon: Wallet, tab: 'subscriptions' as ViewId }] : []),
+            ...(canRecordPayments ? [{ label: t.recordPayment, icon: Wallet, tab: 'subscriptions' as ViewId }] : []),
           ].map((action) => {
             const Icon = action.icon;
             return (
