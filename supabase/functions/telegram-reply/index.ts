@@ -803,7 +803,7 @@ Deno.serve(async (req: Request) => {
         restCount("subscriptions", { status: "eq.unpaid", end_date_lt: `lt.${today}` }),
         restCount("subscriptions", { status: "eq.unpaid", end_date_gte: `gte.${today}` }),
         restCount("subscriptions", { end_date: `eq.${today}` }),
-        restRows<{ amount?: number | string; type?: string }>("transactions", { select: "amount,type", transaction_date: `eq.${today}` }),
+        restRows<{ amount?: number | string; type?: string; category?: string; description?: string }>("transactions", { select: "amount,type,category,description", transaction_date: `eq.${today}`, order: "created_at.asc" }),
         restRows<{ opponent?: string; location?: string; result?: string }>("matches", { select: "opponent,location,result", match_date: `eq.${today}`, order: "created_at.asc" }),
         restRows<{ title?: string; duration_minutes?: number }>("trainings", { select: "title,duration_minutes", session_date: `eq.${today}`, order: "created_at.asc" }),
         restRows<{ status?: string }>("attendance", { select: "status", session_date: `eq.${today}` }),
@@ -826,7 +826,7 @@ Deno.serve(async (req: Request) => {
           `اشتراكات تنتهي اليوم: ${expiringToday}`,
           `إيرادات مسجلة اليوم: ${formatMoney(incomingTotal)} د.ب`,
           ...(detailedSummary && paymentRows.length > 0
-            ? paymentRows.filter((row) => String(row.type).toLowerCase() === "revenue").slice(0, 10).map((row, index) => `💳 ${index + 1}) ${formatMoney(Number(row.amount || 0))} د.ب`)
+            ? paymentRows.filter((row) => String(row.type).toLowerCase() === "revenue").slice(0, 10).map((row, index) => `💳 ${index + 1}) ${formatMoney(Number(row.amount || 0))} د.ب — ${row.category || "إيراد"}${row.description ? ` — ${row.description}` : ""}`)
             : []),
           `المباريات اليوم: ${matches.length}`,
           ...(detailedSummary ? matches.slice(0, 10).map((m) => `⚽ ضد ${m.opponent || "غير محدد"} — ${m.location || "الموقع غير محدد"} — ${m.result || "scheduled"}`) : []),
