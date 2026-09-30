@@ -770,7 +770,7 @@ Deno.serve(async (req: Request) => {
     const today = bahrainDate();
 
     if (isSummaryCommand(incomingText)) {
-      const [activePlayers, unpaid, expiringToday, paymentRows, matches, trainings, attendanceRows, pendingRegistrations] = await Promise.all([
+      const [activePlayers, unpaid, expiringToday, paymentRows, matches, trainings, attendanceRows, pendingRegistrations, pendingStaffApplications] = await Promise.all([
         restCount("players", { status: "eq.active" }),
         restCount("subscriptions", { status: "eq.unpaid" }),
         restCount("subscriptions", { end_date: `eq.${today}` }),
@@ -779,6 +779,7 @@ Deno.serve(async (req: Request) => {
         restRows<{ title?: string; duration_minutes?: number }>("trainings", { select: "title,duration_minutes", session_date: `eq.${today}`, order: "created_at.asc" }),
         restRows<{ status?: string }>("attendance", { select: "status", session_date: `eq.${today}` }),
         restCount("registration_applications", { status: "eq.pending" }),
+        restCount("staff_applications", { status: "eq.pending" }),
       ]);
       const incomingTotal = paymentRows
         .filter((row) => String(row.type).toLowerCase() === "revenue")
@@ -797,7 +798,8 @@ Deno.serve(async (req: Request) => {
           `التدريبات اليوم: ${trainings.length}`,
           ...trainings.slice(0, 5).map((t) => `🏃 ${t.title || "تدريب"} — ${Number(t.duration_minutes || 0)} دقيقة`),
           `الحضور المسجل اليوم: ${attendanceRows.length} (حاضر ${attendanceRows.filter((r) => r.status === "present").length} / غائب ${attendanceRows.filter((r) => r.status === "absent").length})`,
-          `طلبات التسجيل المعلقة: ${pendingRegistrations}`,
+          `طلبات تسجيل اللاعبين المعلقة: ${pendingRegistrations}`,
+          `طلبات انضمام الطاقم المعلقة: ${pendingStaffApplications}`,
         ].join("\n"),
       );
       return Response.json({ ok: true });
