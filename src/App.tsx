@@ -187,7 +187,7 @@ export default function App() {
         auditLogs, loginLogs,
       ] = await Promise.all([
         db.getSettings(),
-        parent ? [] : db.getStaff(), parent ? [] : db.getTeams(), db.getPlayers(), db.getParents(),
+        parent ? [] : db.getStaff(), parent ? [] : db.getTeams(), db.getPlayers(), (parent || role === 'accountant') ? [] : db.getParents(),
         role === 'coach' ? [] : db.getSubscriptions(), db.getAttendance(), parent ? [] : db.getMatches(),
         parent ? [] : db.getTrainings(), finance ? db.getTransactions() : [], parent ? [] : db.getTournaments(),
         db.getEvaluations(), db.getNotifications(),
