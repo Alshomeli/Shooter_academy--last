@@ -224,6 +224,7 @@ export interface PaymentProof {
   reviewNote: string;
   reviewedBy?: string;
   reviewedAt?: string;
+  receiptNumber?: number;
   createdAt: string;
 }
 
