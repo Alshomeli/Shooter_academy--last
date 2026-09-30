@@ -22,14 +22,17 @@ test('Telegram manager is limited to direct chats and an explicit chat allowlist
   assert.match(source, /\/whoami/);
 });
 
-test('Telegram manager is read-only in v1', () => {
+test('Telegram manager mutations are limited to explicit approval RPCs', () => {
   assert.match(source, /ملخص اليوم/);
   assert.match(source, /transactions/);
   assert.match(source, /subscriptions/);
+  assert.match(source, /telegram_approve_registration_application/);
+  assert.match(source, /telegram_approve_staff_application/);
+  assert.match(source, /reg:approve:/);
+  assert.match(source, /staff:approve:/);
   assert.doesNotMatch(source, /\.insert\(/);
   assert.doesNotMatch(source, /\.update\(/);
   assert.doesNotMatch(source, /\.delete\(/);
-  assert.doesNotMatch(source, /\.rpc\(/);
 });
 
 test('Telegram bot credentials stay in server environment', () => {
@@ -100,7 +103,7 @@ test('Smart Admin v2 keeps model output away from SQL and database identifiers',
   assert.doesNotMatch(source, /\.insert\(/);
   assert.doesNotMatch(source, /\.update\(/);
   assert.doesNotMatch(source, /\.delete\(/);
-  assert.doesNotMatch(source, /\.rpc\(/);
+  assert.doesNotMatch(source, /execute_sql/i);
 });
 
 test('Smart Admin v2 supports bounded Bahrain date ranges', () => {
@@ -125,4 +128,15 @@ test('optional Telegram overrides do not trigger Bolt secret requirements', () =
   assert.doesNotMatch(source, /Deno\.env\.get\("TELEGRAM_WEBHOOK_SECRET"\)/);
   assert.doesNotMatch(source, /Deno\.env\.get\("TELEGRAM_MANAGER_CHAT_IDS"\)/);
   assert.match(source, /parts\.join\("_"\)/);
+});
+
+
+test('Telegram staff and manager application callbacks require private authorized manager chats', () => {
+  assert.match(source, /staff:approve:/);
+  assert.match(source, /staff:review:/);
+  assert.match(source, /callbackChatType !== "private"/);
+  assert.match(source, /isAuthorizedManagerChat\(callbackChatId\)/);
+  assert.match(source, /sha256Hex\(String\(callbackChatId\)\)/);
+  assert.match(source, /telegram_approve_staff_application/);
+  assert.match(source, /answerCallbackQuery/);
 });
