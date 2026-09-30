@@ -10,6 +10,7 @@ export function Login({ onLogin, lang, setLang, recovery = false, registrationEn
   onLogin: (user: CurrentUser) => void; lang: Lang; setLang: (lang: Lang) => void; recovery?: boolean; registrationEntry?: boolean; staffRegistrationEntry?: boolean;
 }) {
   const [screen, setScreen] = useState<Screen>(recovery ? 'reset' : (registrationEntry || staffRegistrationEntry) ? 'register' : 'login');
+  const [registrationKind, setRegistrationKind] = useState<'parent' | 'staff'>(staffRegistrationEntry ? 'staff' : 'parent');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -53,11 +54,12 @@ export function Login({ onLogin, lang, setLang, recovery = false, registrationEn
         return;
       }
       if (screen === 'register') {
-        const { data, error } = await signUp(email.trim(), password, staffRegistrationEntry ? 'staff-registration' : 'registration');
+        const staffFlow = staffRegistrationEntry || registrationKind === 'staff';
+        const { data, error } = await signUp(email.trim(), password, staffFlow ? 'staff-registration' : 'registration');
         if (error) throw error;
         if (!data.session) {
           setPassword(''); setConfirm('');
-          setMessage(staffRegistrationEntry
+          setMessage(staffFlow
             ? text('راجع بريدك لتأكيد الحساب، ثم سجّل الدخول لإكمال طلب الموظف أو المدرب.', 'Check your email to confirm your account, then sign in to complete the staff or coach application.')
             : text('راجع بريدك لتأكيد الحساب، ثم سجّل الدخول لإكمال بيانات ولي الأمر والأبناء.', 'Check your email to confirm your account, then sign in to complete the parent and children application.'));
           return;
@@ -80,7 +82,7 @@ export function Login({ onLogin, lang, setLang, recovery = false, registrationEn
     } finally { setRegistering(false); setBusy(false); }
   };
   const titles = {
-    login: text('تسجيل الدخول', 'Sign in'), register: staffRegistrationEntry ? text('حساب موظف / مدرب جديد', 'Create a staff / coach account') : text('حساب ولي أمر جديد', 'Create a parent account'),
+    login: text('تسجيل الدخول', 'Sign in'), register: (staffRegistrationEntry || registrationKind === 'staff') ? text('حساب موظف / مدرب جديد', 'Create a staff / coach account') : text('حساب ولي أمر جديد', 'Create a parent account'),
     forgot: text('استعادة كلمة المرور', 'Reset password'), reset: text('كلمة مرور جديدة', 'Choose a new password'),
   };
   return <main className="min-h-screen flex items-center justify-center bg-slate-950 p-4" dir={ar ? 'rtl' : 'ltr'}>
@@ -93,6 +95,10 @@ export function Login({ onLogin, lang, setLang, recovery = false, registrationEn
       <h2 className="font-bold mb-5 text-slate-500">{titles[screen]}</h2>
       {error && <p role="alert" className="mb-4 p-3 rounded-lg bg-red-50 text-red-700 text-sm flex gap-2"><AlertCircle className="h-5 w-5 shrink-0" />{error}</p>}
       {message && <p role="status" className="mb-4 p-3 rounded-lg bg-emerald-50 text-emerald-800 text-sm">{message}</p>}
+      {screen === 'register' && !staffRegistrationEntry && !registrationEntry && <div className="mb-4 grid grid-cols-2 gap-2">
+        <button type="button" onClick={() => setRegistrationKind('parent')} className={`rounded-lg border px-3 py-2 text-sm font-bold ${registrationKind === 'parent' ? 'border-emerald-600 bg-emerald-50 text-emerald-700' : 'border-slate-200'}`}>{text('ولي أمر', 'Parent')}</button>
+        <button type="button" onClick={() => setRegistrationKind('staff')} className={`rounded-lg border px-3 py-2 text-sm font-bold ${registrationKind === 'staff' ? 'border-emerald-600 bg-emerald-50 text-emerald-700' : 'border-slate-200'}`}>{text('مدرب / موظف', 'Coach / staff')}</button>
+      </div>}
       <form onSubmit={submit} className="space-y-4">
         <fieldset disabled={busy} className="space-y-4 disabled:opacity-60">
           {screen !== 'reset' && <FormField label={text('البريد الإلكتروني', 'Email')}><input aria-label={text('البريد الإلكتروني', 'Email')} className={inputCls} type="email" dir="ltr" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} /></FormField>}
@@ -105,7 +111,7 @@ export function Login({ onLogin, lang, setLang, recovery = false, registrationEn
       <div className="mt-5 flex flex-wrap gap-4 text-sm text-emerald-700 font-bold">
         {screen === 'login' ? <><button disabled={busy} onClick={() => { window.location.search = '?view=registration'; }}>{text('تسجيل ولي أمر وأبنائه', 'Register parent and children')}</button><button disabled={busy} onClick={() => { window.location.search = '?view=staff-registration'; }}>{text('طلب موظف / مدرب', 'Staff / coach application')}</button><button disabled={busy} onClick={() => changeScreen('forgot')}>{text('نسيت كلمة المرور؟', 'Forgot password?')}</button></> : screen !== 'reset' && <button disabled={busy} onClick={() => changeScreen('login')}>{text('العودة للدخول', 'Back to sign in')}</button>}
       </div>
-      {screen === 'register' && <p className="mt-4 text-xs text-slate-500">{staffRegistrationEntry
+      {screen === 'register' && <p className="mt-4 text-xs text-slate-500">{(staffRegistrationEntry || registrationKind === 'staff')
         ? text('تراجع الإدارة طلب الموظف أو المدرب ويمكنها الموافقة أو الرفض أو إعادته للتعديل قبل تفعيل أي صلاحية.', 'The academy reviews staff applications and may approve, reject, or request changes before any staff access is activated.')
         : text('تراجع الإدارة طلب تسجيل الأبناء قبل تفعيلهم.', 'The academy reviews children’s applications before activation.')}</p>}
     </div>
