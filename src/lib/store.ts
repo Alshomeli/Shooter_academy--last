@@ -422,6 +422,13 @@ export const db = {
     return mapEvaluation(data as never);
   },
 
+  async createTelegramLinkCode(): Promise<string> {
+    const { data, error } = await supabase.rpc('create_telegram_link_code');
+    if (error) throw error;
+    if (typeof data !== 'string' || !data) throw new Error('Could not create Telegram link code');
+    return data;
+  },
+
   async getSettings(): Promise<Settings | null> {
     const { data, error } = await supabase.from('academy_settings').select('*').eq('id', 'settings-1').maybeSingle();
     if (error) throw error;
