@@ -114,6 +114,16 @@ Deno.serve(async (req: Request) => {
     const body = (await req.json()) as SetupRequest;
     const reset = body.reset === true;
 
+    // Production launch guard: setup/reset/seeding is an operator-only emergency
+    // path and is disabled unless explicitly enabled as a server secret.
+    // Normal users must onboard through reviewed parent/staff application flows.
+    if (Deno.env.get("ALLOW_DESTRUCTIVE_SETUP") !== "true") {
+      return new Response(
+        JSON.stringify({ error: "destructive_setup_disabled" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     if (reset && body.confirm_reset !== true) {
       return new Response(
         JSON.stringify({ error: "Reset confirmation required. Set confirm_reset=true to proceed." }),
