@@ -446,7 +446,7 @@ async function sendRoleMenu(chatId: number, role: "manager" | "coach") {
   }
   await sendMessage(chatId, "لوحة المدير السريعة — اختر أو اكتب أي سؤال إداري:", {
     keyboard: [
-      [{ text: "📋 ملخص اليوم" }, { text: "🔎 تفاصيل اليوم" }],
+      [{ text: "📋 ملخص اليوم" }, { text: "🧭 مركز الإجراءات" }],
       [{ text: "💰 دفعات اليوم" }, { text: "⚽ مباريات اليوم" }],
       [{ text: "📊 حضور اليوم" }, { text: "⏳ الاشتراكات المستحقة" }],
       [{ text: "🧾 إثباتات الدفع" }, { text: "👥 طلبات التسجيل" }],
@@ -459,6 +459,27 @@ async function sendRoleMenu(chatId: number, role: "manager" | "coach") {
 
 function stripMenuLabel(text: string): string {
   return text.replace(/^[\p{Extended_Pictographic}\uFE0F\u200D\s]+/u, "").trim();
+}
+
+async function sendManagerActionCenter(chatId: number) {
+  const today=bahrainDate();
+  const [registrations,staffApps,paymentProofs,expiring,missingAttendance]=await Promise.all([
+    restCount("registration_applications",{status:"eq.pending"}),
+    restCount("staff_applications",{status:"eq.pending"}),
+    restCount("payment_proofs",{status:"eq.pending"}),
+    restCount("subscriptions",{end_date_lte:`lte.${bahrainDate(7)}`,end_date_gte:`gte.${today}`}),
+    restCount("attendance",{session_date:`eq.${today}`}),
+  ]);
+  await sendMessage(chatId,[
+    "🧭 مركز إجراءات المدير",
+    `👥 طلبات تسجيل معلقة: ${registrations}`,
+    `🧑‍💼 طلبات موظفين معلقة: ${staffApps}`,
+    `🧾 إثباتات دفع بانتظار التحقق: ${paymentProofs}`,
+    `⏳ اشتراكات تنتهي خلال 7 أيام: ${expiring}`,
+    `📊 سجلات حضور اليوم: ${missingAttendance}`,
+    "",
+    "اختر من القائمة السريعة للتفاصيل. أي اعتماد حساس يبقى عبر زر تأكيد مخصص أو من الموقع.",
+  ].join("\n"));
 }
 
 async function sendCoachToday(chatId: number, identity: TelegramIdentity) {
@@ -1053,6 +1074,10 @@ Deno.serve(async (req: Request) => {
     }
 
     const managerMenuText = stripMenuLabel(incomingText);
+    if (normalize(managerMenuText) === "مركز الإجراءات" || normalize(managerMenuText) === "/actions") {
+      await sendManagerActionCenter(chatId);
+      return Response.json({ ok: true });
+    }
     if (normalize(managerMenuText) === "مساعدة") {
       await sendRoleMenu(chatId, "manager");
       return Response.json({ ok: true });
