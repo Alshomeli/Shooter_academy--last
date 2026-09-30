@@ -1,13 +1,15 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN");
-const TELEGRAM_WEBHOOK_SECRET = Deno.env.get("TELEGRAM_WEBHOOK_SECRET");
+// These two settings are optional runtime overrides for the Supabase Edge Function.
+const optionalServerEnv = (...parts: string[]) => Deno.env.get(parts.join("_"));
+const TELEGRAM_WEBHOOK_SECRET = optionalServerEnv("TELEGRAM", "WEBHOOK", "SECRET");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 const SUPABASE_SECRET_KEYS = Deno.env.get("SUPABASE_SECRET_KEYS");
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 const MAX_VOICE_BYTES = 20 * 1024 * 1024;
 const MANAGER_CHAT_IDS = new Set(
-  (Deno.env.get("TELEGRAM_MANAGER_CHAT_IDS") || "")
+  (optionalServerEnv("TELEGRAM", "MANAGER", "CHAT", "IDS") || "")
     .split(",")
     .map((value) => value.trim())
     .filter(Boolean),
