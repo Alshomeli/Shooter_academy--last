@@ -131,6 +131,7 @@ type AdminIntent =
   | "revenue"
   | "attendance"
   | "registrations"
+  | "staff_applications"
   | "matches"
   | "trainings"
   | "unknown";
@@ -141,7 +142,7 @@ type ParsedAdminQuestion = { intent: AdminIntent; period: AdminPeriod };
 
 const ADMIN_INTENTS = new Set<AdminIntent>([
   "active_players", "coaches", "staff", "teams", "parents", "unpaid_subscriptions",
-  "expiring_subscriptions", "revenue", "attendance", "registrations", "matches", "trainings", "unknown",
+  "expiring_subscriptions", "revenue", "attendance", "registrations", "staff_applications", "matches", "trainings", "unknown",
 ]);
 const ADMIN_PERIODS = new Set<AdminPeriod>([
   "today", "yesterday", "this_week", "this_month", "last_month", "next_7_days", "all",
@@ -161,6 +162,7 @@ function inferPeriod(text: string): AdminPeriod {
 function deterministicAdminIntent(text: string): ParsedAdminQuestion | null {
   const value = normalize(text);
   const period = inferPeriod(value);
+  if ((value.includes("طلب") || value.includes("طلبات") || value.includes("انضمام")) && (value.includes("مدرب") || value.includes("موظف") || value.includes("مدير") || value.includes("طاقم"))) return { intent: "staff_applications", period: period === "all" ? "today" : period };
   if (value.includes("مدرب") || value.includes("مدربين") || value.includes("مدربون")) return { intent: "coaches", period: "all" };
   if (value.includes("موظف") || value.includes("موظفين") || value.includes("طاقم")) return { intent: "staff", period: "all" };
   if (value.includes("فريق") || value.includes("فرق")) return { intent: "teams", period: "all" };
@@ -189,10 +191,10 @@ async function classifyAdminQuestion(text: string): Promise<ParsedAdminQuestion>
 
   const prompt = [
     "صنّف سؤال مدير أكاديمية رياضية إلى مقصد واحد وفترة زمنية.",
-    "المقاصد المسموحة فقط: active_players, coaches, staff, teams, parents, unpaid_subscriptions, expiring_subscriptions, revenue, attendance, registrations, matches, trainings, unknown.",
+    "المقاصد المسموحة فقط: active_players, coaches, staff, teams, parents, unpaid_subscriptions, expiring_subscriptions, revenue, attendance, registrations, staff_applications, matches, trainings, unknown.",
     "الفترات المسموحة فقط: today, yesterday, this_week, this_month, last_month, next_7_days, all.",
     "لا تنشئ SQL ولا أوامر ولا أسماء جداول. أرجع JSON فقط بالشكل: {\"intent\":\"...\",\"period\":\"...\"}.",
-    "إذا لم يذكر المستخدم فترة: revenue/attendance/registrations = today، expiring_subscriptions = next_7_days، والبقية = all.",
+    "إذا لم يذكر المستخدم فترة: revenue/attendance/registrations/staff_applications = today، expiring_subscriptions = next_7_days، والبقية = all.",
   ].join("\n");
 
   try {
@@ -957,6 +959,35 @@ Deno.serve(async (req: Request) => {
             ]],
           },
         );
+      }
+      return Response.json({ ok: true });
+    }
+
+    if (parsedQuestion.intent === "staff_applications") {
+      const effectiveRange = range || adminDateRange("today")!;
+      const rows = await restRows<{ id?: string; full_name?: string; requested_role?: string; status?: string; submitted_at?: string }>("staff_applications", {
+        select: "id,full_name,requested_role,status,submitted_at",
+        submitted_at_gte: `gte.${effectiveRange.start}T00:00:00+03:00`,
+        submitted_at_lte: `lte.${effectiveRange.end}T23:59:59+03:00`,
+        order: "submitted_at.asc",
+      });
+      const pendingRows = rows.filter((row) => String(row.status).toLowerCase() === "pending" && row.id);
+      await sendMessage(chatId, [
+        `طلبات انضمام الطاقم — ${periodLabel(parsedQuestion.period === "all" ? "today" : parsedQuestion.period)}`,
+        `إجمالي الطلبات: ${rows.length}`,
+        `بانتظار المراجعة: ${pendingRows.length}`,
+      ].join("\n"));
+      for (const row of pendingRows.slice(0, 10)) {
+        const roleLabel = row.requested_role === "manager" ? "مدير" : row.requested_role === "coach" ? "مدرب" : row.requested_role === "accountant" ? "محاسب" : row.requested_role === "receptionist" ? "استقبال" : (row.requested_role || "موظف");
+        await sendMessage(chatId, `🧑‍💼 طلب انضمام معلق
+الاسم: ${row.full_name || "غير محدد"}
+الصفة المطلوبة: ${roleLabel}
+تاريخ الإرسال: ${row.submitted_at || "غير محدد"}`, {
+          inline_keyboard: [[
+            { text: "✅ موافقة", callback_data: `staff:approve:${row.id}` },
+            { text: "👀 مراجعة في الموقع", callback_data: `staff:review:${row.id}` },
+          ]],
+        });
       }
       return Response.json({ ok: true });
     }
