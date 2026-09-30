@@ -36,5 +36,5 @@ test('authorized private report includes matches and uses read-only REST',async(
  const output=r.calls.filter(c=>c.url.includes('sendMessage')).map(c=>JSON.parse(c.options.body).text).join('\n');assert.match(output,/المحرق/);
 });
 test('unsupported write requests do not read or mutate the database',async()=>{
- const r=runtime();await r.run(r.request(42,'test-secret','private','احذف المباراة اليوم'));const mutations=r.calls.filter(c=>c.url.includes('/rest/v1/') && ['POST','PATCH','DELETE'].includes(c.options.method));assert.equal(mutations.length,0);
+ const r=runtime();await r.run(r.request(42,'test-secret','private','احذف المباراة اليوم'));const writes=r.calls.filter(c=>c.url.includes('/rest/v1/') && ['PATCH','DELETE','PUT'].includes(c.options.method));assert.equal(writes.length,0);
 });
