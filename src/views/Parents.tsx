@@ -27,6 +27,7 @@ export function Parents({ parents, players, teams, subscriptions, onParentsChang
   const [search, setSearch] = useState('');
   const deferredSearch = useDeferredValue(search);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [accountFilter, setAccountFilter] = useState('all');
   const [showAdd, setShowAdd] = useState(false);
   const [editParent, setEditParent] = useState<Parent | null>(null);
   const [viewParent, setViewParent] = useState<Parent | null>(null);
@@ -43,9 +44,11 @@ export function Parents({ parents, players, teams, subscriptions, onParentsChang
         if (!p.name.toLowerCase().includes(q) && !p.phone.includes(deferredSearch) && !p.whatsappPhone.includes(deferredSearch)) return false;
       }
       if (statusFilter !== 'all' && p.status !== statusFilter) return false;
+      if (accountFilter === 'linked' && !p.userId) return false;
+      if (accountFilter === 'unlinked' && p.userId) return false;
       return true;
     });
-  }, [parents, deferredSearch, statusFilter]);
+  }, [parents, deferredSearch, statusFilter, accountFilter]);
 
   const childrenOf = (parentId: string) => players.filter((pl) => pl.parentId === parentId);
   const teamName = (id: string) => teams.find((tm) => tm.id === id)?.name || (isAr ? 'غير محدد' : 'Not specified');
@@ -120,6 +123,15 @@ export function Parents({ parents, players, teams, subscriptions, onParentsChang
             className="w-full bg-white dark:bg-slate-900 text-sm py-2.5 pr-10 pl-4 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-800 dark:text-white"
           />
         </div>
+        <select
+          value={accountFilter}
+          onChange={(e) => setAccountFilter(e.target.value)}
+          className="px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-semibold text-slate-700 dark:text-slate-200 cursor-pointer"
+        >
+          <option value="all">{isAr ? 'كل الحسابات' : 'All accounts'}</option>
+          <option value="linked">{isAr ? 'حساب مرتبط' : 'Account linked'}</option>
+          <option value="unlinked">{isAr ? 'بدون حساب' : 'No account'}</option>
+        </select>
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}

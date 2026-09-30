@@ -39,6 +39,7 @@ export function Players({ players, parents, teams, evaluations, onPlayersChange,
   const deferredSearch = useDeferredValue(search);
   const [teamFilter, setTeamFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [parentLinkFilter, setParentLinkFilter] = useState('all');
   const [showAdd, setShowAdd] = useState(false);
   const [editPlayer, setEditPlayer] = useState<Player | null>(null);
   const [viewPlayer, setViewPlayer] = useState<Player | null>(null);
@@ -72,9 +73,11 @@ export function Players({ players, parents, teams, evaluations, onPlayersChange,
       if (q && !p.name.toLowerCase().includes(q) && !p.parentName.toLowerCase().includes(q)) return false;
       if (teamFilter !== 'all' && p.teamId !== teamFilter) return false;
       if (statusFilter !== 'all' && p.status !== statusFilter) return false;
+      if (parentLinkFilter === 'linked' && !p.parentId) return false;
+      if (parentLinkFilter === 'unlinked' && p.parentId) return false;
       return true;
     });
-  }, [players, deferredSearch, teamFilter, statusFilter]);
+  }, [players, deferredSearch, teamFilter, statusFilter, parentLinkFilter]);
 
   const teamName = (id: string) => teams.find((t) => t.id === id)?.name || (isAr ? 'غير محدد' : 'Not specified');
 
@@ -123,6 +126,11 @@ export function Players({ players, parents, teams, evaluations, onPlayersChange,
           <option value="all">{isAr ? 'كل الفرق' : 'All teams'}</option>
           {teams.map((tm) => <option key={tm.id} value={tm.id}>{tm.name}</option>)}
         </select>
+        <select value={parentLinkFilter} onChange={(e) => setParentLinkFilter(e.target.value)} className="px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-semibold text-slate-700 dark:text-slate-200 cursor-pointer">
+          <option value="all">{isAr ? 'كل روابط أولياء الأمور' : 'All parent links'}</option>
+          <option value="linked">{isAr ? 'ولي أمر مرتبط' : 'Parent linked'}</option>
+          <option value="unlinked">{isAr ? 'بدون ولي أمر مرتبط' : 'No linked parent'}</option>
+        </select>
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-semibold text-slate-700 dark:text-slate-200 cursor-pointer">
           <option value="all">{isAr ? 'كل الحالات' : 'All statuses'}</option>
           <option value="active">{t.active}</option>
@@ -160,9 +168,12 @@ export function Players({ players, parents, teams, evaluations, onPlayersChange,
                   <p className="text-[11px] text-slate-400 mt-0.5 text-center">{teamName(p.teamId)}</p>
                 </div>
               </div>
-              <div className="flex items-center justify-center mb-3">
+              <div className="flex items-center justify-center gap-2 mb-3">
                 <Badge color={p.status === 'active' ? 'emerald' : 'slate'}>
                   {p.status === 'active' ? t.active : t.inactive}
+                </Badge>
+                <Badge color={p.parentId ? 'blue' : 'amber'}>
+                  {p.parentId ? (isAr ? 'ولي أمر مرتبط' : 'Parent linked') : (isAr ? 'بدون ربط' : 'Unlinked')}
                 </Badge>
               </div>
 
