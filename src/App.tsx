@@ -152,6 +152,7 @@ export default function App() {
           if (member) {
             setActiveRole(member.role);
             if (member.registrationOnly && member.registrationMode === 'staff') setCurrentTab('staff-registration');
+            else if (member.role === 'parent' && !member.registrationOnly) setCurrentTab('dashboard');
           }
           setAuthReady(true);
         }).catch(() => {
@@ -303,7 +304,7 @@ export default function App() {
     const view = new URLSearchParams(window.location.search).get('view');
     setCurrentTab(user.registrationOnly && user.registrationMode === 'staff'
       ? 'staff-registration'
-      : (view === 'registration' || view === 'staff-registration' ? view : 'dashboard'));
+      : (user.role === 'parent' && !user.registrationOnly ? 'dashboard' : (view === 'registration' || view === 'staff-registration' ? view : 'dashboard')));
   };
 
   const handleLogout = async () => {
