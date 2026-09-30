@@ -36,8 +36,10 @@ export async function signIn(email: string, password: string) {
   return supabase.auth.signInWithPassword({ email, password });
 }
 
-export async function signUp(email: string, password: string) {
-  return supabase.auth.signUp({ email, password, options: { emailRedirectTo: window.location.origin } });
+export async function signUp(email: string, password: string, redirectView?: 'registration' | 'staff-registration') {
+  const redirect = new URL(window.location.origin + window.location.pathname);
+  if (redirectView) redirect.searchParams.set('view', redirectView);
+  return supabase.auth.signUp({ email, password, options: { emailRedirectTo: redirect.toString() } });
 }
 
 export async function signOut() {
