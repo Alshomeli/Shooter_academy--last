@@ -398,6 +398,7 @@ async function rpc<T>(functionName: string, body: Record<string, unknown>): Prom
     method: "POST",
     headers: {
       apikey: serverApiKey(),
+      Authorization: `Bearer ${serverApiKey()}`,
       "Content-Type": "application/json",
       Accept: "application/json",
     },
@@ -743,6 +744,10 @@ function formatMoney(value: number): string {
 }
 
 function serverApiKey(): string {
+  // Prefer the legacy service-role JWT for PostgREST calls because it can be
+  // used as both apikey and Bearer authorization. Secret keys remain a
+  // server-side fallback for apikey-only callers.
+  if (SUPABASE_SERVICE_ROLE_KEY) return SUPABASE_SERVICE_ROLE_KEY;
   if (SUPABASE_SECRET_KEYS) {
     try {
       const parsed = JSON.parse(SUPABASE_SECRET_KEYS) as Record<string, string>;
@@ -752,7 +757,6 @@ function serverApiKey(): string {
       console.error("SUPABASE_SECRET_KEYS could not be parsed");
     }
   }
-  if (SUPABASE_SERVICE_ROLE_KEY) return SUPABASE_SERVICE_ROLE_KEY;
   throw new Error("supabase_server_key_unavailable");
 }
 
@@ -771,6 +775,7 @@ async function restCount(table: string, params: Record<string, string>): Promise
     method: "HEAD",
     headers: {
       apikey: serverApiKey(),
+      Authorization: `Bearer ${serverApiKey()}`,
       Prefer: "count=exact",
     },
   });
@@ -789,6 +794,7 @@ async function restRows<T>(table: string, params: Record<string, string>): Promi
     method: "GET",
     headers: {
       apikey: serverApiKey(),
+      Authorization: `Bearer ${serverApiKey()}`,
       Accept: "application/json",
     },
   });
