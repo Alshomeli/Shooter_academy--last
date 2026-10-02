@@ -254,6 +254,7 @@ export interface CurrentUser {
   authUserId?: string;
   registrationOnly?: boolean;
   registrationMode?: 'parent' | 'staff';
+  accountDisabled?: boolean;
   id: string;
   name: string;
   email: string;

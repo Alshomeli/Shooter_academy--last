@@ -161,11 +161,19 @@ export const db = {
     const { data: staff, error: staffError } = await supabase.from('staff')
       .select('id,name,email,role,status').eq('user_id', user.id).maybeSingle();
     if (staffError) throw staffError;
-    if (staff?.status === 'active') return { ...staff, authUserId: user.id } as CurrentUser;
+    if (staff) {
+      if (staff.status === 'active') return { ...staff, authUserId: user.id } as CurrentUser;
+      // A linked staff profile is an existing account even when disabled.
+      // Do not route it back into onboarding as if it were a new applicant.
+      return { ...staff, authUserId: user.id, accountDisabled: true } as CurrentUser;
+    }
     const { data: parent, error: parentError } = await supabase.from('parents')
       .select('id,name,email,status').eq('user_id', user.id).maybeSingle();
     if (parentError) throw parentError;
-    if (parent?.status === 'active') return { ...parent, role: 'parent', authUserId: user.id };
+    if (parent) {
+      if (parent.status === 'active') return { ...parent, role: 'parent', authUserId: user.id };
+      return { ...parent, role: 'parent', authUserId: user.id, accountDisabled: true } as CurrentUser;
+    }
 
     const { data: staffApplication, error: staffApplicationError } = await supabase.from('staff_applications')
       .select('requested_role,full_name,email,status')
