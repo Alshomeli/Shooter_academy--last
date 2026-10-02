@@ -50,11 +50,13 @@ test('Telegram webhook bootstrap secret is stored only as a digest', () => {
 });
 
 
-test('Telegram summaries use the server API key only as apikey, not as a bearer token', () => {
+test('Telegram server-side PostgREST calls authenticate with service role as apikey and bearer', () => {
+  assert.match(source, /SUPABASE_SERVICE_ROLE_KEY/);
   assert.match(source, /SUPABASE_SECRET_KEYS/);
   assert.match(source, /serverApiKey/);
+  assert.match(source, /if \(SUPABASE_SERVICE_ROLE_KEY\) return SUPABASE_SERVICE_ROLE_KEY/);
   assert.match(source, /apikey:\s*serverApiKey\(\)/);
-  assert.doesNotMatch(source, /Authorization:\s*[\`'\"]Bearer\s*\$\{serverApiKey\(\)\}/);
+  assert.match(source, /Authorization:\s*[\`'\"]Bearer\s*\$\{serverApiKey\(\)\}/);
   assert.doesNotMatch(source, /createClient\(/);
 });
 
