@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef, Suspense, lazy, Component, type ReactNode } from 'react';
-import { Menu, Bell, Clock, Target, Loader2, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Menu, Bell, Clock, Target, Loader2, AlertTriangle, RefreshCw, ShieldCheck } from 'lucide-react';
 import { db, prefs, signOut, isRegistering } from '@/lib/store';
 import { supabase } from '@/lib/supabase';
 import type { Session } from '@supabase/supabase-js';
@@ -102,6 +102,99 @@ const EMPTY_DATA: DataState = {
   transactions: [], tournaments: [], evaluations: [], notifications: [],
   auditLogs: [], loginLogs: [],
 };
+
+type OAuthAuthorizationDetails = {
+  authorization_id?: string;
+  redirect_url?: string;
+  redirect_uri?: string;
+  scope?: string;
+  client?: { name?: string };
+};
+
+async function oauthConsentRequest(path: string, method = 'GET', body?: unknown): Promise<OAuthAuthorizationDetails> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) throw new Error('AUTH_REQUIRED');
+  const base = String(import.meta.env.VITE_SUPABASE_URL || '').replace(/\/$/, '');
+  const apiKey = String(import.meta.env.VITE_SUPABASE_ANON_KEY || '');
+  const response = await fetch(`${base}/auth/v1${path}`, {
+    method,
+    headers: {
+      apikey: apiKey,
+      Authorization: `Bearer ${session.access_token}`,
+      ...(body ? { 'Content-Type': 'application/json' } : {}),
+    },
+    ...(body ? { body: JSON.stringify(body) } : {}),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error('OAUTH_REQUEST_FAILED');
+  return data as OAuthAuthorizationDetails;
+}
+
+function OAuthConsent({ lang }: { lang: Lang }) {
+  const ar = lang === 'ar';
+  const authorizationId = new URLSearchParams(window.location.search).get('authorization_id');
+  const [details, setDetails] = useState<OAuthAuthorizationDetails | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let mounted = true;
+    if (!authorizationId) {
+      setError(ar ? 'طلب التفويض غير صالح.' : 'Invalid authorization request.');
+      return () => { mounted = false; };
+    }
+    void oauthConsentRequest(`/oauth/authorizations/${encodeURIComponent(authorizationId)}`)
+      .then((data) => {
+        if (!mounted) return;
+        if (!data.authorization_id && data.redirect_url) {
+          window.location.assign(data.redirect_url);
+          return;
+        }
+        setDetails(data);
+      })
+      .catch(() => mounted && setError(ar ? 'تعذر تحميل طلب التفويض.' : 'Could not load the authorization request.'));
+    return () => { mounted = false; };
+  }, [authorizationId, ar]);
+
+  const decide = async (action: 'approve' | 'deny') => {
+    if (!authorizationId || busy) return;
+    setBusy(true); setError('');
+    try {
+      const data = await oauthConsentRequest(
+        `/oauth/authorizations/${encodeURIComponent(authorizationId)}/consent`,
+        'POST',
+        { action },
+      );
+      if (!data.redirect_url) throw new Error('MISSING_REDIRECT');
+      window.location.assign(data.redirect_url);
+    } catch {
+      setError(ar ? 'تعذر إكمال طلب التفويض. حاول مرة أخرى.' : 'Could not complete authorization. Please try again.');
+      setBusy(false);
+    }
+  };
+
+  if (!details && !error) return <main className="min-h-screen bg-slate-950 flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-emerald-500" /></main>;
+  const scopes = details?.scope?.split(/\s+/).filter(Boolean) ?? [];
+  return <main className="min-h-screen bg-slate-950 p-4 flex items-center justify-center" dir={ar ? 'rtl' : 'ltr'}>
+    <section className="w-full max-w-lg rounded-2xl bg-white p-6 sm:p-8 text-slate-900 shadow-xl">
+      <ShieldCheck className="h-10 w-10 text-emerald-600 mb-4" />
+      <h1 className="text-xl font-black mb-2">{ar ? 'السماح بالوصول' : 'Authorize access'}</h1>
+      {error ? <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p> : <>
+        <p className="text-sm text-slate-600 mb-5">{ar ? 'راجع التطبيق والصلاحيات المطلوبة قبل الموافقة.' : 'Review the application and requested permissions before approving.'}</p>
+        <div className="rounded-xl border border-slate-200 p-4 space-y-3">
+          <p className="text-sm"><strong>{ar ? 'التطبيق:' : 'Application:'}</strong> {details?.client?.name || (ar ? 'تطبيق خارجي' : 'External application')}</p>
+          {details?.redirect_uri && <p className="text-xs break-all text-slate-500"><strong>{ar ? 'وجهة العودة:' : 'Redirect:'}</strong> {details.redirect_uri}</p>}
+          {scopes.length > 0 && <div><p className="text-sm font-bold mb-2">{ar ? 'الصلاحيات المطلوبة:' : 'Requested permissions:'}</p><ul className="list-disc px-5 text-sm text-slate-600">{scopes.map((scope) => <li key={scope}>{scope}</li>)}</ul></div>}
+        </div>
+        <p className="mt-4 text-xs text-slate-500">{ar ? 'وافق فقط إذا كنت تعرف التطبيق وتثق به.' : 'Approve only if you recognize and trust this application.'}</p>
+        <div className="mt-6 grid grid-cols-2 gap-3">
+          <button disabled={busy} onClick={() => void decide('deny')} className="rounded-xl border border-slate-300 py-3 text-sm font-bold disabled:opacity-50">{ar ? 'رفض' : 'Deny'}</button>
+          <button disabled={busy} onClick={() => void decide('approve')} className="rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white disabled:opacity-50">{busy ? <Loader2 className="h-5 w-5 animate-spin mx-auto" /> : (ar ? 'موافقة' : 'Approve')}</button>
+        </div>
+      </>}
+    </section>
+  </main>;
+}
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
@@ -470,6 +563,8 @@ export default function App() {
 
   const unreadCount = useMemo(() => data.notifications.filter((n) => !n.read).length, [data.notifications]);
 
+  const oauthConsentPath = (window.location.pathname.replace(/\/+$/, '') || '/') === '/oauth/consent';
+
   if (!authReady) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
@@ -477,6 +572,8 @@ export default function App() {
       </div>
     );
   }
+
+  if (oauthConsentPath && currentUser && !recovery) return <OAuthConsent lang={lang} />;
 
   if (!currentUser || recovery) {
     return <Login registrationEntry={parentDirectEntry || currentTab === 'registration'} staffRegistrationEntry={coachDirectEntry || currentTab === 'staff-registration'} recovery={recovery} onLogin={(user) => { setRecovery(false); handleLogin(user); }} lang={lang} setLang={setLang} />;
