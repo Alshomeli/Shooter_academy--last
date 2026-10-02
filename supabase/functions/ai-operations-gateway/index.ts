@@ -552,11 +552,8 @@ Deno.serve(async (req) => {
       throw Object.assign(new Error("action_finalize_conflict"), { code: "action_finalize_conflict" });
     }
 
-    const { error: auditError } = await userClient.rpc("record_audit_log", {
-      p_action: "AI_ACTION_EXECUTED",
-      p_details: JSON.stringify({ requestId: action.id, operation: op }),
-    });
-    if (auditError) console.error("AI action audit log failed", auditError.code);
+    // Business workflows are responsible for their own server-side audit records.
+    // Do not write client-controlled generic audit entries from the gateway.
 
     return reply(origin, 200, {
       requestId: action.id,
@@ -567,6 +564,14 @@ Deno.serve(async (req) => {
   } catch (error) {
     const code = typeof error === "object" && error && "code" in error ? String((error as { code?: unknown }).code || "operation_failed") : "operation_failed";
     console.error("AI action execution failed", op, code);
+
+    // A finalization failure happens after the business RPC has already succeeded.
+    // Preserve the executing state so the timeout/recovery path can reconcile it;
+    // marking it failed here would incorrectly invite a duplicate business retry.
+    if (code === "action_finalize_failed" || code === "action_finalize_conflict") {
+      return reply(origin, 503, { error: "action_finalization_uncertain", code, requestId: action.id });
+    }
+
     await serverClient
       .from("ai_action_requests")
       .update({ status: "failed", error_code: code, execution_started_at: null })
