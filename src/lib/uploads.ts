@@ -2,7 +2,8 @@ import { supabase } from '@/lib/supabase';
 
 const BUCKET = 'player-documents';
 const MAX_PHOTO_BYTES = 2_000_000; // 2 MB target after compression
-const MAX_DOC_BYTES = 5_000_000; // 5 MB for PDF/PNG documents
+const MAX_IMAGE_INPUT_BYTES = 20_000_000; // bounded source image before compression
+const MAX_DOC_BYTES = 5_000_000; // 5 MB for PDF documents
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
 
 export interface UploadedFile {
@@ -62,7 +63,7 @@ function validateFile(file: File): void {
     throw new UploadError('صيغة الملف غير مدعومة. المسموح: JPG, PNG, WebP, PDF');
   }
   const isImage = file.type.startsWith('image/') && file.type !== 'application/pdf';
-  const limit = isImage ? MAX_PHOTO_BYTES : MAX_DOC_BYTES;
+  const limit = isImage ? MAX_IMAGE_INPUT_BYTES : MAX_DOC_BYTES;
   if (file.size > limit) {
     throw new UploadError(`حجم الملف كبير جداً. الحد الأقصى ${Math.round(limit / 1_000_000)} ميجابايت`);
   }
@@ -82,6 +83,9 @@ export async function uploadPlayerFile(
 
   if (isImage && file.type !== 'application/pdf') {
     uploadBlob = await compressImage(file);
+    if (uploadBlob.size > MAX_PHOTO_BYTES) {
+      throw new UploadError('تعذر ضغط الصورة إلى الحجم المطلوب. اختر صورة أصغر.');
+    }
     finalType = 'image/jpeg';
     finalName = file.name.replace(/\.(png|webp|jpg|jpeg)$/i, '.jpg');
   }

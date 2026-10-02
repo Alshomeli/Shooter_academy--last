@@ -536,11 +536,21 @@ Deno.serve(async (req) => {
       };
     }
 
-    await serverClient
+    const { data: finalized, error: finalizeError } = await serverClient
       .from("ai_action_requests")
       .update({ status: "executed", result: sanitizedResult, executed_at: new Date().toISOString(), execution_started_at: null })
       .eq("id", action.id)
-      .eq("status", "executing");
+      .eq("status", "executing")
+      .select("id")
+      .maybeSingle();
+    if (finalizeError) {
+      console.error("AI action finalization failed", op, finalizeError.code);
+      throw Object.assign(new Error("action_finalize_failed"), { code: "action_finalize_failed" });
+    }
+    if (!finalized) {
+      console.error("AI action finalization lost execution claim", op);
+      throw Object.assign(new Error("action_finalize_conflict"), { code: "action_finalize_conflict" });
+    }
 
     const { error: auditError } = await userClient.rpc("record_audit_log", {
       p_action: "AI_ACTION_EXECUTED",
