@@ -507,6 +507,22 @@ export default function App() {
     );
   }
 
+  if (currentUser.accountDisabled) {
+    return (
+      <main className="min-h-screen bg-slate-950 p-4 sm:p-8 flex items-center justify-center" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+        <div className="w-full max-w-md rounded-2xl bg-white p-6 sm:p-8 shadow-xl text-slate-900 text-center">
+          <h1 className="text-xl font-black mb-2">{lang === 'ar' ? 'الحساب غير نشط' : 'Account inactive'}</h1>
+          <p className="text-sm text-slate-600 mb-5">{lang === 'ar'
+            ? 'هذا الحساب موجود في النظام ولكنه غير نشط حاليًا. تواصل مع الإدارة إذا كنت تعتقد أن هذه الحالة غير صحيحة.'
+            : 'This account exists in the system but is currently inactive. Contact administration if you believe this is incorrect.'}</p>
+          <button onClick={handleLogout} className="w-full rounded-xl bg-slate-900 py-3 font-bold text-white hover:bg-slate-800">
+            {lang === 'ar' ? 'تسجيل الخروج' : 'Sign out'}
+          </button>
+        </div>
+      </main>
+    );
+  }
+
   if (currentUser.registrationOnly && currentUser.registrationMode === 'staff') {
     return <StaffRegistration user={currentUser} lang={lang} onLogout={handleLogout} onApproved={async () => {
       const member = await db.getCurrentUser();
