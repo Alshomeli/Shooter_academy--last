@@ -104,31 +104,12 @@ const EMPTY_DATA: DataState = {
 };
 
 type OAuthAuthorizationDetails = {
-  authorization_id?: string;
+  authorization_id: string;
   redirect_url?: string;
   redirect_uri?: string;
   scope?: string;
   client?: { name?: string };
 };
-
-async function oauthConsentRequest(path: string, method = 'GET', body?: unknown): Promise<OAuthAuthorizationDetails> {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.access_token) throw new Error('AUTH_REQUIRED');
-  const base = String(import.meta.env.VITE_SUPABASE_URL || '').replace(/\/$/, '');
-  const apiKey = String(import.meta.env.VITE_SUPABASE_ANON_KEY || '');
-  const response = await fetch(`${base}/auth/v1${path}`, {
-    method,
-    headers: {
-      apikey: apiKey,
-      Authorization: `Bearer ${session.access_token}`,
-      ...(body ? { 'Content-Type': 'application/json' } : {}),
-    },
-    ...(body ? { body: JSON.stringify(body) } : {}),
-  });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error('OAUTH_REQUEST_FAILED');
-  return data as OAuthAuthorizationDetails;
-}
 
 function OAuthConsent({ lang }: { lang: Lang }) {
   const ar = lang === 'ar';
@@ -143,14 +124,15 @@ function OAuthConsent({ lang }: { lang: Lang }) {
       setError(ar ? 'طلب التفويض غير صالح.' : 'Invalid authorization request.');
       return () => { mounted = false; };
     }
-    void oauthConsentRequest(`/oauth/authorizations/${encodeURIComponent(authorizationId)}`)
-      .then((data) => {
+    void supabase.auth.oauth.getAuthorizationDetails(authorizationId)
+      .then(({ data, error: requestError }) => {
         if (!mounted) return;
-        if (!data.authorization_id && data.redirect_url) {
+        if (requestError || !data) throw requestError || new Error('OAUTH_REQUEST_FAILED');
+        if (!('authorization_id' in data)) {
           window.location.assign(data.redirect_url);
           return;
         }
-        setDetails(data);
+        setDetails(data as OAuthAuthorizationDetails);
       })
       .catch(() => mounted && setError(ar ? 'تعذر تحميل طلب التفويض.' : 'Could not load the authorization request.'));
     return () => { mounted = false; };
@@ -160,13 +142,11 @@ function OAuthConsent({ lang }: { lang: Lang }) {
     if (!authorizationId || busy) return;
     setBusy(true); setError('');
     try {
-      const data = await oauthConsentRequest(
-        `/oauth/authorizations/${encodeURIComponent(authorizationId)}/consent`,
-        'POST',
-        { action },
-      );
-      if (!data.redirect_url) throw new Error('MISSING_REDIRECT');
-      window.location.assign(data.redirect_url);
+      const result = action === 'approve'
+        ? await supabase.auth.oauth.approveAuthorization(authorizationId)
+        : await supabase.auth.oauth.denyAuthorization(authorizationId);
+      if (result.error || !result.data?.redirect_url) throw result.error || new Error('MISSING_REDIRECT');
+      window.location.assign(result.data.redirect_url);
     } catch {
       setError(ar ? 'تعذر إكمال طلب التفويض. حاول مرة أخرى.' : 'Could not complete authorization. Please try again.');
       setBusy(false);
