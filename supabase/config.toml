@@ -10,6 +10,10 @@ enabled = true
 authorization_url_path = "/oauth/consent"
 allow_dynamic_registration = true
 
+[functions.chatgpt-mcp]
+# OAuth tokens are validated inside the function; discovery and health are public.
+verify_jwt = false
+
 [functions.telegram-reply]
 verify_jwt = false
 
