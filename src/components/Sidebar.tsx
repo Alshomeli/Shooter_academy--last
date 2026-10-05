@@ -105,7 +105,7 @@ export function Sidebar({
               <div className="absolute -inset-0.5 bg-gradient-to-tr from-emerald-500 to-amber-500 rounded-full blur opacity-40 group-hover:opacity-75 transition duration-1000" />
               <div className="relative w-13 h-13 rounded-full overflow-hidden bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg ring-2 ring-emerald-400/30">
                 {configuredLogo && !logoIsImage
-                  ? <img src="/1790474303638.jpg" alt={isAr ? 'شعار الأكاديمية' : 'Academy logo'} className="h-10 w-10 object-contain" />
+                  ? <img src="/1790474303638.jpg" alt={isAr ? 'شعار الأكاديمية' : 'Academy logo'} className="h-14 w-14 scale-110 rounded-full object-cover mix-blend-multiply" />
                   : <img src={logoIsImage ? configuredLogo : fallbackLogo} alt={isAr ? 'شعار الأكاديمية' : 'Academy logo'} className="h-10 w-10 object-contain" />}
               </div>
             </div>
