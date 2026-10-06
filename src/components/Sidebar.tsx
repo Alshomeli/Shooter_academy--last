@@ -53,7 +53,7 @@ export function Sidebar({
   const brandName = academyName?.trim() || t.academyShort;
   const configuredLogo = logoUrl?.trim() || '';
   const logoIsImage = /^(https?:\/\/|data:image\/|\/)/i.test(configuredLogo);
-  const fallbackLogo = '/shooter-logo.svg';
+  const fallbackLogo = '/shooter-logo.png';
 
   const navItems: NavItem[] = [
     { id: 'dashboard', label: t.dashboard, icon: LayoutDashboard, allowedRoles: ['manager', 'accountant', 'coach', 'receptionist'] },
@@ -103,11 +103,11 @@ export function Sidebar({
           <div className="p-6 border-b border-slate-800 flex items-center gap-3 bg-emerald-950/20">
             <div className="relative group shrink-0">
               <div className="absolute -inset-0.5 rounded-full blur opacity-40 group-hover:opacity-75 transition duration-1000" style={{ backgroundColor: '#cbd5e1' }} />
-              <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-white flex items-center justify-center shadow-lg ring-1 ring-white/30 p-1">
+              <div className="relative w-20 h-20 flex items-center justify-center">
                 <img
                   src={logoIsImage ? configuredLogo : fallbackLogo}
                   alt={isAr ? 'شعار الأكاديمية' : 'Academy logo'}
-                  className="h-full w-full object-contain bg-white"
+                  className="h-full w-full object-contain drop-shadow-[0_6px_18px_rgba(0,0,0,0.35)]"
                 />
               </div>
             </div>
