@@ -60,7 +60,7 @@ export function Sidebar({
   const brandName = academyName?.trim() || t.academyShort;
   const configuredLogo = logoUrl?.trim() || '';
   const logoIsImage = /^(https?:\/\/|data:image\/|\/)/i.test(configuredLogo);
-  const fallbackLogo = '/shooter-logo.png';
+  const fallbackLogo = '/shooter-logo.svg';
 
   const navGroups: NavGroup[] = [
     {
@@ -137,7 +137,7 @@ export function Sidebar({
             >
               <X className="h-5 w-5" />
             </button>
-            <div className="mx-auto w-32 h-28 flex items-center justify-center overflow-hidden">
+            <div className="mx-auto w-36 h-32 flex items-center justify-center overflow-hidden">
               <img
                 src={logoIsImage ? configuredLogo : fallbackLogo}
                 onError={(e) => { e.currentTarget.src = fallbackLogo; }}
@@ -166,9 +166,13 @@ export function Sidebar({
           {/* Nav items */}
           <nav className="px-3 pb-4 overflow-y-auto max-h-[calc(100vh-500px)]">
             {visibleGroups.map((group, groupIndex) => (
-              <div key={group.id} className={groupIndex > 0 ? 'mt-4 pt-3 border-t border-slate-800/80' : ''}>
-                <div className="px-3 mb-1.5 text-[10px] font-black tracking-wide text-slate-500 uppercase">
-                  {isAr ? group.labelAr : group.labelEn}
+              <div key={group.id} className={groupIndex > 0 ? 'mt-4 pt-4 border-t border-slate-700/80' : ''}>
+                <div className="px-3 mb-2 flex items-center gap-2" aria-label={isAr ? group.labelAr : group.labelEn}>
+                  <span className="h-1.5 w-1.5 rounded-full bg-brand-500 shrink-0" />
+                  <span className="text-[10px] font-black tracking-wide text-slate-300 uppercase">
+                    {isAr ? group.labelAr : group.labelEn}
+                  </span>
+                  <span className="h-px flex-1 bg-slate-700/70" />
                 </div>
                 <div className="space-y-0.5">
                   {group.items.map((item) => {
