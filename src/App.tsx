@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef, Suspense, lazy, Component, type ReactNode } from 'react';
 import { Menu, Bell, Clock, Target, Loader2, AlertTriangle, RefreshCw, ShieldCheck } from 'lucide-react';
 import { db, prefs, signOut, isRegistering } from '@/lib/store';
-import { supabase } from '@/lib/supabase';
+import { installAuthRecovery, supabase } from '@/lib/supabase';
 import type { Session } from '@supabase/supabase-js';
 import { tr } from '@/lib/i18n';
 import { ParentPortal } from '@/views/ParentPortal';
@@ -195,6 +195,8 @@ function OAuthConsent({ lang }: { lang: Lang }) {
     </section>
   </main>;
 }
+
+installAuthRecovery();
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
