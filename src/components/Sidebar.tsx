@@ -110,7 +110,7 @@ export function Sidebar({
               </div>
             </div>
             <div className="min-w-0 flex-1">
-              <h1 className="font-black text-base text-emerald-400 tracking-tight leading-tight">{brandName}</h1>
+              <h1 className="font-black text-base tracking-tight leading-tight" style={{ color: '#e2e8f0' }}>{brandName}</h1>
               <p className="text-[10px] text-slate-400 font-bold tracking-wider mt-0.5 uppercase">SHOOTER ACADEMY</p>
               <p className="text-[9px] text-emerald-500 font-semibold mt-0.5">{t.systemTitle}</p>
             </div>
