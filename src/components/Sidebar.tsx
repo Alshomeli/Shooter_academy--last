@@ -53,7 +53,7 @@ export function Sidebar({
   const brandName = academyName?.trim() || t.academyShort;
   const configuredLogo = logoUrl?.trim() || '';
   const logoIsImage = /^(https?:\/\/|data:image\/|\/)/i.test(configuredLogo);
-  const fallbackLogo = '/copilot_image_1776165482483-300x300.png';
+  const fallbackLogo = '/شعار_أكاديمية_شوتر_ثلاثي_الأبعاد.png';
 
   const navItems: NavItem[] = [
     { id: 'dashboard', label: t.dashboard, icon: LayoutDashboard, allowedRoles: ['manager', 'accountant', 'coach', 'receptionist'] },
