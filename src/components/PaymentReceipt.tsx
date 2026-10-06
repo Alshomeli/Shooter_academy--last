@@ -31,19 +31,14 @@ export function PaymentReceipt({ subscription, transactions, players, parents, s
     { key: 'card', labelAr: 'بطاقة', labelEn: 'Card', checked: method === 'card' },
   ];
   const brandName = settings?.name?.trim() || 'SHOOTER ACADEMY';
-  const configuredLogo = settings?.logoUrl?.trim() || '';
-  const logoIsImage = /^(https?:\/\/|data:image\/|\/)/i.test(configuredLogo);
+  const academyLogo = '/شعار_أكاديمية_شوتر_ثلاثي_الأبعاد copy 2.png';
   return (
     <div className="receipt-overlay fixed inset-0 z-50 bg-black/50 p-4 overflow-y-auto" dir={ar ? 'rtl' : 'ltr'}>
       <div className="receipt-print-root max-w-2xl mx-auto bg-white rounded-2xl shadow-xl">
         <div className="p-6 sm:p-8 text-slate-900">
           <div className="flex justify-between gap-4 pb-5 border-b-2 border-red-700">
             <div className="flex items-center gap-3">
-              {configuredLogo && (
-                logoIsImage
-                  ? <img src={configuredLogo} alt={brandName} className="h-12 w-12 object-contain" />
-                  : <div className="text-3xl leading-none">{configuredLogo}</div>
-              )}
+              <img src={academyLogo} alt={brandName} className="h-16 w-16 object-contain" />
               <div>
                 <div className="text-2xl font-black text-red-700">{brandName}</div>
                 <div className="text-xs font-bold text-slate-500">{ar ? 'إيصال استلام' : 'RECEIPT'}</div>

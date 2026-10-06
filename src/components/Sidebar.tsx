@@ -51,7 +51,7 @@ export function Sidebar({
   const isAr = lang === 'ar';
   const ROLE_OPTIONS = getRoleOptions(lang);
   const brandName = academyName?.trim() || t.academyShort;
-  const fallbackLogo = '/شعار_أكاديمية_شوتر_ثلاثي_الأبعاد copy.png';
+  const fallbackLogo = '/شعار_أكاديمية_شوتر_ثلاثي_الأبعاد copy 2.png';
 
   const navItems: NavItem[] = [
     { id: 'dashboard', label: t.dashboard, icon: LayoutDashboard, allowedRoles: ['manager', 'accountant', 'coach', 'receptionist'] },
@@ -101,8 +101,8 @@ export function Sidebar({
           <div className="p-6 border-b border-slate-800 flex items-center gap-3 bg-emerald-950/20">
             <div className="relative group shrink-0">
               <div className="absolute -inset-0.5 rounded-full blur opacity-40 group-hover:opacity-75 transition duration-1000" style={{ backgroundColor: '#cbd5e1' }} />
-              <div className="relative w-13 h-13 rounded-full overflow-hidden bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg ring-2 ring-emerald-400/30">
-                <img src={fallbackLogo} alt={isAr ? 'شعار الأكاديمية' : 'Academy logo'} className="h-10 w-10 object-contain" />
+              <div className="relative w-13 h-13 flex items-center justify-center">
+                <img src={fallbackLogo} alt={isAr ? 'شعار الأكاديمية' : 'Academy logo'} className="h-12 w-12 object-contain drop-shadow-lg" />
               </div>
             </div>
             <div className="min-w-0 flex-1">

@@ -103,8 +103,7 @@ export function Reports({
   const isAr = lang === 'ar';
   const MONTHS = monthsArray(lang);
   const brandName = settings?.name?.trim() || (isAr ? 'أكاديمية شوتر' : 'Shooter Academy');
-  const configuredLogo = settings?.logoUrl?.trim() || '';
-  const logoIsImage = /^(https?:\/\/|data:image\/|\/)/i.test(configuredLogo);
+  const academyLogo = '/شعار_أكاديمية_شوتر_ثلاثي_الأبعاد copy 2.png';
 
   const [datePreset, setDatePreset] = useState<DateRangePreset>('this_year');
   const [customFrom, setCustomFrom] = useState('');
@@ -274,9 +273,7 @@ export function Reports({
     <div className="space-y-6 text-right" dir={isAr ? 'rtl' : 'ltr'}>
       <div className="hidden print:flex items-center justify-between gap-4 border-b-2 border-slate-800 pb-4 mb-5">
         <div className="flex items-center gap-3">
-          {configuredLogo && (logoIsImage
-            ? <img src={configuredLogo} alt={brandName} className="h-14 w-14 object-contain" />
-            : <span className="text-3xl">{configuredLogo}</span>)}
+          <img src={academyLogo} alt={brandName} className="h-16 w-16 object-contain" />
           <div>
             <h1 className="text-xl font-black text-slate-900">{brandName}</h1>
             <p className="text-xs text-slate-500">{isAr ? 'تقرير إداري' : 'Administrative report'}</p>

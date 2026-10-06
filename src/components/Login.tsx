@@ -91,7 +91,7 @@ export function Login({ onLogin, lang, setLang, recovery = false, registrationEn
   return <main className="min-h-screen flex items-center justify-center bg-slate-950 p-4" dir={ar ? 'rtl' : 'ltr'}>
     <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl p-6 sm:p-8 shadow-xl text-slate-900 dark:text-white">
       <div className="flex items-center justify-between mb-6">
-        <img src="/copilot_image_1776165482483-300x300.png" alt={text('أكاديمية شوتر', 'Shooter Academy')} className="h-16 w-16 rounded-xl" />
+        <img src="/شعار_أكاديمية_شوتر_ثلاثي_الأبعاد copy 2.png" alt={text('أكاديمية شوتر', 'Shooter Academy')} className="h-20 w-20 object-contain" />
         <button type="button" className="text-sm text-emerald-600 font-bold" onClick={() => setLang(ar ? 'en' : 'ar')}>{ar ? 'English' : 'العربية'}</button>
       </div>
       <h1 className="text-2xl font-black mb-2">{text('أكاديمية شوتر', 'Shooter Academy')}</h1>
