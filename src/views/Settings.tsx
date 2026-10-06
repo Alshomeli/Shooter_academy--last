@@ -19,7 +19,7 @@ const inputCls =
 
 function resolveLogoSrc(value: string) {
   const raw = value.trim();
-  if (!raw) return '/shooter-logo.png';
+  if (!raw) return '/shooter-logo.svg';
   if (/^(https?:\/\/|data:image\/|\/)/i.test(raw)) return raw;
   if (/^(public\/)?[^\s]+\.(png|jpe?g|webp|svg)$/i.test(raw)) {
     return '/' + raw.replace(/^public\//i, '');
@@ -119,8 +119,8 @@ export function SettingsView({ settings, onSettingsChange, activeRole, lang }: S
               <div className="w-28 h-24 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-2xl overflow-hidden">
                 {resolveLogoSrc(form.logoUrl)
                   ? <img
-                      src={resolveLogoSrc(form.logoUrl) ?? '/shooter-logo.png'}
-                      onError={(e) => { e.currentTarget.src = '/shooter-logo.png'; }}
+                      src={resolveLogoSrc(form.logoUrl) ?? '/shooter-logo.svg'}
+                      onError={(e) => { e.currentTarget.src = '/shooter-logo.svg'; }}
                       alt={isAr ? 'شعار الأكاديمية' : 'Academy logo'}
                       className="w-full h-full object-contain"
                     />
@@ -147,10 +147,10 @@ export function SettingsView({ settings, onSettingsChange, activeRole, lang }: S
                 value={form.logoUrl}
                 onChange={(e) => set('logoUrl', e.target.value)}
                 className={inputCls}
-                placeholder={isAr ? '/shooter-logo.png أو رابط صورة أو رمز' : '/shooter-logo.png, image URL, or emoji'}
+                placeholder={isAr ? '/shooter-logo.svg أو رابط صورة أو رمز' : '/shooter-logo.svg, image URL, or emoji'}
               />
               <p className="mt-1 text-[10px] text-slate-400">
-                {isAr ? 'يقبل المسار /shooter-logo.png وكذلك shooter-logo.png أو رابط صورة مباشر أو رمز.' : 'Accepts /shooter-logo.png, shooter-logo.png, a direct image URL, or emoji.'}
+                {isAr ? 'يقبل المسار /shooter-logo.svg وكذلك shooter-logo.svg أو رابط صورة مباشر أو رمز.' : 'Accepts /shooter-logo.svg, shooter-logo.svg, a direct image URL, or emoji.'}
               </p>
             </div>
           </div>
