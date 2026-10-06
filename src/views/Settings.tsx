@@ -17,8 +17,14 @@ interface SettingsProps {
 const inputCls =
   'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white';
 
-function isImageLogo(value: string) {
-  return /^(https?:\/\/|data:image\/|\/)/i.test(value.trim());
+function resolveLogoSrc(value: string) {
+  const raw = value.trim();
+  if (!raw) return '/shooter-logo.png';
+  if (/^(https?:\/\/|data:image\/|\/)/i.test(raw)) return raw;
+  if (/^(public\/)?[^\s]+\.(png|jpe?g|webp|svg)$/i.test(raw)) {
+    return '/' + raw.replace(/^public\//i, '');
+  }
+  return null;
 }
 
 export function SettingsView({ settings, onSettingsChange, activeRole, lang }: SettingsProps) {
@@ -105,18 +111,23 @@ export function SettingsView({ settings, onSettingsChange, activeRole, lang }: S
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
           {/* Logo + Name (full row) */}
-          <div className="md:col-span-2 flex items-end gap-3">
+          <div className="md:col-span-2 flex flex-col sm:flex-row sm:items-end gap-4">
             <div className="shrink-0">
               <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
-                {isAr ? 'الشعار' : 'Logo'}
+                {isAr ? 'الشعار الحالي' : 'Current logo'}
               </label>
-              <div className="w-14 h-14 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-2xl overflow-hidden">
-                {form.logoUrl && isImageLogo(form.logoUrl)
-                  ? <img src={form.logoUrl} alt={isAr ? 'شعار الأكاديمية' : 'Academy logo'} className="w-full h-full object-contain p-1" />
+              <div className="w-28 h-24 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-2xl overflow-hidden">
+                {resolveLogoSrc(form.logoUrl)
+                  ? <img
+                      src={resolveLogoSrc(form.logoUrl) ?? '/shooter-logo.png'}
+                      onError={(e) => { e.currentTarget.src = '/shooter-logo.png'; }}
+                      alt={isAr ? 'شعار الأكاديمية' : 'Academy logo'}
+                      className="w-full h-full object-contain"
+                    />
                   : <span>{form.logoUrl || '⚽'}</span>}
               </div>
             </div>
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
                 {isAr ? 'اسم الأكاديمية' : 'Academy name'}
               </label>
@@ -128,7 +139,7 @@ export function SettingsView({ settings, onSettingsChange, activeRole, lang }: S
                 required
               />
             </div>
-            <div className="w-28 shrink-0">
+            <div className="w-full sm:w-52 shrink-0">
               <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
                 {isAr ? 'الشعار' : 'Logo'}
               </label>
@@ -136,10 +147,10 @@ export function SettingsView({ settings, onSettingsChange, activeRole, lang }: S
                 value={form.logoUrl}
                 onChange={(e) => set('logoUrl', e.target.value)}
                 className={inputCls}
-                placeholder={isAr ? '/logo.png أو رابط صورة أو رمز' : '/logo.png, image URL, or emoji'}
+                placeholder={isAr ? '/shooter-logo.png أو رابط صورة أو رمز' : '/shooter-logo.png, image URL, or emoji'}
               />
               <p className="mt-1 text-[10px] text-slate-400">
-                {isAr ? 'يمكن استخدام مسار صورة داخل المشروع أو رابط صورة مباشر أو رمز.' : 'Use a project image path, direct image URL, or emoji.'}
+                {isAr ? 'يقبل المسار /shooter-logo.png وكذلك shooter-logo.png أو رابط صورة مباشر أو رمز.' : 'Accepts /shooter-logo.png, shooter-logo.png, a direct image URL, or emoji.'}
               </p>
             </div>
           </div>
