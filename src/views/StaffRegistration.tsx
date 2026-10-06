@@ -96,7 +96,7 @@ export function StaffRegistration({ user, lang, onLogout, onApproved }: {
           </button>
         </div>
 
-        {loading ? <div className="py-12 text-center"><Loader2 className="mx-auto h-7 w-7 animate-spin text-emerald-600" /></div> : (
+        {loading ? <div className="py-12 text-center"><Loader2 className="mx-auto h-7 w-7 animate-spin text-brand-600" /></div> : (
           <>
             {statusText && <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-800">{statusText}</div>}
             {app?.reviewNotes && <div className="mb-4 rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800"><b>{text('ملاحظة المدير:', 'Manager note:')}</b> {app.reviewNotes}</div>}
@@ -122,14 +122,14 @@ export function StaffRegistration({ user, lang, onLogout, onApproved }: {
                 </div>
                 <FormField label={text('الشهادات / التراخيص (افصل بينها بفاصلة)', 'Certificates / licenses (comma separated)')}><input className={inputCls} value={form.licenses} onChange={e => setForm({ ...form, licenses: e.target.value })} /></FormField>
                 <FormField label={text('ملاحظات إضافية', 'Additional notes')}><textarea className={inputCls} rows={3} value={form.applicantNotes} onChange={e => setForm({ ...form, applicantNotes: e.target.value })} /></FormField>
-                <button disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3 font-bold text-white disabled:opacity-60">
+                <button disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 py-3 font-bold text-white disabled:opacity-60">
                   {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
                   {app?.status === 'needs_info' ? text('حفظ وإعادة الإرسال', 'Save and resubmit') : text('إرسال للمدير للمراجعة', 'Submit for manager review')}
                 </button>
               </form>
             ) : (
               <div className="py-8 text-center">
-                <ClipboardCheck className="mx-auto h-12 w-12 text-emerald-600" />
+                <ClipboardCheck className="mx-auto h-12 w-12 text-brand-600" />
                 <p className="mt-3 font-bold">{statusText || text('تم استلام الطلب.', 'Application received.')}</p>
               </div>
             )}

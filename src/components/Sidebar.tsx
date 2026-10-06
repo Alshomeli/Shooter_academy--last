@@ -92,13 +92,13 @@ export function Sidebar({
 
       <aside
         id="sidebar"
-        className={`fixed lg:relative inset-y-0 right-0 z-50 lg:z-auto w-72 min-h-screen flex flex-col justify-between shrink-0 shadow-2xl transition-all duration-300 ${
+        className={`shooter-sidebar fixed lg:relative inset-y-0 right-0 z-50 lg:z-auto w-72 min-h-screen flex flex-col justify-between shrink-0 shadow-2xl transition-all duration-300 ${
           mobileOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'
         } ${darkMode ? 'bg-slate-950 text-slate-100 border-l border-slate-900' : 'bg-slate-900 text-white border-l border-slate-800'}`}
       >
         <div>
           {/* Logo header */}
-          <div className="p-6 border-b border-slate-800 flex items-center gap-3 bg-emerald-950/20">
+          <div className="p-6 border-b border-slate-800 flex items-center gap-3 bg-brand-950/20">
             <div className="relative group shrink-0">
               <div className="absolute -inset-0.5 rounded-full blur opacity-40 group-hover:opacity-75 transition duration-1000" style={{ backgroundColor: '#cbd5e1' }} />
               <div className="relative w-13 h-13 flex items-center justify-center">
@@ -108,7 +108,7 @@ export function Sidebar({
             <div className="min-w-0 flex-1">
               <h1 className="font-black text-base text-slate-200 tracking-tight leading-tight">{brandName}</h1>
               <p className="text-[10px] text-slate-400 font-bold tracking-wider mt-0.5 uppercase">SHOOTER ACADEMY</p>
-              <p className="text-[9px] text-emerald-500 font-semibold mt-0.5">{t.systemTitle}</p>
+              <p className="text-[9px] text-brand-500 font-semibold mt-0.5">{t.systemTitle}</p>
             </div>
             <button onClick={() => setMobileOpen(false)} aria-label={lang === 'ar' ? 'إغلاق القائمة' : 'Close menu'} className="lg:hidden p-1.5 rounded-lg hover:bg-slate-800 transition cursor-pointer">
               <X className="h-5 w-5" />
@@ -121,7 +121,7 @@ export function Sidebar({
               {ROLE_OPTIONS.find((r) => r.value === activeRole)?.label ?? activeRole}
             </div>
             <div className="mt-2 flex items-center gap-1.5">
-              <span className="inline-block h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="inline-block h-2 w-2 rounded-full bg-brand-400 animate-pulse" />
               <span className="text-[10px] text-slate-400 font-semibold">{t.active}: {currentUser.name.split(' ')[0]}</span>
             </div>
           </div>
@@ -137,7 +137,7 @@ export function Sidebar({
                   onClick={() => handleNav(item.id)}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer text-right ${
                     active
-                      ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/20'
+                      ? 'bg-brand-600 text-white shadow-lg shadow-brand-900/20'
                       : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
                   }`}
                 >

@@ -15,7 +15,7 @@ interface SettingsProps {
 }
 
 const inputCls =
-  'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-800 dark:text-white';
+  'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white';
 
 function isImageLogo(value: string) {
   return /^(https?:\/\/|data:image\/|\/)/i.test(value.trim());
@@ -82,8 +82,8 @@ export function SettingsView({ settings, onSettingsChange, activeRole, lang }: S
         className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-6 shadow-sm"
       >
         {/* Info banner */}
-        <div className="flex items-start gap-3 p-4 rounded-xl bg-emerald-50/60 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/20 mb-7">
-          <div className="shrink-0 w-9 h-9 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+        <div className="flex items-start gap-3 p-4 rounded-xl bg-brand-50/60 dark:bg-brand-900/10 border border-brand-100 dark:border-brand-900/20 mb-7">
+          <div className="shrink-0 w-9 h-9 rounded-lg bg-brand-100 dark:bg-brand-900/30 text-brand-600 dark:text-brand-400 flex items-center justify-center">
             <Target className="h-5 w-5" />
           </div>
           <div className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -242,7 +242,7 @@ export function SettingsView({ settings, onSettingsChange, activeRole, lang }: S
         <div className="flex justify-end pt-5 border-t border-slate-100 dark:border-slate-800">
           <button
             type="submit" disabled={saving}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold shadow-sm transition cursor-pointer"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-bold shadow-sm transition cursor-pointer"
           >
             <Save className="h-4 w-4" />
             {t.save}
@@ -253,7 +253,7 @@ export function SettingsView({ settings, onSettingsChange, activeRole, lang }: S
       {/* ----------------------- Success toast ----------------------- */}
       {saved && (
         <div
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[120] flex items-center gap-2.5 px-5 py-3 rounded-xl bg-emerald-600 text-white shadow-2xl shadow-emerald-900/20 animate-fadeIn"
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[120] flex items-center gap-2.5 px-5 py-3 rounded-xl bg-brand-600 text-white shadow-2xl shadow-brand-900/20 animate-fadeIn"
           role="status"
           aria-live="polite"
         >
@@ -281,7 +281,7 @@ function SectionHeader({
   subtitle?: string;
 }) {
   const colors: Record<string, string> = {
-    emerald: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400',
+    emerald: 'bg-brand-100 dark:bg-brand-900/30 text-brand-600 dark:text-brand-400',
     amber: 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400',
   };
   return (

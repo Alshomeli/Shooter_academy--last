@@ -46,7 +46,7 @@ export function TelegramLinkCard({ lang }: { lang: Lang }) {
           {connection?.is_active ? (
             <>
               <div className="mt-2 flex flex-wrap gap-2 text-xs">
-                <span className="rounded-full bg-emerald-100 text-emerald-800 px-2.5 py-1 font-bold">{isAr ? '● متصل' : '● Connected'}</span>
+                <span className="rounded-full bg-brand-100 text-brand-800 px-2.5 py-1 font-bold">{isAr ? '● متصل' : '● Connected'}</span>
                 <code className="rounded-full bg-white dark:bg-slate-900 border px-2.5 py-1">{connection.telegram_user_code}</code>
                 <span className="text-slate-500 px-1 py-1">{isAr ? (connection.role === 'manager' ? 'مدير' : 'مدرب') : connection.role}</span>
               </div>

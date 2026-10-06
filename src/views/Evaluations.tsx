@@ -52,7 +52,7 @@ function formatDelta(current: number | null, previous: number | null) {
 function ScoreBar({ label, value, max = 5 }: { label: string; value: number | null; max?: number }) {
   const pct = value ? (value / max) * 100 : 0;
   const color = !value ? 'bg-slate-300 dark:bg-slate-700'
-    : value >= 4 ? 'bg-emerald-500' : value >= 3 ? 'bg-amber-500' : 'bg-red-500';
+    : value >= 4 ? 'bg-brand-500' : value >= 3 ? 'bg-amber-500' : 'bg-red-500';
   return (
     <div className="flex items-center gap-3">
       <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 w-28 shrink-0 text-start">{label}</span>
@@ -80,7 +80,7 @@ function EvalCard({ ev, player, coach, lang, onEdit }: {
         </div>
         <div className="flex items-center gap-2">
           {ev.overallScore != null && (
-            <span className="text-lg font-black text-emerald-600">{ev.overallScore.toFixed(1)}<span className="text-xs text-slate-400">/5</span></span>
+            <span className="text-lg font-black text-brand-600">{ev.overallScore.toFixed(1)}<span className="text-xs text-slate-400">/5</span></span>
           )}
           <Badge color={ev.status === 'published' ? 'emerald' : 'amber'}>{ev.status === 'published' ? t.publishedStatus : t.draft}</Badge>
         </div>
@@ -95,7 +95,7 @@ function EvalCard({ ev, player, coach, lang, onEdit }: {
       {(ev.strengths || ev.developmentAreas) && (
         <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
           {ev.strengths && (
-            <div className="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400">
+            <div className="p-2 rounded-lg bg-brand-50 dark:bg-brand-950/30 text-brand-700 dark:text-brand-400">
               <span className="font-bold">{t.strengths}:</span> {ev.strengths}
             </div>
           )}
@@ -129,7 +129,7 @@ function EvalCard({ ev, player, coach, lang, onEdit }: {
         </div>
       )}
       {onEdit && ev.status === 'draft' && (
-        <button onClick={onEdit} className="mt-3 text-xs font-bold text-emerald-600 hover:text-emerald-500 transition cursor-pointer">
+        <button onClick={onEdit} className="mt-3 text-xs font-bold text-brand-600 hover:text-brand-500 transition cursor-pointer">
           {t.editEvaluation} &rarr;
         </button>
       )}
@@ -326,8 +326,8 @@ export function Evaluations({ evaluations, players, teams, staff, activeRole, la
               </select>
             </FormField>
             {selectedPlayer && (
-              <div className="flex items-center gap-3 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30">
-                <div className="w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center text-white font-black">#{selectedPlayer.jerseyNumber}</div>
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-brand-50 dark:bg-brand-950/30">
+                <div className="w-10 h-10 rounded-xl bg-brand-500 flex items-center justify-center text-white font-black">#{selectedPlayer.jerseyNumber}</div>
                 <div>
                   <p className="text-sm font-bold text-slate-900 dark:text-white">{selectedPlayer.name}</p>
                   <p className="text-[11px] text-slate-400">{teams.find(tm => tm.id === selectedPlayer.teamId)?.name}</p>
@@ -386,7 +386,7 @@ export function Evaluations({ evaluations, players, teams, staff, activeRole, la
                 <label className="text-xs font-bold text-slate-600 dark:text-slate-300 w-32 shrink-0">{label}</label>
                 <input type="range" min="1" max="5" value={form[field] ?? 3}
                   onChange={e => setScore(field, e.target.value)}
-                  className="flex-1 accent-emerald-600" />
+                  className="flex-1 accent-brand-600" />
                 <input type="number" min="1" max="5" value={form[field] ?? ''}
                   onChange={e => setScore(field, e.target.value)}
                   className="w-14 text-center text-sm font-bold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 py-1"
@@ -473,14 +473,14 @@ export function Evaluations({ evaluations, players, teams, staff, activeRole, la
             </button>
             {!confirmPublish ? (
               <button type="button" onClick={() => setConfirmPublish(true)} disabled={saving}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-500 transition cursor-pointer disabled:opacity-50">
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-bold hover:bg-brand-500 transition cursor-pointer disabled:opacity-50">
                 <Send className="h-4 w-4" /> {t.publish}
               </button>
             ) : (
               <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
                 <p className="text-xs font-bold text-amber-700 dark:text-amber-400">{t.publishConfirm}</p>
                 <button type="button" onClick={() => handleSave(true)} disabled={saving}
-                  className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-500 transition cursor-pointer disabled:opacity-50">
+                  className="px-3 py-1.5 rounded-lg bg-brand-600 text-white text-xs font-bold hover:bg-brand-500 transition cursor-pointer disabled:opacity-50">
                   {t.confirm}
                 </button>
                 <button type="button" onClick={() => setConfirmPublish(false)}
@@ -500,7 +500,7 @@ export function Evaluations({ evaluations, players, teams, staff, activeRole, la
       <PageHeader title={t.evaluationsManagement}>
         {canEdit && (
           <button type="button" onClick={openNew}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-500 transition cursor-pointer">
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-600 text-white text-sm font-bold hover:bg-brand-500 transition cursor-pointer">
             <Plus className="h-4 w-4" /> {t.addEvaluation}
           </button>
         )}
@@ -525,7 +525,7 @@ export function Evaluations({ evaluations, players, teams, staff, activeRole, la
           <div><p className="text-xl font-black text-slate-900 dark:text-white">{playersWithHistory.length}</p><p className="text-[11px] text-slate-400">{isAr ? 'لاعبون لديهم تقييمان منشوران أو أكثر' : 'Players with 2+ published reviews'}</p></div>
         </div>
         <div className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900/60 flex items-center gap-3">
-          <TrendingUp className="h-5 w-5 text-emerald-500" />
+          <TrendingUp className="h-5 w-5 text-brand-500" />
           <div><p className="text-xl font-black text-slate-900 dark:text-white">{publishedEvaluations.length}</p><p className="text-[11px] text-slate-400">{isAr ? 'إجمالي التقييمات المنشورة' : 'Published reviews'}</p></div>
         </div>
         <div className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900/60 flex items-center gap-3">
@@ -549,11 +549,11 @@ export function Evaluations({ evaluations, players, teams, staff, activeRole, la
           {progressPlayerId && (
             <div className="space-y-3">
               {progressSummary && (
-                <div className="p-4 rounded-xl border border-emerald-100 dark:border-emerald-900/50 bg-emerald-50/60 dark:bg-emerald-950/20">
+                <div className="p-4 rounded-xl border border-brand-100 dark:border-brand-900/50 bg-brand-50/60 dark:bg-brand-950/20">
                   <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
                     <div>
-                      <p className="text-xs font-black text-emerald-900 dark:text-emerald-200">{isAr ? 'ملخص التطور' : 'Progress summary'}</p>
-                      <p className="text-[10px] text-emerald-700/70 dark:text-emerald-300/70">
+                      <p className="text-xs font-black text-brand-900 dark:text-brand-200">{isAr ? 'ملخص التطور' : 'Progress summary'}</p>
+                      <p className="text-[10px] text-brand-700/70 dark:text-brand-300/70">
                         {progressSummary.firstDate} → {progressSummary.latestDate} · {progressSummary.reviewCount} {isAr ? 'تقييمات منشورة' : 'published reviews'}
                       </p>
                     </div>
@@ -573,7 +573,7 @@ export function Evaluations({ evaluations, players, teams, staff, activeRole, la
                           <p className="text-[10px] text-slate-400">{isAr ? group.ar : group.en}</p>
                           <div className="flex items-end justify-between gap-2 mt-1">
                             <span className="text-base font-black text-slate-900 dark:text-white">{latestScore == null ? '—' : latestScore.toFixed(1)}</span>
-                            <span className={`text-[10px] font-black ${delta == null ? 'text-slate-400' : delta > 0.05 ? 'text-emerald-600' : delta < -0.05 ? 'text-amber-600' : 'text-slate-400'}`}>
+                            <span className={`text-[10px] font-black ${delta == null ? 'text-slate-400' : delta > 0.05 ? 'text-brand-600' : delta < -0.05 ? 'text-amber-600' : 'text-slate-400'}`}>
                               {delta == null ? '—' : `${delta > 0 ? '+' : ''}${delta.toFixed(1)}`}
                             </span>
                           </div>
@@ -602,7 +602,7 @@ export function Evaluations({ evaluations, players, teams, staff, activeRole, la
                             <p className="text-[10px] text-slate-400">{isAr ? group.ar : group.en}</p>
                             <div className="flex items-end justify-between gap-2">
                               <span className="text-base font-black text-slate-900 dark:text-white">{score == null ? '—' : score.toFixed(1)}</span>
-                              <span className={`text-[10px] font-bold ${prevScore == null || score == null ? 'text-slate-400' : score > prevScore ? 'text-emerald-600' : score < prevScore ? 'text-amber-600' : 'text-slate-400'}`}>{formatDelta(score, prevScore)}</span>
+                              <span className={`text-[10px] font-bold ${prevScore == null || score == null ? 'text-slate-400' : score > prevScore ? 'text-brand-600' : score < prevScore ? 'text-amber-600' : 'text-slate-400'}`}>{formatDelta(score, prevScore)}</span>
                             </div>
                           </div>
                         );

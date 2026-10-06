@@ -180,7 +180,7 @@ export function ConfirmDialog({ open, onClose, onConfirm, title, message, confir
 
 /* ---------- Form helpers ---------- */
 
-export const inputCls = 'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-800 dark:text-white';
+export const inputCls = 'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white';
 
 export function FormField({ label, children, error }: { label: string; children: ReactNode; error?: string }) {
   return (
@@ -217,7 +217,7 @@ export function SaveButton({ loading, children, disabled }: SaveButtonProps) {
     <button
       type="submit"
       disabled={loading || disabled}
-      className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 disabled:cursor-not-allowed transition cursor-pointer"
+      className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold text-white bg-brand-600 hover:bg-brand-500 disabled:opacity-60 disabled:cursor-not-allowed transition cursor-pointer"
     >
       {loading && <Loader2 className="h-4 w-4 animate-spin" />}
       {loading ? 'Saving...' : children}

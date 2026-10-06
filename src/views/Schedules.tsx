@@ -23,7 +23,7 @@ type MatchResult = Match['result'];
 type TrainingForm = Omit<Training, 'id'>;
 
 const inputCls =
-  'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-800 dark:text-white';
+  'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white';
 
 /* ---------- date / time helpers ---------- */
 function formatDate(dateStr: string, lang: Lang): string {
@@ -53,7 +53,7 @@ const RESULT_STYLES: Record<
   MatchResult,
   { badge: 'emerald' | 'red' | 'amber' | 'slate'; bar: string; icon: typeof Trophy }
 > = {
-  win: { badge: 'emerald', bar: 'bg-emerald-500', icon: Trophy },
+  win: { badge: 'emerald', bar: 'bg-brand-500', icon: Trophy },
   loss: { badge: 'red', bar: 'bg-red-500', icon: Flag },
   draw: { badge: 'amber', bar: 'bg-amber-500', icon: Flag },
   scheduled: { badge: 'slate', bar: 'bg-slate-400', icon: Play },
@@ -131,7 +131,7 @@ export function Schedules({
         {canEdit && tab === 'matches' && (
           <button
             onClick={() => setShowMatch(true)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold shadow-sm transition cursor-pointer"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-bold shadow-sm transition cursor-pointer"
           >
             <Plus className="h-4 w-4" />
             {isAr ? 'إضافة مباراة' : 'Add match'}
@@ -140,7 +140,7 @@ export function Schedules({
         {canEdit && tab === 'trainings' && (
           <button
             onClick={() => setShowTraining(true)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold shadow-sm transition cursor-pointer"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-bold shadow-sm transition cursor-pointer"
           >
             <Plus className="h-4 w-4" />
             {isAr ? 'إضافة تدريب' : 'Add training'}
@@ -154,7 +154,7 @@ export function Schedules({
           onClick={() => setTab('matches')}
           className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold transition cursor-pointer ${
             tab === 'matches'
-              ? 'bg-emerald-600 text-white shadow-sm'
+              ? 'bg-brand-600 text-white shadow-sm'
               : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
           }`}
         >
@@ -168,7 +168,7 @@ export function Schedules({
           onClick={() => setTab('trainings')}
           className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold transition cursor-pointer ${
             tab === 'trainings'
-              ? 'bg-emerald-600 text-white shadow-sm'
+              ? 'bg-brand-600 text-white shadow-sm'
               : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
           }`}
         >
@@ -260,7 +260,7 @@ export function Schedules({
                       {/* score */}
                       {completed && (
                         <div className="flex items-center justify-center gap-3 mb-4 pr-2 py-3 rounded-xl bg-slate-50 dark:bg-slate-800/50">
-                          <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400 tabular-nums">
+                          <span className="text-2xl font-black text-brand-600 dark:text-brand-400 tabular-nums">
                             {m.academyScore}
                           </span>
                           <span className="text-xs font-bold text-slate-400">—</span>
@@ -273,30 +273,30 @@ export function Schedules({
                       {/* meta */}
                       <div className="space-y-2.5 text-[12px] text-slate-500 dark:text-slate-400 pr-2">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <CalendarDays className="h-4 w-4 shrink-0 text-emerald-500" />
+                          <CalendarDays className="h-4 w-4 shrink-0 text-brand-500" />
                           <span className="font-semibold">{formatDate(m.matchDate, lang)}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Clock className="h-4 w-4 shrink-0 text-emerald-500" />
+                          <Clock className="h-4 w-4 shrink-0 text-brand-500" />
                           <span className="font-semibold" dir="ltr">{formatTime(m.matchDate, lang)}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <MapPin className="h-4 w-4 shrink-0 text-emerald-500" />
+                          <MapPin className="h-4 w-4 shrink-0 text-brand-500" />
                           <span className="font-semibold">{m.location || (isAr ? 'غير محدد' : 'Not specified')}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Users className="h-4 w-4 shrink-0 text-emerald-500" />
+                          <Users className="h-4 w-4 shrink-0 text-brand-500" />
                           <span className="font-semibold">{teamCount} {isAr ? 'لاعب في التشكيلة' : 'players in squad'}</span>
                         </div>
                         {m.scorers && (
                           <div className="flex items-start gap-2">
-                            <Target className="h-4 w-4 shrink-0 text-emerald-500 mt-0.5" />
+                            <Target className="h-4 w-4 shrink-0 text-brand-500 mt-0.5" />
                             <span className="font-semibold leading-relaxed">{m.scorers}</span>
                           </div>
                         )}
                         {m.notes && (
                           <div className="flex items-start gap-2">
-                            <FileText className="h-4 w-4 shrink-0 text-emerald-500 mt-0.5" />
+                            <FileText className="h-4 w-4 shrink-0 text-brand-500 mt-0.5" />
                             <span className="font-semibold leading-relaxed">{m.notes}</span>
                           </div>
                         )}
@@ -386,19 +386,19 @@ export function Schedules({
                       className="relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm hover:shadow-md transition-shadow overflow-hidden"
                     >
                       {/* emerald accent bar */}
-                      <div className="absolute top-0 bottom-0 right-0 w-1.5 bg-emerald-500" />
+                      <div className="absolute top-0 bottom-0 right-0 w-1.5 bg-brand-500" />
 
                       {/* header */}
                       <div className="flex items-start justify-between gap-3 mb-4 pr-2">
                         <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center text-white shrink-0 shadow-lg">
+                          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center text-white shrink-0 shadow-lg">
                             <Dumbbell className="h-5 w-5" />
                           </div>
                           <div className="min-w-0">
                             <p className="text-sm font-black text-slate-900 dark:text-white truncate">
                               {tr.title}
                             </p>
-                            <p className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                            <p className="text-[11px] font-bold text-brand-600 dark:text-brand-400">
                               {teamName(tr.teamId)}
                             </p>
                           </div>
@@ -411,20 +411,20 @@ export function Schedules({
                       {/* meta */}
                       <div className="space-y-2.5 text-[12px] text-slate-500 dark:text-slate-400 pr-2">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <CalendarDays className="h-4 w-4 shrink-0 text-emerald-500" />
+                          <CalendarDays className="h-4 w-4 shrink-0 text-brand-500" />
                           <span className="font-semibold">{formatDate(tr.sessionDate, lang)}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Clock className="h-4 w-4 shrink-0 text-emerald-500" />
+                          <Clock className="h-4 w-4 shrink-0 text-brand-500" />
                           <span className="font-semibold">{isAr ? 'المدة:' : 'Duration:'} {tr.durationMinutes} {isAr ? 'دقيقة' : 'min'}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Users className="h-4 w-4 shrink-0 text-emerald-500" />
+                          <Users className="h-4 w-4 shrink-0 text-brand-500" />
                           <span className="font-semibold">{teamCount} {isAr ? 'لاعب في الفريق' : 'players in team'}</span>
                         </div>
                         {tr.objectives && (
-                          <div className="flex items-start gap-2 mt-1 p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/20">
-                            <Target className="h-4 w-4 shrink-0 text-emerald-500 mt-0.5" />
+                          <div className="flex items-start gap-2 mt-1 p-2.5 rounded-lg bg-brand-50 dark:bg-brand-900/10 border border-brand-100 dark:border-brand-900/20">
+                            <Target className="h-4 w-4 shrink-0 text-brand-500 mt-0.5" />
                             <span className="font-semibold leading-relaxed text-slate-600 dark:text-slate-300">
                               {tr.objectives}
                             </span>

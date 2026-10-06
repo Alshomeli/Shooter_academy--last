@@ -186,7 +186,7 @@ export function RegistrationAdmin({ lang, activeRole, teams, players, onRefresh 
     );
   }
 
-  const inputCls = 'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-800 dark:text-white';
+  const inputCls = 'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white';
 
   return (
     <div className="space-y-5" dir={isAr ? 'rtl' : 'ltr'}>
@@ -204,7 +204,7 @@ export function RegistrationAdmin({ lang, activeRole, teams, players, onRefresh 
         <StatCard icon={<XCircle className="h-5 w-5" />} label={t.regStatusRejected} value={counts.rejected} color="red" />
       </div>
 
-      <button onClick={() => void loadApps()} disabled={loading} className="text-sm font-bold text-emerald-600">{isAr ? 'تحديث الطلبات' : 'Refresh applications'}</button>
+      <button onClick={() => void loadApps()} disabled={loading} className="text-sm font-bold text-brand-600">{isAr ? 'تحديث الطلبات' : 'Refresh applications'}</button>
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-48">
@@ -238,7 +238,7 @@ export function RegistrationAdmin({ lang, activeRole, teams, players, onRefresh 
 
       {/* List */}
       {loading ? (
-        <div className="flex justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-emerald-500" /></div>
+        <div className="flex justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-brand-500" /></div>
       ) : filtered.length === 0 ? (
         <EmptyState icon={<ClipboardList className="h-8 w-8" />} title={t.regNoApplications} />
       ) : (
@@ -359,7 +359,7 @@ function AppDetail({
   const t = tr(lang);
   const isAr = lang === 'ar';
 
-  const inputCls = 'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-800 dark:text-white';
+  const inputCls = 'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white';
 
   const regTypeLabel = app.registrationType === 'initial_onboarding' ? t.regTypeOnboardingShort : t.regTypeNewShort;
   const cfg = STATUS_CONFIGS[app.status];
@@ -443,7 +443,7 @@ function AppDetail({
               {childDocs.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {childDocs.map((doc) => (
-                    <a key={doc.id} href={photoUrls[doc.storagePath]} target="_blank" rel="noreferrer" aria-disabled={!photoUrls[doc.storagePath]} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-[11px] font-bold text-emerald-600 underline">
+                    <a key={doc.id} href={photoUrls[doc.storagePath]} target="_blank" rel="noreferrer" aria-disabled={!photoUrls[doc.storagePath]} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-[11px] font-bold text-brand-600 underline">
                       <FileText className="h-3 w-3" /> {docTypeLabel(doc.documentType)}
                     </a>
                   ))}
@@ -453,8 +453,8 @@ function AppDetail({
               {/* Assignment UI for approved apps */}
               {activated && <Badge color="emerald">{isAr ? 'تم توزيع اللاعب وتفعيله' : 'Player assigned and activated'}</Badge>}
               {app.status === 'approved' && child.playerId && !activated && (
-                <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-900/30 space-y-3">
-                  <h4 className="text-xs font-black text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
+                <div className="p-3 rounded-lg bg-brand-50 dark:bg-brand-900/10 border border-brand-200 dark:border-brand-900/30 space-y-3">
+                  <h4 className="text-xs font-black text-brand-700 dark:text-brand-400 flex items-center gap-1.5">
                     <Trophy className="h-3.5 w-3.5" /> {t.regAssignTeam}
                   </h4>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -495,7 +495,7 @@ function AppDetail({
                   <button
                     onClick={() => onFinalize(child.playerId!)}
                     disabled={actionLoading || !selectedTeam}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-brand-600 hover:bg-brand-500 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {actionLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Shield className="h-3.5 w-3.5" />}
                     {isAr ? 'تفعيل وإسناد للفئة' : 'Activate and assign category'}
@@ -594,7 +594,7 @@ function ActionBtn({ onClick, loading, color, icon, children }: {
   const colors: Record<string, string> = {
     blue: 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 hover:bg-blue-100',
     amber: 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 hover:bg-amber-100',
-    emerald: 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100',
+    emerald: 'bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-400 hover:bg-brand-100',
     red: 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 hover:bg-red-100',
   };
   return (

@@ -30,7 +30,7 @@ type Step = 0 | 1 | 2 | 3 | 4 | 5;
 const STEP_ICONS = [ClipboardList, User, Users, Camera, FileCheck, CheckCircle2];
 const BLOOD_TYPES = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 const DOC_TYPES = ['parent_cpr', 'player_cpr', 'passport', 'birth_certificate', 'medical_report', 'other'] as const;
-const inputCls = 'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-800 dark:text-white';
+const inputCls = 'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white';
 const maskCpr = (v: string) => v.length > 4 ? '***' + v.slice(-4) : v;
 const blankChild = () => ({ clientKey: crypto.randomUUID(), _key: crypto.randomUUID(), fullName: '', nationalId: '', birthDate: '', bloodType: '', notes: '' });
 
@@ -304,7 +304,7 @@ export function Registration({ lang, initial, onSaved, onExit, onBusyChange }: P
   if (loading) {
     return (
       <div className="flex items-center justify-center py-32" dir={isAr ? 'rtl' : 'ltr'}>
-        <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+        <Loader2 className="h-8 w-8 animate-spin text-brand-500" />
       </div>
     );
   }
@@ -342,10 +342,10 @@ export function Registration({ lang, initial, onSaved, onExit, onBusyChange }: P
           const active = i === step;
           return (
             <div key={i} className="flex items-center gap-1">
-              {i > 0 && <div className={`w-4 sm:w-8 h-0.5 rounded ${done ? 'bg-emerald-500' : 'bg-slate-200 dark:bg-slate-700'}`} />}
+              {i > 0 && <div className={`w-4 sm:w-8 h-0.5 rounded ${done ? 'bg-brand-500' : 'bg-slate-200 dark:bg-slate-700'}`} />}
               <div className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold whitespace-nowrap transition ${
-                active ? 'bg-emerald-600 text-white shadow' :
-                done ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400' :
+                active ? 'bg-brand-600 text-white shadow' :
+                done ? 'bg-brand-100 dark:bg-brand-900/30 text-brand-600 dark:text-brand-400' :
                 'bg-slate-100 dark:bg-slate-800 text-slate-400'
               }`}>
                 <Icon className="h-3.5 w-3.5 shrink-0" />
@@ -432,7 +432,7 @@ export function Registration({ lang, initial, onSaved, onExit, onBusyChange }: P
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-black text-slate-900 dark:text-white">{t.regStepChildren}</h2>
-              <button onClick={addChild} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition cursor-pointer">
+              <button onClick={addChild} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold text-brand-600 bg-brand-50 dark:bg-brand-900/20 hover:bg-brand-100 dark:hover:bg-brand-900/30 transition cursor-pointer">
                   {t.regAddChild}
                 </button>
             </div>
@@ -506,13 +506,13 @@ export function Registration({ lang, initial, onSaved, onExit, onBusyChange }: P
                           <p className="text-slate-500">{t.regOriginalSize}: <span className="font-bold text-slate-700 dark:text-slate-300">{formatBytes(photo.originalSize)}</span></p>
                           {photo.compressedSize != null && (
                             <>
-                              <p className="text-slate-500">{t.regCompressedSize}: <span className="font-bold text-emerald-600">{formatBytes(photo.compressedSize)}</span></p>
-                              <p className="text-emerald-600 font-bold">{t.regSaving}: {photo.reductionPercent}%</p>
+                              <p className="text-slate-500">{t.regCompressedSize}: <span className="font-bold text-brand-600">{formatBytes(photo.compressedSize)}</span></p>
+                              <p className="text-brand-600 font-bold">{t.regSaving}: {photo.reductionPercent}%</p>
                             </>
                           )}
                           {photo.compressing && <p className="text-blue-500">{isAr ? 'جارٍ ضغط الصورة…' : 'Compressing photo…'}</p>}
                           {photo.uploading && <p className="text-blue-500 flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" /> {isAr ? 'جاري الرفع...' : 'Uploading...'}</p>}
-                          {photo.uploaded && <p className="text-emerald-600 flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> {isAr ? 'تم الرفع' : 'Uploaded'}</p>}
+                          {photo.uploaded && <p className="text-brand-600 flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> {isAr ? 'تم الرفع' : 'Uploaded'}</p>}
                           {photo.error && (
                             <div>
                               <p className="text-red-500">{photo.error}</p>
@@ -522,13 +522,13 @@ export function Registration({ lang, initial, onSaved, onExit, onBusyChange }: P
                         </div>
                       </div>
                     ) : (
-                      <label className="flex flex-col items-center justify-center p-6 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-600 hover:border-emerald-400 transition cursor-pointer">
+                      <label className="flex flex-col items-center justify-center p-6 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-600 hover:border-brand-400 transition cursor-pointer">
                         <ImageIcon className="h-8 w-8 text-slate-400 mb-2" />
                         <span className="text-xs font-bold text-slate-500">{t.regUploadPhoto}</span>
                         <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => { if (e.target.files?.[0]) handlePhotoSelect(child._key, e.target.files[0]); }} />
                       </label>
                     )}
-                    {photo && <label className="block text-xs font-bold text-emerald-600 mt-2">{isAr ? 'تغيير الصورة' : 'Replace photo'}<input aria-label={t.regChildPhoto} type="file" accept="image/jpeg,image/png,image/webp" disabled={photo.compressing || photo.uploading} className="block w-full mt-1" onChange={e => { if (e.target.files?.[0]) void handlePhotoSelect(child._key, e.target.files[0]); e.target.value = ''; }} /></label>}
+                    {photo && <label className="block text-xs font-bold text-brand-600 mt-2">{isAr ? 'تغيير الصورة' : 'Replace photo'}<input aria-label={t.regChildPhoto} type="file" accept="image/jpeg,image/png,image/webp" disabled={photo.compressing || photo.uploading} className="block w-full mt-1" onChange={e => { if (e.target.files?.[0]) void handlePhotoSelect(child._key, e.target.files[0]); e.target.value = ''; }} /></label>}
                   </div>
 
                   {/* Extra documents */}
@@ -541,7 +541,7 @@ export function Registration({ lang, initial, onSaved, onExit, onBusyChange }: P
                         <FileText className="h-3.5 w-3.5 text-slate-400" />
                         <span className="text-slate-700 dark:text-slate-300">{docTypeLabel(doc.docType)}: {doc.fileName}</span>
                         {doc.uploading && <Loader2 className="h-3 w-3 animate-spin text-blue-500" />}
-                        {doc.uploaded && <CheckCircle2 className="h-3 w-3 text-emerald-500" />}
+                        {doc.uploaded && <CheckCircle2 className="h-3 w-3 text-brand-500" />}
                         {doc.error && <><span className="text-red-500">{doc.error}</span><button onClick={() => void uploadExtraDoc(doc.id)}>{isAr ? 'إعادة المحاولة' : 'Retry'}</button><button onClick={() => setExtraDocs(prev => prev.filter(d => d.id !== doc.id))}>{isAr ? 'إزالة المرفق' : 'Remove attachment'}</button></>}
                       </div>
                     ))}
@@ -621,8 +621,8 @@ export function Registration({ lang, initial, onSaved, onExit, onBusyChange }: P
             )}
 
             {/* Confirmation */}
-            <label className="flex items-start gap-3 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-900/30 cursor-pointer">
-              <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} className="mt-0.5 accent-emerald-600" />
+            <label className="flex items-start gap-3 p-3 rounded-xl bg-brand-50 dark:bg-brand-900/10 border border-brand-200 dark:border-brand-900/30 cursor-pointer">
+              <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} className="mt-0.5 accent-brand-600" />
               <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{t.regConfirmCheckbox}</span>
             </label>
 
@@ -633,15 +633,15 @@ export function Registration({ lang, initial, onSaved, onExit, onBusyChange }: P
         {/* ======== STEP 5: Success ======== */}
         {step === 5 && (
           <div className="text-center py-8 space-y-4">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-brand-100 dark:bg-brand-900/30 text-brand-600 dark:text-brand-400">
               <CheckCircle2 className="h-8 w-8" />
             </div>
             <h2 className="text-lg font-black text-slate-900 dark:text-white">{t.regSuccessTitle}</h2>
-            {onExit && <button onClick={onExit} className="block mx-auto px-4 py-2 rounded-lg bg-emerald-600 text-white">{isAr ? 'العودة إلى بوابة ولي الأمر' : 'Back to parent portal'}</button>}
+            {onExit && <button onClick={onExit} className="block mx-auto px-4 py-2 rounded-lg bg-brand-600 text-white">{isAr ? 'العودة إلى بوابة ولي الأمر' : 'Back to parent portal'}</button>}
             {submitError && <p role="alert" className="text-red-600 text-sm">{submitError}</p>}
             <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto">{t.regSuccessMessage}</p>
             <div className="inline-block px-4 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-sm font-bold text-slate-700 dark:text-slate-300">
-              {t.regReference}: <span className="font-black text-emerald-600">{applicationRef}</span>
+              {t.regReference}: <span className="font-black text-brand-600">{applicationRef}</span>
             </div>
           </div>
         )}
@@ -658,7 +658,7 @@ export function Registration({ lang, initial, onSaved, onExit, onBusyChange }: P
             <button
               onClick={goNext}
               disabled={!canGoNext() || draftCreating || submitting}
-              className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-500 shadow-sm transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-brand-600 hover:bg-brand-500 shadow-sm transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {(draftCreating || submitting) && <Loader2 className="h-4 w-4 animate-spin" />}
               {step === 4 ? t.regSubmit : t.regNext}
@@ -684,8 +684,8 @@ function TypeCard({ selected, onClick, title, description, icon, color }: {
     ring: 'border-blue-500 ring-blue-500/30 bg-blue-50 dark:bg-blue-900/10',
     icon: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600', text: 'text-blue-700 dark:text-blue-400',
   } : {
-    ring: 'border-emerald-500 ring-emerald-500/30 bg-emerald-50 dark:bg-emerald-900/10',
-    icon: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600', text: 'text-emerald-700 dark:text-emerald-400',
+    ring: 'border-brand-500 ring-brand-500/30 bg-brand-50 dark:bg-brand-900/10',
+    icon: 'bg-brand-100 dark:bg-brand-900/30 text-brand-600', text: 'text-brand-700 dark:text-brand-400',
   };
   return (
     <button onClick={onClick} aria-pressed={selected} className={`p-5 rounded-xl border text-start transition cursor-pointer ${selected ? `ring-2 ${colors.ring}` : 'border-slate-200 dark:border-slate-700 hover:border-slate-300'}`}>
@@ -752,7 +752,7 @@ function ExistingAppStatus({ app, lang, onContinue, onDelete }: { app: Registrat
           <Info className="h-7 w-7" />
         </div>
         <h2 className="text-base font-black text-slate-900 dark:text-white">{t.regExistingApp}</h2>
-        {['draft', 'needs_info'].includes(app.status) && <button onClick={onContinue} className="block mx-auto px-4 py-2 bg-emerald-600 text-white rounded-lg">{isAr ? 'استكمال الطلب' : 'Continue application'}</button>}
+        {['draft', 'needs_info'].includes(app.status) && <button onClick={onContinue} className="block mx-auto px-4 py-2 bg-brand-600 text-white rounded-lg">{isAr ? 'استكمال الطلب' : 'Continue application'}</button>}
         <Badge color={s.color}>{s.label}</Badge>
         <p className="text-xs text-slate-500">{t.regReference}: <span className="font-black">{app.id.slice(0, 8).toUpperCase()}</span></p>
         {app.reviewNotes && (

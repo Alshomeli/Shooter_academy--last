@@ -20,7 +20,7 @@ interface TeamsProps {
 const WEEK_DAYS = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
 
 const inputCls =
-  'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-800 dark:text-white';
+  'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white';
 
 export function Teams({ teams, staff, players, onTeamsChange, onRefresh, activeRole, lang }: TeamsProps) {
   const t = tr(lang);
@@ -63,7 +63,7 @@ export function Teams({ teams, staff, players, onTeamsChange, onRefresh, activeR
         {canEdit && (
           <button
             onClick={() => setShowAdd(true)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold shadow-sm transition cursor-pointer"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-bold shadow-sm transition cursor-pointer"
           >
             <Plus className="h-4 w-4" />
             {t.add}
@@ -89,7 +89,7 @@ export function Teams({ teams, staff, players, onTeamsChange, onRefresh, activeR
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center text-white shrink-0 shadow-lg">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center text-white shrink-0 shadow-lg">
                       <Trophy className="h-6 w-6" />
                     </div>
                     <div className="min-w-0">
@@ -115,7 +115,7 @@ export function Teams({ teams, staff, players, onTeamsChange, onRefresh, activeR
 
                 <div className="space-y-2.5 text-[12px] text-slate-500 dark:text-slate-400 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <Calendar className="h-4 w-4 shrink-0 text-emerald-500" />
+                    <Calendar className="h-4 w-4 shrink-0 text-brand-500" />
                     <div className="flex flex-wrap gap-1">
                       {tm.trainingDays.length > 0 ? (
                         tm.trainingDays.map((d) => (
@@ -133,19 +133,19 @@ export function Teams({ teams, staff, players, onTeamsChange, onRefresh, activeR
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 shrink-0 text-emerald-500" />
+                    <Clock className="h-4 w-4 shrink-0 text-brand-500" />
                     <span className="font-semibold" dir="ltr">
                       {tm.trainingTime || (isAr ? 'غير محدد' : 'Not specified')}
                     </span>
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4 shrink-0 text-emerald-500" />
+                    <MapPin className="h-4 w-4 shrink-0 text-brand-500" />
                     <span className="font-semibold">{t.pitchNumber} {tm.pitchNumber}</span>
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <Users className="h-4 w-4 shrink-0 text-emerald-500" />
+                    <Users className="h-4 w-4 shrink-0 text-brand-500" />
                     <span className="font-semibold">
                       {count} {count === 1 ? (isAr ? 'لاعب' : 'player') : (isAr ? 'لاعبين' : 'players')}
                     </span>
@@ -153,7 +153,7 @@ export function Teams({ teams, staff, players, onTeamsChange, onRefresh, activeR
 
                   {coach?.phone && (
                     <div className="flex items-center gap-2">
-                      <Phone className="h-4 w-4 shrink-0 text-emerald-500" />
+                      <Phone className="h-4 w-4 shrink-0 text-brand-500" />
                       <span className="font-semibold" dir="ltr">
                         {coach.phone}
                       </span>
@@ -347,8 +347,8 @@ function TeamForm({
                   onClick={() => toggleDay(day)}
                   className={`py-2 px-1 rounded-lg text-xs font-bold border transition cursor-pointer ${
                     checked
-                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
-                      : 'bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-emerald-400'
+                      ? 'bg-brand-600 text-white border-brand-600 shadow-sm'
+                      : 'bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-brand-400'
                   }`}
                 >
                   {dayLabel(day, lang)}

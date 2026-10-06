@@ -58,7 +58,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
           </p>
           <button
             onClick={() => { this.setState({ hasError: false, error: null }); }}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-bold cursor-pointer hover:bg-emerald-500 transition"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-600 text-white text-sm font-bold cursor-pointer hover:bg-brand-500 transition"
           >
             <RefreshCw className="h-4 w-4" />
             {isAr ? 'إعادة المحاولة' : 'Try Again'}
@@ -73,7 +73,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 function ViewLoader() {
   return (
     <div className="flex items-center justify-center min-h-[300px]">
-      <Loader2 className="h-7 w-7 text-emerald-600 animate-spin" />
+      <Loader2 className="h-7 w-7 text-brand-600 animate-spin" />
     </div>
   );
 }
@@ -173,11 +173,11 @@ function OAuthConsent({ lang }: { lang: Lang }) {
     }
   };
 
-  if (!details && !error) return <main className="min-h-screen bg-slate-950 flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-emerald-500" /></main>;
+  if (!details && !error) return <main className="min-h-screen bg-slate-950 flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-brand-500" /></main>;
   const scopes = details?.scope?.split(/\s+/).filter(Boolean) ?? [];
   return <main className="min-h-screen bg-slate-950 p-4 flex items-center justify-center" dir={ar ? 'rtl' : 'ltr'}>
     <section className="w-full max-w-lg rounded-2xl bg-white p-6 sm:p-8 text-slate-900 shadow-xl">
-      <ShieldCheck className="h-10 w-10 text-emerald-600 mb-4" />
+      <ShieldCheck className="h-10 w-10 text-brand-600 mb-4" />
       <h1 className="text-xl font-black mb-2">{ar ? 'السماح بالوصول' : 'Authorize access'}</h1>
       {error ? <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p> : <>
         <p className="text-sm text-slate-600 mb-5">{ar ? 'راجع التطبيق والصلاحيات المطلوبة قبل الموافقة.' : 'Review the application and requested permissions before approving.'}</p>
@@ -189,7 +189,7 @@ function OAuthConsent({ lang }: { lang: Lang }) {
         <p className="mt-4 text-xs text-slate-500">{ar ? 'وافق فقط إذا كنت تعرف التطبيق وتثق به.' : 'Approve only if you recognize and trust this application.'}</p>
         <div className="mt-6 grid grid-cols-2 gap-3">
           <button disabled={busy} onClick={() => void decide('deny')} className="rounded-xl border border-slate-300 py-3 text-sm font-bold disabled:opacity-50">{ar ? 'رفض' : 'Deny'}</button>
-          <button disabled={busy} onClick={() => void decide('approve')} className="rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white disabled:opacity-50">{busy ? <Loader2 className="h-5 w-5 animate-spin mx-auto" /> : (ar ? 'موافقة' : 'Approve')}</button>
+          <button disabled={busy} onClick={() => void decide('approve')} className="rounded-xl bg-brand-600 py-3 text-sm font-bold text-white disabled:opacity-50">{busy ? <Loader2 className="h-5 w-5 animate-spin mx-auto" /> : (ar ? 'موافقة' : 'Approve')}</button>
         </div>
       </>}
     </section>
@@ -213,7 +213,7 @@ export default function App() {
   const coachDirectEntry = entryPath === '/coach';
   const [mobileOpen, setMobileOpen] = useState(false);
   const [lang, setLang] = useState<Lang>('ar');
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(true);
   const [showNotifications, setShowNotifications] = useState(false);
   const [currentTime, setCurrentTime] = useState('');
   const [syncError, setSyncError] = useState<string | null>(null);
@@ -568,7 +568,7 @@ export default function App() {
   if (!authReady) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
-        <Loader2 className="h-8 w-8 text-emerald-600 animate-spin" />
+        <Loader2 className="h-8 w-8 text-brand-600 animate-spin" />
       </div>
     );
   }
@@ -583,7 +583,7 @@ export default function App() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
         <div className="text-center">
-          <Loader2 className="h-8 w-8 text-emerald-600 animate-spin mx-auto mb-3" />
+          <Loader2 className="h-8 w-8 text-brand-600 animate-spin mx-auto mb-3" />
           <p className="text-sm font-bold text-slate-500 dark:text-slate-400">{lang === 'ar' ? 'جاري تحميل البيانات...' : 'Loading data...'}</p>
         </div>
       </div>
@@ -596,7 +596,7 @@ export default function App() {
         <div className="text-center max-w-sm">
           <p className="text-sm font-black text-red-600 mb-2">{lang === 'ar' ? 'خطأ في تحميل البيانات' : 'Failed to load data'}</p>
           <p className="text-xs text-slate-500 mb-4">{loadError}</p>
-          <button onClick={loadAllData} className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-bold cursor-pointer hover:bg-emerald-500 transition">
+          <button onClick={loadAllData} className="px-4 py-2 rounded-lg bg-brand-600 text-white text-sm font-bold cursor-pointer hover:bg-brand-500 transition">
             {lang === 'ar' ? 'إعادة المحاولة' : 'Retry'}
           </button>
         </div>
@@ -637,7 +637,7 @@ export default function App() {
           <p className="text-sm text-slate-600 mb-5">{lang === 'ar'
             ? 'أنت مسجل الدخول حاليًا بحساب موجود في النظام. لحماية الحسابات، يجب أن يكون طلب الانضمام مرتبطًا بحساب المتقدم نفسه، وليس بحساب المدير أو ولي الأمر الحالي.'
             : 'You are currently signed in with an existing account. For account safety, the application must belong to the applicant’s own account, not the current manager or parent account.'}</p>
-          <button onClick={async () => { await handleLogout(); window.location.search = '?view=staff-registration'; }} className="w-full rounded-xl bg-emerald-600 py-3 font-bold text-white hover:bg-emerald-500">
+          <button onClick={async () => { await handleLogout(); window.location.search = '?view=staff-registration'; }} className="w-full rounded-xl bg-brand-600 py-3 font-bold text-white hover:bg-brand-500">
             {lang === 'ar' ? 'تسجيل الخروج والبدء بحساب المتقدم' : 'Sign out and continue with applicant account'}
           </button>
         </div>
@@ -692,7 +692,7 @@ export default function App() {
                 {viewTitles[safeCurrentTab]}
               </h1>
               <p className="text-[10px] sm:text-xs text-slate-400 font-semibold mt-0.5 flex items-center gap-1.5">
-                <Target className="h-3 w-3 text-emerald-500" />
+                <Target className="h-3 w-3 text-brand-500" />
                 {data.settings?.name?.trim() || t.academyName} · {roleLabels[activeRole]}
               </p>
             </div>
@@ -700,7 +700,7 @@ export default function App() {
 
           <div className="flex items-center gap-3">
             <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/50">
-              <Clock className="h-3.5 w-3.5 text-emerald-500" />
+              <Clock className="h-3.5 w-3.5 text-brand-500" />
               <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 tabular-nums">{currentTime}</span>
             </div>
 
@@ -733,7 +733,7 @@ export default function App() {
                             setData((p) => ({ ...p, notifications: read }));
                             void db.markNotificationsRead(unreadIds).then(loadAllData).catch(handleSyncError);
                           }}
-                          className="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 cursor-pointer"
+                          className="text-[11px] font-bold text-brand-600 hover:text-brand-700 cursor-pointer"
                         >
                           {t.markAllRead}
                         </button>
@@ -761,7 +761,7 @@ export default function App() {
             </div>
 
             <div className="flex items-center gap-2">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center text-white font-black text-sm shrink-0">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center text-white font-black text-sm shrink-0">
                 {currentUser.name.charAt(0)}
               </div>
               <div className="hidden sm:block">
