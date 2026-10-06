@@ -143,6 +143,11 @@ button[class~="bg-brand-600"]:hover {
   background-color: #27171d;
   border-color: #d71920;
 }
+.dark .parent-portal header button[class~="bg-white"] {
+  background-image: none !important;
+  background-color: #fff !important;
+  color: #0f172a !important;
+}
 :focus-visible { outline: 2px solid #ff6570; outline-offset: 3px; }
 @media print {
   .dark { color-scheme: light; }
