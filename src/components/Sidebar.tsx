@@ -102,7 +102,7 @@ export function Sidebar({
           {/* Logo header */}
           <div className="p-6 border-b border-slate-800 flex items-center gap-3 bg-emerald-950/20">
             <div className="relative group shrink-0">
-              <div className="absolute -inset-0.5 bg-gradient-to-tr from-emerald-500 to-amber-500 rounded-full blur opacity-40 group-hover:opacity-75 transition duration-1000" />
+              <div className="absolute -inset-0.5 rounded-full blur opacity-40 group-hover:opacity-75 transition duration-1000" style={{ backgroundColor: '#cbd5e1' }} />
               <div className="relative w-13 h-13 rounded-full overflow-hidden bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg ring-2 ring-emerald-400/30">
                 {configuredLogo && !logoIsImage
                   ? <img src="/1790474303638.jpg" alt={isAr ? 'شعار الأكاديمية' : 'Academy logo'} className="h-14 w-14 scale-110 rounded-full object-cover mix-blend-multiply" />
