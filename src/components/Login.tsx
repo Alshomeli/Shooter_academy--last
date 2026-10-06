@@ -91,7 +91,7 @@ export function Login({ onLogin, lang, setLang, recovery = false, registrationEn
   return <main className="min-h-screen flex items-center justify-center bg-slate-950 p-4" dir={ar ? 'rtl' : 'ltr'}>
     <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl p-6 sm:p-8 shadow-xl text-slate-900 dark:text-white">
       <div className="flex items-center justify-between mb-6">
-        <img src="/shooter-logo.png" alt={text('أكاديمية شوتر', 'Shooter Academy')} className="h-24 w-24 object-contain drop-shadow-xl" />
+        <img src="/shooter-logo.svg" alt={text('أكاديمية شوتر', 'Shooter Academy')} className="h-32 w-32 object-contain drop-shadow-xl" />
         <button type="button" className="text-sm text-brand-600 font-bold" onClick={() => setLang(ar ? 'en' : 'ar')}>{ar ? 'English' : 'العربية'}</button>
       </div>
       <h1 className="text-2xl font-black mb-2">{text('أكاديمية شوتر', 'Shooter Academy')}</h1>
