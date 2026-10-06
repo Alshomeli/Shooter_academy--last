@@ -127,9 +127,11 @@ export function Sidebar({
           mobileOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'
         } ${darkMode ? 'bg-slate-950 text-slate-100 border-l border-slate-900' : 'bg-slate-900 text-white border-l border-slate-800'}`}
       >
-        <div>
+        <div className="flex-1 min-h-0 flex flex-col">
           {/* Logo header */}
-          <div className="relative px-4 pt-4 pb-5 border-b border-slate-800 bg-brand-950/20 text-center">
+          <div className="relative shrink-0 px-4 pt-3 pb-4 border-b border-slate-800 bg-gradient-to-b from-brand-950/35 to-slate-950 text-center overflow-hidden">
+            <div className="pointer-events-none absolute -top-10 -right-12 h-32 w-32 rotate-45 bg-brand-600/20" />
+            <div className="pointer-events-none absolute -bottom-14 -left-12 h-32 w-32 rotate-45 bg-brand-600/15" />
             <button
               onClick={() => setMobileOpen(false)}
               aria-label={lang === 'ar' ? 'إغلاق القائمة' : 'Close menu'}
@@ -137,7 +139,7 @@ export function Sidebar({
             >
               <X className="h-5 w-5" />
             </button>
-            <div className="mx-auto w-36 h-32 flex items-center justify-center overflow-hidden">
+            <div className="relative mx-auto w-40 h-32 flex items-center justify-center overflow-hidden">
               <img
                 src={logoIsImage ? configuredLogo : fallbackLogo}
                 onError={(e) => { e.currentTarget.src = fallbackLogo; }}
@@ -153,7 +155,7 @@ export function Sidebar({
           </div>
 
           {/* Signed-in identity and permission level (assigned by a manager) */}
-          <div className="p-4 mx-4 my-3 rounded-xl bg-slate-800/40 border border-slate-700/40">
+          <div className="shrink-0 p-3 mx-4 my-3 rounded-xl bg-slate-800/40 border border-slate-700/40">
             <div className="w-full bg-slate-950 text-white text-[11px] font-semibold py-2 px-2.5 rounded-lg border border-slate-700">
               {ROLE_OPTIONS.find((r) => r.value === activeRole)?.label ?? activeRole}
             </div>
@@ -164,12 +166,12 @@ export function Sidebar({
           </div>
 
           {/* Nav items */}
-          <nav className="px-3 pb-4 overflow-y-auto max-h-[calc(100vh-500px)]">
+          <nav className="flex-1 min-h-0 px-3 pb-4 overflow-y-auto overscroll-contain">
             {visibleGroups.map((group, groupIndex) => (
-              <div key={group.id} className={groupIndex > 0 ? 'mt-4 pt-4 border-t border-slate-700/80' : ''}>
-                <div className="px-3 mb-2 flex items-center gap-2" aria-label={isAr ? group.labelAr : group.labelEn}>
-                  <span className="h-1.5 w-1.5 rounded-full bg-brand-500 shrink-0" />
-                  <span className="text-[10px] font-black tracking-wide text-slate-300 uppercase">
+              <div key={group.id} className={groupIndex > 0 ? 'mt-3 pt-3 border-t border-slate-700/80' : ''}>
+                <div className="px-2 mb-1.5 flex items-center gap-2" aria-label={isAr ? group.labelAr : group.labelEn}>
+                  <span className="h-1.5 w-1.5 rounded-full bg-brand-500 shrink-0 shadow-[0_0_8px_rgba(239,68,68,0.65)]" />
+                  <span className="text-[11px] font-black tracking-wide text-slate-300 uppercase">
                     {isAr ? group.labelAr : group.labelEn}
                   </span>
                   <span className="h-px flex-1 bg-slate-700/70" />
@@ -184,8 +186,8 @@ export function Sidebar({
                         onClick={() => handleNav(item.id)}
                         className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer text-right ${
                           active
-                            ? 'bg-brand-600 text-white shadow-lg shadow-brand-900/20'
-                            : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
+                            ? 'bg-gradient-to-l from-brand-600 to-brand-500 text-white shadow-lg shadow-brand-950/30 ring-1 ring-brand-400/20'
+                            : 'text-slate-300 hover:bg-slate-800/70 hover:text-white'
                         }`}
                       >
                         <Icon className="h-4 w-4 shrink-0" />
@@ -200,7 +202,7 @@ export function Sidebar({
         </div>
 
         {/* Footer controls */}
-        <div className="p-4 border-t border-slate-800 space-y-2">
+        <div className="shrink-0 p-4 border-t border-slate-800 space-y-2 bg-slate-950/70">
           <div className="flex items-center gap-2">
             <button
               onClick={() => setDarkMode(!darkMode)}
