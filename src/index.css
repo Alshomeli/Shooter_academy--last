@@ -102,6 +102,14 @@ body { -webkit-font-smoothing: antialiased; }
   background-image: linear-gradient(135deg, #171b22, #10161e);
   border-color: #263240;
 }
+.dark .receipt-print-root [class~="bg-white"],
+.dark .receipt-print-root [class~="bg-slate-50"],
+.dark .receipt-print-root [class*="rounded"] {
+  background-image: none !important;
+  background-color: #fff !important;
+  border-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
 button[class~="bg-brand-600"] {
   background-image: linear-gradient(115deg, #f20d20, #d71920 70%, #b81019);
 }
