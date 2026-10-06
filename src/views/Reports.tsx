@@ -4,9 +4,10 @@ import {
   BarChart3, Download, TrendingUp, Users, Trophy, Wallet,
   Activity, Target, Award, Percent, Printer, Calendar,
 } from 'lucide-react';
+import { averageEvaluationScores, evaluationFrameworkScores } from '@/lib/evaluation-scores';
 import type {
   Player, Team, Staff, Match, Training, Transaction, Subscription,
-  Attendance, Lang, Role, Settings,
+  Attendance, Lang, Role, Settings, PlayerEvaluation,
 } from '@/types';
 import { PageHeader, StatCard } from '@/components/ui';
 import { tr, monthsArray, roleLabel, positionLabel } from '@/lib/i18n';
@@ -21,6 +22,7 @@ interface ReportsProps {
   transactions: Transaction[];
   subscriptions: Subscription[];
   attendance: Attendance[];
+  evaluations: PlayerEvaluation[];
   settings?: Settings | null;
   activeRole: Role;
   lang: Lang;
@@ -95,7 +97,7 @@ const POSITION_COLORS: Record<string, string> = {
   };
 export function Reports({
   players, teams, staff, matches, transactions,
-  subscriptions, attendance, settings, lang,
+  subscriptions, attendance, evaluations, settings, activeRole, lang,
 }: ReportsProps) {
   const t = tr(lang);
   const isAr = lang === 'ar';
@@ -130,6 +132,13 @@ export function Reports({
   }, [subscriptions, rangeFrom, rangeTo]);
 
 
+  const inRange = (date: string) => (!rangeFrom || date >= rangeFrom) && (!rangeTo || date <= rangeTo);
+  const filteredMatches = useMemo(() => matches.filter((m) => inRange(m.matchDate)), [matches, rangeFrom, rangeTo]);
+  const filteredAttendance = useMemo(() => attendance.filter((a) => inRange(a.sessionDate)), [attendance, rangeFrom, rangeTo]);
+  const filteredEvaluations = useMemo(() => evaluations.filter((e) => inRange(e.evaluationDate)), [evaluations, rangeFrom, rangeTo]);
+
+
+
   /* Financial Summary */
   const financial = useMemo(() => {
     const revenueTotal = filteredTransactions.filter((tx) => tx.type === 'revenue').reduce((s, tx) => s + tx.amount, 0);
@@ -159,14 +168,14 @@ export function Reports({
 
   /* Performance Analytics */
   const performance = useMemo(() => {
-    const completed = matches.filter((m) => m.result !== 'scheduled');
-    const wins = matches.filter((m) => m.result === 'win').length;
-    const draws = matches.filter((m) => m.result === 'draw').length;
-    const losses = matches.filter((m) => m.result === 'loss').length;
-    const scheduled = matches.filter((m) => m.result === 'scheduled').length;
+    const completed = filteredMatches.filter((m) => m.result !== 'scheduled');
+    const wins = filteredMatches.filter((m) => m.result === 'win').length;
+    const draws = filteredMatches.filter((m) => m.result === 'draw').length;
+    const losses = filteredMatches.filter((m) => m.result === 'loss').length;
+    const scheduled = filteredMatches.filter((m) => m.result === 'scheduled').length;
     const winRate = completed.length > 0 ? Math.round((wins / completed.length) * 100) : 0;
-    const totalGoals = matches.reduce((s, m) => s + m.academyScore, 0);
-    const goalsConceded = matches.reduce((s, m) => s + m.opponentScore, 0);
+    const totalGoals = filteredMatches.reduce((s, m) => s + m.academyScore, 0);
+    const goalsConceded = filteredMatches.reduce((s, m) => s + m.opponentScore, 0);
     const goalDifference = totalGoals - goalsConceded;
 
     return {
@@ -179,7 +188,7 @@ export function Reports({
         { label: t.scheduled, value: scheduled, color: '#94a3b8' },
       ],
     };
-  }, [matches, t]);
+  }, [filteredMatches, t]);
 
   /* Player Statistics */
   const playerStats = useMemo(() => {
@@ -199,13 +208,17 @@ export function Reports({
 
   /* Attendance Report */
   const attendanceStats = useMemo(() => {
-    const totalSessions = attendance.length;
-    const present = attendance.filter((a) => a.status === 'present').length;
-    const absent = attendance.filter((a) => a.status === 'absent').length;
-    const excused = attendance.filter((a) => a.status === 'excused').length;
-    const presentRate = totalSessions > 0 ? Math.round((present / totalSessions) * 100) : 0;
-    const absentRate = totalSessions > 0 ? Math.round((absent / totalSessions) * 100) : 0;
-    const excusedRate = totalSessions > 0 ? Math.round((excused / totalSessions) * 100) : 0;
+    const sessionKeys = new Set(filteredAttendance.map((a) =>
+      a.trainingId ? `training:${a.trainingId}` : a.matchId ? `match:${a.matchId}` : `legacy:${a.sessionType}:${a.sessionDate}`
+    ));
+    const totalSessions = sessionKeys.size;
+    const totalRecords = filteredAttendance.length;
+    const present = filteredAttendance.filter((a) => a.status === 'present').length;
+    const absent = filteredAttendance.filter((a) => a.status === 'absent').length;
+    const excused = filteredAttendance.filter((a) => a.status === 'excused').length;
+    const presentRate = totalRecords > 0 ? Math.round((present / totalRecords) * 100) : 0;
+    const absentRate = totalRecords > 0 ? Math.round((absent / totalRecords) * 100) : 0;
+    const excusedRate = totalRecords > 0 ? Math.round((excused / totalRecords) * 100) : 0;
     return {
       totalSessions, present, absent, excused, presentRate, absentRate, excusedRate,
       distribution: [
@@ -214,7 +227,39 @@ export function Reports({
         { label: t.excused, value: excused, color: '#f59e0b' },
       ],
     };
-  }, [attendance, t]);
+  }, [filteredAttendance, t]);
+
+  /* Player Development Analytics */
+  const developmentStats = useMemo(() => {
+    const published = filteredEvaluations.filter(ev => ev.status === 'published');
+    const byPlayer = new Map<string, PlayerEvaluation[]>();
+    published.forEach(ev => {
+      const list = byPlayer.get(ev.playerId) || [];
+      list.push(ev);
+      byPlayer.set(ev.playerId, list);
+    });
+    byPlayer.forEach(list => list.sort((a, b) => a.evaluationDate.localeCompare(b.evaluationDate)));
+    const histories = Array.from(byPlayer.values()).filter(list => list.length >= 2);
+    const average = (values: number[]) => averageEvaluationScores(values);
+    const deltas = (pick: (ev: PlayerEvaluation) => number | null) => histories.flatMap(list => {
+      const first = pick(list[0]);
+      const latest = pick(list[list.length - 1]);
+      return first != null && latest != null ? [latest - first] : [];
+    });
+    const latestReviews = Array.from(byPlayer.values()).map(list => list[list.length - 1]);
+    const today = new Date().toISOString().slice(0, 10);
+    return {
+      publishedCount: published.length,
+      playersWithHistory: histories.length,
+      reassessmentDue: latestReviews.filter(ev => ev.reassessmentDate && ev.reassessmentDate <= today).length,
+      changes: [
+        { label: isAr ? 'فني' : 'Technical', value: average(deltas(ev => evaluationFrameworkScores(ev).technical)) },
+        { label: isAr ? 'تكتيكي' : 'Tactical', value: average(deltas(ev => evaluationFrameworkScores(ev).tactical)) },
+        { label: isAr ? 'بدني' : 'Physical', value: average(deltas(ev => evaluationFrameworkScores(ev).physical)) },
+        { label: isAr ? 'نفسي واجتماعي' : 'Psychosocial', value: average(deltas(ev => evaluationFrameworkScores(ev).psychosocial)) },
+      ],
+    };
+  }, [filteredEvaluations, isAr]);
 
   /* Staff Summary */
   const staffStats = useMemo(() => {
@@ -247,9 +292,9 @@ export function Reports({
         <button onClick={() => exportReportCsv('players', players, teams)} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition cursor-pointer shadow-sm">
           <Download className="h-4 w-4" /> {t.exportPlayersCsv}
         </button>
-        <button onClick={() => exportReportCsv('financial', transactions, teams)} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 transition cursor-pointer shadow-sm">
+        {(activeRole === 'manager' || activeRole === 'accountant') && <button onClick={() => exportReportCsv('financial', transactions, teams)} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 transition cursor-pointer shadow-sm">
           <Download className="h-4 w-4" /> {t.exportFinancialCsv}
-        </button>
+        </button>}
         <button onClick={() => window.print()} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer shadow-sm">
           <Printer className="h-4 w-4" /> {t.print}
         </button>
@@ -288,8 +333,13 @@ export function Reports({
       </div>
 
       {/* Financial Summary */}
-      <SectionCard>
+      {(activeRole === 'manager' || activeRole === 'accountant') && <SectionCard>
         <SectionHeader icon={<Wallet className="h-5 w-5" />} title={t.financialSummary} subtitle={t.financialSummarySubtitle} gradient="from-blue-500 to-blue-600" />
+        <div className="mb-4 rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/20 px-4 py-3 text-xs font-semibold text-amber-800 dark:text-amber-300">
+          {isAr
+            ? 'ملاحظة: مبالغ الإيرادات والمصروفات تعتمد على الحركات المالية المسجلة فقط، بينما نسبة التحصيل تعتمد على حالة الاشتراكات. لا يتم إنشاء حركات مالية رجعية للبيانات التاريخية تلقائيًا.'
+            : 'Note: revenue and expense totals use recorded financial transactions, while collection rate uses subscription status. Historical payments are not backfilled automatically.'}
+        </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <StatCard icon={<TrendingUp className="h-5 w-5" />} label={t.totalRevenue} value={`${financial.revenueTotal.toLocaleString()} ${t.currency}`} color="emerald" />
           <StatCard icon={<Wallet className="h-5 w-5" />} label={t.totalExpenses} value={`${financial.expenseTotal.toLocaleString()} ${t.currency}`} color="red" />
@@ -310,10 +360,10 @@ export function Reports({
             <LineChart data={financial.netTrend} color="#3b82f6" height={180} />
           </div>
         </div>
-      </SectionCard>
+      </SectionCard>}
 
       {/* Performance Analytics */}
-      <SectionCard>
+      {(activeRole === 'manager' || activeRole === 'coach') && <SectionCard>
         <SectionHeader icon={<Trophy className="h-5 w-5" />} title={t.performanceAnalytics} subtitle={t.performanceAnalyticsSubtitle} gradient="from-amber-500 to-amber-600" />
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <StatCard icon={<Trophy className="h-5 w-5" />} label={t.winRate} value={`${performance.winRate}%`} sublabel={`${performance.wins} ${t.wins} · ${performance.completed.length}`} color="amber" />
@@ -336,7 +386,7 @@ export function Reports({
             </div>
           </div>
         </div>
-      </SectionCard>
+      </SectionCard>}
 
       {/* Player Statistics */}
       <SectionCard>
@@ -358,6 +408,30 @@ export function Reports({
           </div>
         </div>
       </SectionCard>
+
+      {/* Player Development Analytics */}
+      {(activeRole === 'manager' || activeRole === 'coach') && <SectionCard>
+        <SectionHeader icon={<TrendingUp className="h-5 w-5" />} title={isAr ? 'تحليلات تطور اللاعبين' : 'Player Development Analytics'} subtitle={isAr ? 'مؤشرات مجمعة من التقييمات المنشورة، بدون ترتيب أو مقارنة بين اللاعبين.' : 'Aggregate indicators from published reviews, without ranking or comparing players.'} gradient="from-emerald-500 to-teal-600" />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+          <StatCard icon={<Award className="h-5 w-5" />} label={isAr ? 'التقييمات المنشورة' : 'Published reviews'} value={developmentStats.publishedCount} color="emerald" />
+          <StatCard icon={<TrendingUp className="h-5 w-5" />} label={isAr ? 'لاعبون لديهم سجل تطور' : 'Players with progress history'} value={developmentStats.playersWithHistory} sublabel={isAr ? 'تقييمان أو أكثر' : '2+ published reviews'} color="blue" />
+          <StatCard icon={<Calendar className="h-5 w-5" />} label={isAr ? 'إعادة تقييم مستحقة' : 'Reassessments due'} value={developmentStats.reassessmentDue} color="amber" />
+        </div>
+        <div className="rounded-xl bg-slate-50 dark:bg-slate-800/40 p-5">
+          <p className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-4">{isAr ? 'متوسط التغير من أول تقييم إلى أحدث تقييم لكل لاعب' : 'Average first-to-latest change per player'}</p>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {developmentStats.changes.map(item => (
+              <div key={item.label} className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
+                <p className="text-[11px] font-bold text-slate-400">{item.label}</p>
+                <p className={`mt-1 text-xl font-black ${item.value == null ? 'text-slate-400' : item.value > 0.05 ? 'text-emerald-600' : item.value < -0.05 ? 'text-amber-600' : 'text-slate-700 dark:text-slate-200'}`}>
+                  {item.value == null ? '—' : `${item.value > 0 ? '+' : ''}${item.value.toFixed(1)}`}
+                </p>
+                <p className="text-[9px] text-slate-400 mt-1">{isAr ? 'نقطة من 5' : 'points out of 5'}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </SectionCard>}
 
       {/* Attendance Report */}
       <SectionCard>
@@ -397,7 +471,7 @@ export function Reports({
       </SectionCard>
 
       {/* Staff Summary */}
-      <SectionCard>
+      {activeRole === 'manager' && <SectionCard>
         <SectionHeader icon={<BarChart3 className="h-5 w-5" />} title={t.staffSummary} subtitle={t.staffSummarySubtitle} gradient="from-slate-600 to-slate-700" />
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
           <StatCard icon={<Users className="h-5 w-5" />} label={t.totalStaffCount} value={staffStats.totalStaff} sublabel={t.coachesAndStaff} color="slate" />
@@ -408,7 +482,7 @@ export function Reports({
           <p className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-4">{t.staffByRole}</p>
           <BarChart data={staffStats.roleBars} height={180} />
         </div>
-      </SectionCard>
+      </SectionCard>}
     </div>
   );
 }

@@ -30,7 +30,7 @@ export function Teams({ teams, staff, players, onTeamsChange, onRefresh, activeR
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState('');
 
-  const canEdit = activeRole === 'manager' || activeRole === 'coach';
+  const canEdit = activeRole === 'manager';
 
   const coachOf = (id: string) => staff.find((s) => s.id === id);
   const playersIn = (teamId: string) => players.filter((p) => p.teamId === teamId).length;

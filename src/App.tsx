@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef, Suspense, lazy, Component, type ReactNode } from 'react';
-import { Menu, Bell, Clock, Target, Loader2, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Menu, Bell, Clock, Target, Loader2, AlertTriangle, RefreshCw, ShieldCheck } from 'lucide-react';
 import { db, prefs, signOut, isRegistering } from '@/lib/store';
 import { supabase } from '@/lib/supabase';
 import type { Session } from '@supabase/supabase-js';
@@ -34,6 +34,7 @@ const Evaluations = lazy(() => import('@/views/Evaluations').then(m => ({ defaul
 const AuditLogs = lazy(() => import('@/views/AuditLogs').then(m => ({ default: m.AuditLogs })));
 const Messages = lazy(() => import('@/views/Messages').then(m => ({ default: m.Messages })));
 const Registration = lazy(() => import('@/views/Registration').then(m => ({ default: m.Registration })));
+const StaffRegistration = lazy(() => import('@/views/StaffRegistration').then(m => ({ default: m.StaffRegistration })));
 const RegistrationAdmin = lazy(() => import('@/views/RegistrationAdmin').then(m => ({ default: m.RegistrationAdmin })));
 
 /* ── Error Boundary ── */
@@ -102,15 +103,114 @@ const EMPTY_DATA: DataState = {
   auditLogs: [], loginLogs: [],
 };
 
+type OAuthAuthorizationDetails = {
+  authorization_id?: string;
+  redirect_url?: string;
+  redirect_uri?: string;
+  scope?: string;
+  client?: { name?: string };
+};
+
+async function oauthConsentRequest(path: string, method = 'GET', body?: unknown): Promise<OAuthAuthorizationDetails> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) throw new Error('AUTH_REQUIRED');
+  const base = String(import.meta.env.VITE_SUPABASE_URL || '').replace(/\/$/, '');
+  const apiKey = String(import.meta.env.VITE_SUPABASE_ANON_KEY || '');
+  const response = await fetch(`${base}/auth/v1${path}`, {
+    method,
+    headers: {
+      apikey: apiKey,
+      Authorization: `Bearer ${session.access_token}`,
+      ...(body ? { 'Content-Type': 'application/json' } : {}),
+    },
+    ...(body ? { body: JSON.stringify(body) } : {}),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error('OAUTH_REQUEST_FAILED');
+  return data as OAuthAuthorizationDetails;
+}
+
+function OAuthConsent({ lang }: { lang: Lang }) {
+  const ar = lang === 'ar';
+  const authorizationId = new URLSearchParams(window.location.search).get('authorization_id');
+  const [details, setDetails] = useState<OAuthAuthorizationDetails | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let mounted = true;
+    if (!authorizationId) {
+      setError(ar ? 'طلب التفويض غير صالح.' : 'Invalid authorization request.');
+      return () => { mounted = false; };
+    }
+    void oauthConsentRequest(`/oauth/authorizations/${encodeURIComponent(authorizationId)}`)
+      .then((data) => {
+        if (!mounted) return;
+        if (!data.authorization_id && data.redirect_url) {
+          window.location.assign(data.redirect_url);
+          return;
+        }
+        setDetails(data);
+      })
+      .catch(() => mounted && setError(ar ? 'تعذر تحميل طلب التفويض.' : 'Could not load the authorization request.'));
+    return () => { mounted = false; };
+  }, [authorizationId, ar]);
+
+  const decide = async (action: 'approve' | 'deny') => {
+    if (!authorizationId || busy) return;
+    setBusy(true); setError('');
+    try {
+      const data = await oauthConsentRequest(
+        `/oauth/authorizations/${encodeURIComponent(authorizationId)}/consent`,
+        'POST',
+        { action },
+      );
+      if (!data.redirect_url) throw new Error('MISSING_REDIRECT');
+      window.location.assign(data.redirect_url);
+    } catch {
+      setError(ar ? 'تعذر إكمال طلب التفويض. حاول مرة أخرى.' : 'Could not complete authorization. Please try again.');
+      setBusy(false);
+    }
+  };
+
+  if (!details && !error) return <main className="min-h-screen bg-slate-950 flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-emerald-500" /></main>;
+  const scopes = details?.scope?.split(/\s+/).filter(Boolean) ?? [];
+  return <main className="min-h-screen bg-slate-950 p-4 flex items-center justify-center" dir={ar ? 'rtl' : 'ltr'}>
+    <section className="w-full max-w-lg rounded-2xl bg-white p-6 sm:p-8 text-slate-900 shadow-xl">
+      <ShieldCheck className="h-10 w-10 text-emerald-600 mb-4" />
+      <h1 className="text-xl font-black mb-2">{ar ? 'السماح بالوصول' : 'Authorize access'}</h1>
+      {error ? <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p> : <>
+        <p className="text-sm text-slate-600 mb-5">{ar ? 'راجع التطبيق والصلاحيات المطلوبة قبل الموافقة.' : 'Review the application and requested permissions before approving.'}</p>
+        <div className="rounded-xl border border-slate-200 p-4 space-y-3">
+          <p className="text-sm"><strong>{ar ? 'التطبيق:' : 'Application:'}</strong> {details?.client?.name || (ar ? 'تطبيق خارجي' : 'External application')}</p>
+          {details?.redirect_uri && <p className="text-xs break-all text-slate-500"><strong>{ar ? 'وجهة العودة:' : 'Redirect:'}</strong> {details.redirect_uri}</p>}
+          {scopes.length > 0 && <div><p className="text-sm font-bold mb-2">{ar ? 'الصلاحيات المطلوبة:' : 'Requested permissions:'}</p><ul className="list-disc px-5 text-sm text-slate-600">{scopes.map((scope) => <li key={scope}>{scope}</li>)}</ul></div>}
+        </div>
+        <p className="mt-4 text-xs text-slate-500">{ar ? 'وافق فقط إذا كنت تعرف التطبيق وتثق به.' : 'Approve only if you recognize and trust this application.'}</p>
+        <div className="mt-6 grid grid-cols-2 gap-3">
+          <button disabled={busy} onClick={() => void decide('deny')} className="rounded-xl border border-slate-300 py-3 text-sm font-bold disabled:opacity-50">{ar ? 'رفض' : 'Deny'}</button>
+          <button disabled={busy} onClick={() => void decide('approve')} className="rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white disabled:opacity-50">{busy ? <Loader2 className="h-5 w-5 animate-spin mx-auto" /> : (ar ? 'موافقة' : 'Approve')}</button>
+        </div>
+      </>}
+    </section>
+  </main>;
+}
+
 export default function App() {
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [activeRole, setActiveRole] = useState<Role>('manager');
   const [currentTab, setCurrentTab] = useState<ViewId>(() => {
+    const path = window.location.pathname.replace(/\/+$/, '') || '/';
+    if (path === '/parent') return 'registration';
+    if (path === '/coach') return 'staff-registration';
     const params = new URLSearchParams(window.location.search);
     const view = params.get('view') || window.location.hash.replace('#', '');
-    if (view === 'registration' || view === 'registration-admin') return view as ViewId;
+    if (view === 'registration' || view === 'staff-registration' || view === 'registration-admin') return view as ViewId;
     return 'dashboard';
   });
+  const entryPath = window.location.pathname.replace(/\/+$/, '') || '/';
+  const parentDirectEntry = entryPath === '/parent';
+  const coachDirectEntry = entryPath === '/coach';
   const [mobileOpen, setMobileOpen] = useState(false);
   const [lang, setLang] = useState<Lang>('ar');
   const [darkMode, setDarkMode] = useState(false);
@@ -126,6 +226,8 @@ export default function App() {
   const dataRef = useRef(data);
   dataRef.current = data;
   const loadSequence = useRef(0);
+  const loadInFlight = useRef<Promise<void> | null>(null);
+  const refreshQueued = useRef(false);
   const userRef = useRef(currentUser?.authUserId);
   userRef.current = currentUser?.authUserId;
 
@@ -146,7 +248,11 @@ export default function App() {
         void db.getCurrentUser().then(member => {
           if (request !== generation) return;
           setCurrentUser(member);
-          if (member) setActiveRole(member.role);
+          if (member) {
+            setActiveRole(member.role);
+            if (member.registrationOnly && member.registrationMode === 'staff') setCurrentTab('staff-registration');
+            else if (member.role === 'parent' && !member.registrationOnly) setCurrentTab('dashboard');
+          }
           setAuthReady(true);
         }).catch(() => {
           if (request === generation) { setCurrentUser(null); setAuthReady(true); }
@@ -158,9 +264,14 @@ export default function App() {
 
   const loadAllData = useCallback(async () => {
     if (!currentUser) return;
+    if (loadInFlight.current) {
+      refreshQueued.current = true;
+      return loadInFlight.current;
+    }
     const request = ++loadSequence.current;
     const userId = currentUser.authUserId;
     const stillCurrent = () => request === loadSequence.current && userRef.current === userId;
+    const run = (async () => {
     try {
       if (!dataRef.current.settings && !currentUser?.registrationOnly) setLoading(true);
       setLoadError(null);
@@ -175,7 +286,7 @@ export default function App() {
         auditLogs, loginLogs,
       ] = await Promise.all([
         db.getSettings(),
-        parent ? [] : db.getStaff(), parent ? [] : db.getTeams(), db.getPlayers(), db.getParents(),
+        parent ? [] : db.getStaff(), parent ? [] : db.getTeams(), db.getPlayers(), (parent || role === 'accountant') ? [] : db.getParents(),
         role === 'coach' ? [] : db.getSubscriptions(), db.getAttendance(), parent ? [] : db.getMatches(),
         parent ? [] : db.getTrainings(), finance ? db.getTransactions() : [], parent ? [] : db.getTournaments(),
         db.getEvaluations(), db.getNotifications(),
@@ -192,7 +303,15 @@ export default function App() {
       if (stillCurrent()) setLoadError('تعذر تحميل البيانات. يرجى المحاولة مرة أخرى. / Could not load your data. Please try again.');
     } finally {
       if (stillCurrent()) setLoading(false);
+      loadInFlight.current = null;
+      if (refreshQueued.current && userRef.current === userId) {
+        refreshQueued.current = false;
+        window.setTimeout(() => { void loadAllData(); }, 0);
+      }
     }
+    })();
+    loadInFlight.current = run;
+    return run;
   }, [currentUser]);
 
   useEffect(() => {
@@ -220,12 +339,12 @@ export default function App() {
     const tables = [
       'staff', 'teams', 'players', 'parents', 'subscriptions', 'attendance',
       'matches', 'trainings', 'transactions', 'tournaments', 'player_evaluations',
-      'notifications', 'academy_settings',
+      'notifications', 'notification_reads', 'academy_settings',
     ];
     let debounce: ReturnType<typeof setTimeout> | null = null;
     const handleChange = () => {
       if (debounce) clearTimeout(debounce);
-      debounce = setTimeout(() => loadAllData(), 300);
+      debounce = setTimeout(() => void loadAllData(), 500);
     };
     const channels = tables.map((t) => db.subscribe(t, handleChange));
     const refreshVisible = () => { if (document.visibilityState === 'visible') void loadAllData(); };
@@ -242,7 +361,7 @@ export default function App() {
     const updateClock = () => {
       try {
         const formatter = new Intl.DateTimeFormat(lang === 'ar' ? 'ar-SA' : 'en-US', {
-          timeZone: 'Asia/Riyadh',
+          timeZone: 'Asia/Bahrain',
           year: 'numeric', month: '2-digit', day: '2-digit',
           hour: '2-digit', minute: '2-digit', second: '2-digit',
           hour12: true,
@@ -281,7 +400,10 @@ export default function App() {
   const handleLogin = (user: CurrentUser) => {
     setCurrentUser(user);
     setActiveRole(user.role);
-    setCurrentTab(new URLSearchParams(window.location.search).get('view') === 'registration' ? 'registration' : 'dashboard');
+    const view = new URLSearchParams(window.location.search).get('view');
+    setCurrentTab(user.registrationOnly && user.registrationMode === 'staff'
+      ? 'staff-registration'
+      : (user.role === 'parent' && !user.registrationOnly ? 'dashboard' : (view === 'registration' || view === 'staff-registration' ? view : 'dashboard')));
   };
 
   const handleLogout = async () => {
@@ -357,6 +479,7 @@ export default function App() {
     'ai-center': t.aiCenter,
     messages: t.messages,
     registration: t.registration,
+    'staff-registration': lang === 'ar' ? 'طلب موظف / مدرب' : 'Staff / coach application',
     'registration-admin': t.registrationAdmin,
     settings: t.settings,
   };
@@ -369,24 +492,43 @@ export default function App() {
     parent: t.parent,
   };
 
+  const allowedViewsByRole: Record<Exclude<Role, 'parent'>, ViewId[]> = {
+    manager: ['dashboard', 'approvals', 'registration-admin', 'players', 'parents', 'teams', 'staff', 'subscriptions', 'attendance', 'schedules', 'tournaments', 'evaluations', 'reports', 'audit-logs', 'messages', 'ai-center', 'settings'],
+    accountant: ['dashboard', 'subscriptions', 'reports', 'messages', 'ai-center'],
+    coach: ['dashboard', 'players', 'parents', 'teams', 'attendance', 'schedules', 'tournaments', 'evaluations', 'reports', 'messages', 'ai-center'],
+    receptionist: ['dashboard', 'players', 'parents', 'teams', 'subscriptions', 'attendance', 'tournaments', 'reports', 'messages', 'ai-center'],
+  };
+
+  const safeCurrentTab: ViewId = activeRole === 'parent'
+    ? 'dashboard'
+    : (allowedViewsByRole[activeRole]?.includes(currentTab) ? currentTab : 'dashboard');
+
+  useEffect(() => {
+    if (!currentUser || currentUser.registrationOnly || currentUser.role === 'parent') return;
+    if (currentTab === 'staff-registration') return;
+    if (!allowedViewsByRole[currentUser.role as Exclude<Role, 'parent'>]?.includes(currentTab)) {
+      setCurrentTab('dashboard');
+    }
+  }, [currentUser, currentTab]);
+
   const renderView = () => {
-    switch (currentTab) {
+    switch (safeCurrentTab) {
       case 'dashboard':
-        return <Dashboard players={data.players} subscriptions={data.subscriptions} matches={data.matches} transactions={data.transactions} staff={data.staff} teams={data.teams} parents={data.parents} setCurrentTab={setCurrentTab} activeRole={activeRole} lang={lang} />;
+        return <Dashboard players={data.players} subscriptions={data.subscriptions} matches={data.matches} transactions={data.transactions} staff={data.staff} teams={data.teams} parents={data.parents} evaluations={data.evaluations} setCurrentTab={setCurrentTab} activeRole={activeRole} lang={lang} />;
       case 'approvals':
         return <Approvals teams={data.teams} onRefresh={loadAllData} players={data.players} staff={data.staff} onPlayersChange={savePlayers} onStaffChange={saveStaff} activeRole={activeRole} lang={lang} />;
       case 'players':
         return <Players players={data.players} parents={data.parents} teams={data.teams} evaluations={data.evaluations} onPlayersChange={savePlayers} activeRole={activeRole} lang={lang} />;
       case 'parents':
-        return <Parents parents={data.parents} players={data.players} teams={data.teams} subscriptions={data.subscriptions} onParentsChange={saveParents} activeRole={activeRole} lang={lang} />;
+        return <Parents parents={data.parents} players={data.players} teams={data.teams} subscriptions={data.subscriptions} onParentsChange={saveParents} onRefresh={loadAllData} activeRole={activeRole} lang={lang} />;
       case 'teams':
         return <Teams teams={data.teams} staff={data.staff} players={data.players} onTeamsChange={saveTeams} onRefresh={loadAllData} activeRole={activeRole} lang={lang} />;
       case 'staff':
         return <StaffView staff={data.staff} teams={data.teams} players={data.players} onStaffChange={saveStaff} onRefresh={loadAllData} activeRole={activeRole} lang={lang} />;
       case 'subscriptions':
-        return <Subscriptions onPayment={async (sub, method) => { await db.recordPayment(sub, method); await loadAllData(); }} subscriptions={data.subscriptions} transactions={data.transactions} players={data.players} parents={data.parents} staff={data.staff} settings={data.settings} onSubscriptionsChange={saveSubscriptions} onTransactionsChange={saveTransactions} activeRole={activeRole} lang={lang} />;
+        return <Subscriptions onPayment={async (sub, method) => { await db.recordPayment(sub, method); await loadAllData(); }} subscriptions={data.subscriptions} transactions={data.transactions} players={data.players} parents={data.parents} staff={data.staff} settings={data.settings} onSubscriptionsChange={saveSubscriptions} onTransactionsChange={saveTransactions} onRefresh={loadAllData} activeRole={activeRole} lang={lang} />;
       case 'attendance':
-        return <AttendanceView players={data.players} teams={data.teams} attendance={data.attendance} onAttendanceChange={saveAttendance} activeRole={activeRole} lang={lang} />;
+        return <AttendanceView players={data.players} teams={data.teams} matches={data.matches} trainings={data.trainings} attendance={data.attendance} onAttendanceChange={saveAttendance} activeRole={activeRole} lang={lang} />;
       case 'schedules':
         return <Schedules matches={data.matches} trainings={data.trainings} teams={data.teams} players={data.players} onMatchesChange={saveMatches} onTrainingsChange={saveTrainings} activeRole={activeRole} lang={lang} />;
       case 'tournaments':
@@ -394,7 +536,7 @@ export default function App() {
       case 'evaluations':
         return <Evaluations evaluations={data.evaluations} players={data.players} teams={data.teams} staff={data.staff} activeRole={activeRole} lang={lang} onRefresh={loadAllData} />;
       case 'reports':
-        return <Reports players={data.players} teams={data.teams} staff={data.staff} matches={data.matches} trainings={data.trainings} transactions={data.transactions} subscriptions={data.subscriptions} attendance={data.attendance} settings={data.settings} activeRole={activeRole} lang={lang} />;
+        return <Reports players={data.players} teams={data.teams} staff={data.staff} matches={data.matches} trainings={data.trainings} transactions={data.transactions} subscriptions={data.subscriptions} attendance={data.attendance} evaluations={data.evaluations} settings={data.settings} activeRole={activeRole} lang={lang} />;
       case 'audit-logs':
         return <AuditLogs auditLogs={data.auditLogs} loginLogs={data.loginLogs} activeRole={activeRole} lang={lang} />;
       case 'mobile':
@@ -407,14 +549,21 @@ export default function App() {
         return data.settings ? <SettingsView settings={data.settings} onSettingsChange={saveSettings} activeRole={activeRole} lang={lang} /> : null;
       case 'registration':
         return <Registration lang={lang} />;
+      case 'staff-registration':
+        return currentUser ? <StaffRegistration user={currentUser} lang={lang} onLogout={handleLogout} onApproved={async () => {
+          const member = await db.getCurrentUser();
+          if (member && !member.registrationOnly) { setCurrentUser(member); setActiveRole(member.role); setCurrentTab('dashboard'); await loadAllData(); }
+        }} /> : null;
       case 'registration-admin':
         return <RegistrationAdmin lang={lang} activeRole={activeRole} teams={data.teams} players={data.players} onRefresh={loadAllData} />;
       default:
-        return <Dashboard players={data.players} subscriptions={data.subscriptions} matches={data.matches} transactions={data.transactions} staff={data.staff} teams={data.teams} parents={data.parents} setCurrentTab={setCurrentTab} activeRole={activeRole} lang={lang} />;
+        return <Dashboard players={data.players} subscriptions={data.subscriptions} matches={data.matches} transactions={data.transactions} staff={data.staff} teams={data.teams} parents={data.parents} evaluations={data.evaluations} setCurrentTab={setCurrentTab} activeRole={activeRole} lang={lang} />;
     }
   };
 
   const unreadCount = useMemo(() => data.notifications.filter((n) => !n.read).length, [data.notifications]);
+
+  const oauthConsentPath = (window.location.pathname.replace(/\/+$/, '') || '/') === '/oauth/consent';
 
   if (!authReady) {
     return (
@@ -424,8 +573,10 @@ export default function App() {
     );
   }
 
+  if (oauthConsentPath && currentUser && !recovery) return <OAuthConsent lang={lang} />;
+
   if (!currentUser || recovery) {
-    return <Login registrationEntry={currentTab === 'registration'} recovery={recovery} onLogin={(user) => { setRecovery(false); handleLogin(user); }} lang={lang} setLang={setLang} />;
+    return <Login registrationEntry={parentDirectEntry || currentTab === 'registration'} staffRegistrationEntry={coachDirectEntry || currentTab === 'staff-registration'} recovery={recovery} onLogin={(user) => { setRecovery(false); handleLogin(user); }} lang={lang} setLang={setLang} />;
   }
 
   if (loading) {
@@ -453,9 +604,50 @@ export default function App() {
     );
   }
 
+  if (currentUser.accountDisabled) {
+    return (
+      <main className="min-h-screen bg-slate-950 p-4 sm:p-8 flex items-center justify-center" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+        <div className="w-full max-w-md rounded-2xl bg-white p-6 sm:p-8 shadow-xl text-slate-900 text-center">
+          <h1 className="text-xl font-black mb-2">{lang === 'ar' ? 'الحساب غير نشط' : 'Account inactive'}</h1>
+          <p className="text-sm text-slate-600 mb-5">{lang === 'ar'
+            ? 'هذا الحساب موجود في النظام ولكنه غير نشط حاليًا. تواصل مع الإدارة إذا كنت تعتقد أن هذه الحالة غير صحيحة.'
+            : 'This account exists in the system but is currently inactive. Contact administration if you believe this is incorrect.'}</p>
+          <button onClick={handleLogout} className="w-full rounded-xl bg-slate-900 py-3 font-bold text-white hover:bg-slate-800">
+            {lang === 'ar' ? 'تسجيل الخروج' : 'Sign out'}
+          </button>
+        </div>
+      </main>
+    );
+  }
+
+  if (currentUser.registrationOnly && currentUser.registrationMode === 'staff') {
+    return <StaffRegistration user={currentUser} lang={lang} onLogout={handleLogout} onApproved={async () => {
+      const member = await db.getCurrentUser();
+      if (member && !member.registrationOnly) { setCurrentUser(member); setActiveRole(member.role); setCurrentTab('dashboard'); await loadAllData(); }
+    }} />;
+  }
+
+  // A staff application must belong to the applicant's own Auth account.
+  // Never render the application form using an already-active manager/parent/staff session.
+  if (currentTab === 'staff-registration' && !currentUser.registrationOnly) {
+    return (
+      <main className="min-h-screen bg-slate-950 p-4 sm:p-8 flex items-center justify-center" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+        <div className="w-full max-w-xl rounded-2xl bg-white p-6 sm:p-8 shadow-xl text-slate-900">
+          <h1 className="text-xl font-black mb-2">{lang === 'ar' ? 'طلب انضمام مدير / موظف / مدرب' : 'Manager / staff / coach application'}</h1>
+          <p className="text-sm text-slate-600 mb-5">{lang === 'ar'
+            ? 'أنت مسجل الدخول حاليًا بحساب موجود في النظام. لحماية الحسابات، يجب أن يكون طلب الانضمام مرتبطًا بحساب المتقدم نفسه، وليس بحساب المدير أو ولي الأمر الحالي.'
+            : 'You are currently signed in with an existing account. For account safety, the application must belong to the applicant’s own account, not the current manager or parent account.'}</p>
+          <button onClick={async () => { await handleLogout(); window.location.search = '?view=staff-registration'; }} className="w-full rounded-xl bg-emerald-600 py-3 font-bold text-white hover:bg-emerald-500">
+            {lang === 'ar' ? 'تسجيل الخروج والبدء بحساب المتقدم' : 'Sign out and continue with applicant account'}
+          </button>
+        </div>
+      </main>
+    );
+  }
+
   if (currentUser.role === 'parent') {
     return <ParentPortal key={currentUser.authUserId} openRegistration={currentTab === 'registration'} user={currentUser} players={data.players} subscriptions={data.subscriptions}
-      attendance={data.attendance} evaluations={data.evaluations} lang={lang} setLang={setLang} onLogout={handleLogout} onRefresh={async () => { const member = await db.getCurrentUser(); if (member) setCurrentUser(member); await loadAllData(); }} />;
+      attendance={data.attendance} evaluations={data.evaluations} settings={data.settings} lang={lang} setLang={setLang} onLogout={handleLogout} onRefresh={async () => { const member = await db.getCurrentUser(); if (member) setCurrentUser(member); await loadAllData(); }} />;
   }
 
   return (
@@ -497,7 +689,7 @@ export default function App() {
               <h1 className={`text-sm sm:text-lg font-black tracking-tight leading-tight ${
                 darkMode ? 'text-white' : 'text-slate-900'
               }`}>
-                {viewTitles[currentTab]}
+                {viewTitles[safeCurrentTab]}
               </h1>
               <p className="text-[10px] sm:text-xs text-slate-400 font-semibold mt-0.5 flex items-center gap-1.5">
                 <Target className="h-3 w-3 text-emerald-500" />
@@ -528,7 +720,7 @@ export default function App() {
               {showNotifications && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setShowNotifications(false)} />
-                  <div className={`absolute left-0 mt-2 w-80 rounded-2xl shadow-2xl border z-50 animate-fadeIn ${
+                  <div className={`fixed sm:absolute left-3 right-3 sm:right-auto sm:left-0 sm:w-80 mt-2 rounded-2xl shadow-2xl border z-50 animate-fadeIn ${
                     darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'
                   }`}>
                     <div className={`px-4 py-3 border-b flex items-center justify-between ${darkMode ? 'border-slate-800' : 'border-slate-100'}`}>
@@ -536,9 +728,10 @@ export default function App() {
                       {data.notifications.length > 0 && (
                         <button
                           onClick={() => {
+                            const unreadIds = data.notifications.filter(n => !n.read).map(n => n.id);
                             const read = data.notifications.map((n) => ({ ...n, read: true }));
                             setData((p) => ({ ...p, notifications: read }));
-                            void db.syncNotifications(read, data.notifications).then(loadAllData).catch(handleSyncError);
+                            void db.markNotificationsRead(unreadIds).then(loadAllData).catch(handleSyncError);
                           }}
                           className="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 cursor-pointer"
                         >

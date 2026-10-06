@@ -3,7 +3,7 @@ import { collectionChanges, type Row } from '@/lib/collection-diff';
 import type {
   Staff, Team, Player, Parent, Subscription, Attendance,
   Match, Training, Transaction, Tournament, PlayerEvaluation,
-  Settings, AuditLog, Notification, Lang, CurrentUser,
+  Settings, AuditLog, Notification, Lang, CurrentUser, PaymentProof, PlayerDocument, StaffDocument,
 } from '@/types';
 import {
   mapStaff, mapTeam, mapPlayer, mapParent, mapSubscription, mapAttendance,
@@ -36,8 +36,17 @@ export async function signIn(email: string, password: string) {
   return supabase.auth.signInWithPassword({ email, password });
 }
 
-export async function signUp(email: string, password: string) {
-  return supabase.auth.signUp({ email, password, options: { emailRedirectTo: window.location.origin } });
+export async function signUp(email: string, password: string, redirectView?: 'registration' | 'staff-registration') {
+  const redirect = new URL(window.location.origin + window.location.pathname);
+  if (redirectView) redirect.searchParams.set('view', redirectView);
+  return supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      emailRedirectTo: redirect.toString(),
+      data: { onboarding_mode: redirectView === 'staff-registration' ? 'staff' : 'parent' },
+    },
+  });
 }
 
 export async function signOut() {
@@ -152,12 +161,188 @@ export const db = {
     const { data: staff, error: staffError } = await supabase.from('staff')
       .select('id,name,email,role,status').eq('user_id', user.id).maybeSingle();
     if (staffError) throw staffError;
-    if (staff?.status === 'active') return { ...staff, authUserId: user.id } as CurrentUser;
+    if (staff) {
+      if (staff.status === 'active') return { ...staff, authUserId: user.id } as CurrentUser;
+      // A linked staff profile is an existing account even when disabled.
+      // Do not route it back into onboarding as if it were a new applicant.
+      return { ...staff, authUserId: user.id, accountDisabled: true } as CurrentUser;
+    }
     const { data: parent, error: parentError } = await supabase.from('parents')
       .select('id,name,email,status').eq('user_id', user.id).maybeSingle();
     if (parentError) throw parentError;
-    if (parent?.status === 'active') return { ...parent, role: 'parent', authUserId: user.id };
-    return { id: user.id, authUserId: user.id, name: user.email || '', email: user.email || '', role: 'parent', registrationOnly: true };
+    if (parent) {
+      if (parent.status === 'active') return { ...parent, role: 'parent', authUserId: user.id };
+      return { ...parent, role: 'parent', authUserId: user.id, accountDisabled: true } as CurrentUser;
+    }
+
+    const { data: staffApplication, error: staffApplicationError } = await supabase.from('staff_applications')
+      .select('requested_role,full_name,email,status')
+      .eq('applicant_user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (staffApplicationError && staffApplicationError.code !== '42P01') throw staffApplicationError;
+    if (staffApplication) {
+      return {
+        id: user.id,
+        authUserId: user.id,
+        name: staffApplication.full_name || user.email || '',
+        email: staffApplication.email || user.email || '',
+        role: staffApplication.requested_role as CurrentUser['role'],
+        registrationOnly: true,
+        registrationMode: 'staff',
+      };
+    }
+
+    const onboardingMode = user.user_metadata?.onboarding_mode === 'staff' ? 'staff' : 'parent';
+    return {
+      id: user.id,
+      authUserId: user.id,
+      name: user.email || '',
+      email: user.email || '',
+      role: onboardingMode === 'staff' ? 'coach' : 'parent',
+      registrationOnly: true,
+      registrationMode: onboardingMode,
+    };
+  },
+
+  async getManagementAlertSummary(): Promise<{ pendingPaymentProofs: number; expiringStaffDocuments: number; expiredStaffDocuments: number; unpaidSubscriptions: number; dueAmount: number; asOf: string }> {
+    const { data, error } = await supabase.rpc('management_alert_summary');
+    if (error) throw error;
+    const r = (data || {}) as Record<string, unknown>;
+    return {
+      pendingPaymentProofs: Number(r.pendingPaymentProofs) || 0,
+      expiringStaffDocuments: Number(r.expiringStaffDocuments) || 0,
+      expiredStaffDocuments: Number(r.expiredStaffDocuments) || 0,
+      unpaidSubscriptions: Number(r.unpaidSubscriptions) || 0,
+      dueAmount: Number(r.dueAmount) || 0,
+      asOf: String(r.asOf || ''),
+    };
+  },
+
+  async getPaymentProofs(): Promise<PaymentProof[]> {
+    const { data, error } = await supabase.from('payment_proofs').select('*').order('created_at', { ascending: false });
+    if (error) throw error;
+    return (data || []).map((r) => ({
+      id: r.id, subscriptionId: r.subscription_id, playerId: r.player_id, parentUserId: r.parent_user_id,
+      amount: Number(r.amount), transferDate: r.transfer_date, proofPath: r.proof_path, status: r.status,
+      parentNote: r.parent_note || '', reviewNote: r.review_note || '', reviewedBy: r.reviewed_by || undefined,
+      reviewedAt: r.reviewed_at || undefined, receiptNumber: r.receipt_number == null ? undefined : Number(r.receipt_number), createdAt: r.created_at,
+    })) as PaymentProof[];
+  },
+
+  async submitPaymentProof(subscription: Subscription, playerId: string, transferDate: string, file: File, parentNote = ''): Promise<void> {
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) throw userError || new Error('Authentication required');
+    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+    const path = `${user.id}/${subscription.id}/${crypto.randomUUID()}.${ext}`;
+    const { error: uploadError } = await supabase.storage.from('payment-proofs').upload(path, file, { upsert: false, contentType: file.type });
+    if (uploadError) throw uploadError;
+    const { error } = await supabase.from('payment_proofs').insert({
+      subscription_id: subscription.id, player_id: playerId, parent_user_id: user.id,
+      amount: subscription.amount, transfer_date: transferDate, proof_path: path, parent_note: parentNote.trim(),
+    });
+    if (error) {
+      await supabase.storage.from('payment-proofs').remove([path]);
+      throw error;
+    }
+  },
+
+  async resubmitPaymentProof(proof: PaymentProof, transferDate: string, file: File, parentNote = ''): Promise<void> {
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) throw userError || new Error('Authentication required');
+    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+    const path = `${user.id}/${proof.subscriptionId}/${crypto.randomUUID()}.${ext}`;
+    const { error: uploadError } = await supabase.storage.from('payment-proofs').upload(path, file, { upsert: false, contentType: file.type });
+    if (uploadError) throw uploadError;
+    const { error } = await supabase.rpc('resubmit_payment_proof', { p_proof_id: proof.id, p_proof_path: path, p_transfer_date: transferDate, p_parent_note: parentNote.trim() });
+    if (error) {
+      await supabase.storage.from('payment-proofs').remove([path]);
+      throw error;
+    }
+    if (proof.proofPath && proof.proofPath !== path) {
+      await supabase.storage.from('payment-proofs').remove([proof.proofPath]);
+    }
+  },
+
+  async approvePaymentProof(id: string): Promise<void> {
+    const { error } = await supabase.rpc('approve_payment_proof', { p_proof_id: id });
+    if (error) throw error;
+  },
+
+  async reviewPaymentProof(id: string, status: 'rejected' | 'needs_info', note: string): Promise<void> {
+    const { error } = await supabase.rpc('review_payment_proof', { p_proof_id: id, p_status: status, p_note: note });
+    if (error) throw error;
+  },
+
+  async getPaymentProofUrl(path: string): Promise<string> {
+    const { data, error } = await supabase.storage.from('payment-proofs').createSignedUrl(path, 300);
+    if (error) throw error;
+    return data.signedUrl;
+  },
+
+  async getPlayerDocuments(): Promise<PlayerDocument[]> {
+    const { data, error } = await supabase.from('player_documents').select('id,player_id,file_name,file_path,file_type,file_category,file_size,uploaded_at').order('uploaded_at', { ascending: false });
+    if (error) throw error;
+    return (data || []).map((r) => ({
+      id: r.id, playerId: r.player_id || undefined, fileName: r.file_name, filePath: r.file_path,
+      fileType: r.file_type, fileCategory: r.file_category, fileSize: Number(r.file_size) || 0, uploadedAt: r.uploaded_at,
+    })) as PlayerDocument[];
+  },
+
+  async getPlayerDocumentUrl(path: string): Promise<string> {
+    const { data, error } = await supabase.storage.from('player-documents').createSignedUrl(path, 300);
+    if (error) throw error;
+    return data.signedUrl;
+  },
+
+  async uploadStaffDocument(staffId: string, file: File, title: string, documentType = 'certificate', expiryDate?: string, notes = ''): Promise<void> {
+    if (documentType === 'profile_photo') {
+      const { data: existing, error: existingError } = await supabase.from('staff_documents').select('id,file_path').eq('staff_id', staffId).eq('document_type', 'profile_photo');
+      if (existingError) throw existingError;
+      for (const previous of existing || []) {
+        // Remove database references first. A storage cleanup failure can then only
+        // leave an unreferenced object, never a live row pointing at a missing file.
+        const { error: deleteError } = await supabase.from('staff_documents').delete().eq('id', previous.id);
+        if (deleteError) throw deleteError;
+        const { error: removeError } = await supabase.storage.from('staff-documents').remove([previous.file_path]);
+        if (removeError) console.warn('Could not remove superseded staff document object', removeError.message);
+      }
+    }
+    const ext = (file.name.split('.').pop() || 'bin').toLowerCase();
+    const path = `${staffId}/${documentType}/${crypto.randomUUID()}.${ext}`;
+    const { error: uploadError } = await supabase.storage.from('staff-documents').upload(path, file, { upsert: false, contentType: file.type });
+    if (uploadError) throw uploadError;
+    const { error } = await supabase.from('staff_documents').insert({
+      staff_id: staffId, document_type: documentType, title: title.trim() || file.name,
+      file_path: path, expiry_date: expiryDate || null, notes: notes.trim(),
+    });
+    if (error) {
+      await supabase.storage.from('staff-documents').remove([path]);
+      throw error;
+    }
+  },
+
+  async getStaffDocumentUrl(path: string): Promise<string> {
+    const { data, error } = await supabase.storage.from('staff-documents').createSignedUrl(path, 300);
+    if (error) throw error;
+    return data.signedUrl;
+  },
+
+  async deleteStaffDocument(doc: StaffDocument): Promise<void> {
+    const { error } = await supabase.from('staff_documents').delete().eq('id', doc.id);
+    if (error) throw error;
+    const { error: storageError } = await supabase.storage.from('staff-documents').remove([doc.filePath]);
+    if (storageError) console.warn('Could not remove unreferenced staff document object', storageError.message);
+  },
+
+  async getStaffDocuments(): Promise<StaffDocument[]> {
+    const { data, error } = await supabase.from('staff_documents').select('*').order('created_at', { ascending: false });
+    if (error) throw error;
+    return (data || []).map((r) => ({
+      id: r.id, staffId: r.staff_id, documentType: r.document_type, title: r.title,
+      filePath: r.file_path, expiryDate: r.expiry_date || undefined, notes: r.notes || '', createdAt: r.created_at,
+    })) as StaffDocument[];
   },
 
   async recordPayment(subscription: Subscription, method: string): Promise<Transaction> {
@@ -245,6 +430,25 @@ export const db = {
     return mapEvaluation(data as never);
   },
 
+  async getTelegramConnection(): Promise<{ telegram_user_code: string; role: string; linked_at: string; last_seen_at: string; is_active: boolean } | null> {
+    const { data, error } = await supabase.rpc('telegram_my_connection');
+    if (error) throw error;
+    return Array.isArray(data) && data.length ? data[0] : null;
+  },
+
+  async disconnectTelegram(): Promise<boolean> {
+    const { data, error } = await supabase.rpc('disconnect_my_telegram');
+    if (error) throw error;
+    return Boolean(data);
+  },
+
+  async createTelegramLinkCode(): Promise<string> {
+    const { data, error } = await supabase.rpc('create_telegram_link_code');
+    if (error) throw error;
+    if (typeof data !== 'string' || !data) throw new Error('Could not create Telegram link code');
+    return data;
+  },
+
   async getSettings(): Promise<Settings | null> {
     const { data, error } = await supabase.from('academy_settings').select('*').eq('id', 'settings-1').maybeSingle();
     if (error) throw error;
@@ -270,8 +474,23 @@ export const db = {
     if (error) throw error;
   },
 
-  async getNotifications(): Promise<Notification[]> { return fetchAll('notifications', mapNotification as never); },
-  async saveNotification(n: Notification): Promise<Notification> { return upsertRow('notifications', notificationToRow(n) as unknown as Record<string, unknown>, mapNotification as never); },
+  async getNotifications(): Promise<Notification[]> {
+    const notifications = await fetchAll('notifications', mapNotification as never) as Notification[];
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user || notifications.length === 0) return notifications.map(n => ({ ...n, read: false }));
+    const { data: reads, error } = await supabase.from('notification_reads').select('notification_id').eq('user_id', user.id);
+    if (error) throw error;
+    const readIds = new Set((reads || []).map(r => r.notification_id));
+    return notifications.map(n => ({ ...n, read: readIds.has(n.id) }));
+  },
+  async markNotificationsRead(ids: string[]): Promise<void> {
+    if (ids.length === 0) return;
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) throw userError || new Error('Authentication required');
+    const { error } = await supabase.from('notification_reads').upsert(ids.map(notification_id => ({ notification_id, user_id: user.id })), { onConflict: 'notification_id,user_id' });
+    if (error) throw error;
+  },
+  async saveNotification(n: Notification): Promise<Notification> { return upsertRow('notifications', notificationToRow({ ...n, read: false }) as unknown as Record<string, unknown>, mapNotification as never); },
   async deleteNotification(id: string): Promise<void> { return deleteRow('notifications', id); },
 
   /* ---------- Explicit changes against the displayed snapshot ---------- */

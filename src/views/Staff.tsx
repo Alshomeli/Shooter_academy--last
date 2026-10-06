@@ -1,9 +1,9 @@
 import { useState, useMemo, useDeferredValue, useEffect, type FormEvent } from 'react';
 import {
   Dumbbell, Plus, Search, Edit2, Trash2, Eye, Mail, Phone, Award, Star,
-  Briefcase, Calendar,
+  Briefcase, Calendar, FileUp, FileText, AlertTriangle,
 } from 'lucide-react';
-import type { Staff, Team, Player, Lang, Role } from '@/types';
+import type { Staff, Team, Player, Lang, Role, StaffDocument } from '@/types';
 import { db } from '@/lib/store';
 import { Badge, Modal, ConfirmDialog, PageHeader, EmptyState, SaveButton } from '@/components/ui';
 import { tr, roleLabel } from '@/lib/i18n';
@@ -48,12 +48,30 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
   const [reassignCoachId, setReassignCoachId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState('');
   const [authUserId, setAuthUserId] = useState<string | null>(null);
+  const [staffDocuments, setStaffDocuments] = useState<StaffDocument[]>([]);
+  const [staffPhotoUrls, setStaffPhotoUrls] = useState<Record<string,string>>({});
+  const [uploadMember, setUploadMember] = useState<Staff | null>(null);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadTitle, setUploadTitle] = useState('');
+  const [uploadType, setUploadType] = useState('certificate');
+  const [uploadExpiry, setUploadExpiry] = useState('');
+  const [uploadBusy, setUploadBusy] = useState(false);
+  const [documentError, setDocumentError] = useState('');
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => setAuthUserId(user?.id ?? null)).catch(() => setAuthUserId(null));
   }, []);
+  useEffect(() => {
+    db.getStaffDocuments().then(async (docs) => {
+      setStaffDocuments(docs);
+      const photos = docs.filter(d => d.documentType === 'profile_photo');
+      const pairs = await Promise.all(photos.map(async d => [d.staffId, await db.getStaffDocumentUrl(d.filePath)] as const));
+      setStaffPhotoUrls(Object.fromEntries(pairs));
+    }).catch(() => {});
+  }, [staff.length]);
 
   const canManage = activeRole === 'manager';
+  const canUploadFor = (member: Staff) => canManage || (!!authUserId && member.userId === authUserId);
   const canSeeSalary = activeRole === 'manager' || activeRole === 'accountant';
 
   const filtered = useMemo(() => {
@@ -103,6 +121,19 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
     }
   };
 
+  const refreshStaffDocuments = async () => {
+    const docs = await db.getStaffDocuments(); setStaffDocuments(docs);
+    const photos = docs.filter(d=>d.documentType==='profile_photo');
+    const pairs = await Promise.all(photos.map(async d=>[d.staffId,await db.getStaffDocumentUrl(d.filePath)] as const));
+    setStaffPhotoUrls(Object.fromEntries(pairs));
+  };
+  const handleDocumentUpload = async () => {
+    if (!uploadMember || !uploadFile) return;
+    try { setUploadBusy(true); setDocumentError(''); await db.uploadStaffDocument(uploadMember.id, uploadFile, uploadTitle || uploadFile.name, uploadType, uploadExpiry || undefined); await refreshStaffDocuments(); setUploadMember(null); setUploadFile(null); setUploadTitle(''); setUploadExpiry(''); setUploadType('certificate'); }
+    catch(e){ setDocumentError(e instanceof Error?e.message:String(e)); }
+    finally{ setUploadBusy(false); }
+  };
+
   const initiateDelete = (id: string) => {
     const member = staff.find((s) => s.id === id);
     if (authUserId && member?.userId && member.userId === authUserId) {
@@ -133,6 +164,13 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
           </button>
         )}
       </PageHeader>
+
+      {canManage && <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="rounded-2xl bg-white dark:bg-slate-900 border dark:border-slate-800 p-4"><p className="text-xs text-slate-500">{isAr?'المدربون النشطون':'Active coaches'}</p><p className="text-2xl font-black mt-1">{staff.filter(s=>s.role==='coach'&&s.status==='active').length}</p></div>
+        <div className="rounded-2xl bg-white dark:bg-slate-900 border dark:border-slate-800 p-4"><p className="text-xs text-slate-500">{isAr?'بدون صورة شخصية':'Missing photo'}</p><p className="text-2xl font-black mt-1">{staff.filter(s=>s.role==='coach'&&!staffPhotoUrls[s.id]).length}</p></div>
+        <div className="rounded-2xl bg-white dark:bg-slate-900 border dark:border-slate-800 p-4"><p className="text-xs text-slate-500">{isAr?'بدون شهادة مرفوعة':'Missing certificate'}</p><p className="text-2xl font-black mt-1">{staff.filter(s=>s.role==='coach'&&!staffDocuments.some(d=>d.staffId===s.id&&d.documentType==='certificate')).length}</p></div>
+        <div className="rounded-2xl bg-white dark:bg-slate-900 border dark:border-slate-800 p-4"><p className="text-xs text-slate-500">{isAr?'إجمالي ملفات الطاقم':'Staff files'}</p><p className="text-2xl font-black mt-1">{staffDocuments.filter(d=>d.documentType!=='profile_photo').length}</p></div>
+      </div>}
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
@@ -174,6 +212,11 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filtered.map((s) => {
             const isCoach = s.role === 'coach';
+            const memberDocs = staffDocuments.filter(d=>d.staffId===s.id&&d.documentType!=='profile_photo');
+            const today = new Date().toISOString().slice(0,10);
+            const in30 = new Date(Date.now()+30*86400000).toISOString().slice(0,10);
+            const expiredDocs = memberDocs.filter(d=>d.expiryDate&&d.expiryDate<today).length;
+            const expiringDocs = memberDocs.filter(d=>d.expiryDate&&d.expiryDate>=today&&d.expiryDate<=in30).length;
             return (
               <div
                 key={s.id}
@@ -182,8 +225,8 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
                 {/* Header */}
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 flex items-center justify-center text-2xl shrink-0">
-                      {s.avatarUrl || '👤'}
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 flex items-center justify-center text-2xl shrink-0 overflow-hidden">
+                      {staffPhotoUrls[s.id] ? <img src={staffPhotoUrls[s.id]} alt="" className="w-full h-full object-cover"/> : (s.avatarUrl || '👤')}
                     </div>
                     <div className="min-w-0">
                       <p className="text-sm font-black text-slate-900 dark:text-white truncate">{s.name}</p>
@@ -204,6 +247,12 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
                     </span>
                   )}
                 </div>
+
+                {isCoach && <div className="grid grid-cols-3 gap-2 mb-3">
+                  <div className="rounded-lg bg-slate-50 dark:bg-slate-800 p-2 text-center"><p className="text-sm font-black">{coachPlayerCount(s.id)}</p><p className="text-[9px] text-slate-400">{isAr?'لاعب':'Players'}</p></div>
+                  <div className="rounded-lg bg-slate-50 dark:bg-slate-800 p-2 text-center"><p className="text-sm font-black">{memberDocs.length}</p><p className="text-[9px] text-slate-400">{isAr?'مستند':'Docs'}</p></div>
+                  <div className={`rounded-lg p-2 text-center ${expiredDocs>0?'bg-red-50 dark:bg-red-950/20':expiringDocs>0?'bg-amber-50 dark:bg-amber-950/20':'bg-slate-50 dark:bg-slate-800'}`}><p className={`text-sm font-black ${expiredDocs>0?'text-red-600':expiringDocs>0?'text-amber-600':''}`}>{expiredDocs||expiringDocs||0}</p><p className="text-[9px] text-slate-400">{expiredDocs>0?(isAr?'منتهي':'Expired'):expiringDocs>0?(isAr?'قريب':'Due soon'):(isAr?'تنبيه':'Alerts')}</p></div>
+                </div>}
 
                 {/* Coach-specific block */}
                 {isCoach && (
@@ -261,6 +310,7 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
                 {/* Actions */}
                 <div className="flex items-center gap-1 mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
                   <ContactLinks phone={s.phone} email={s.email} small />
+                  {canUploadFor(s) && <button onClick={() => { setUploadMember(s); setUploadType('certificate'); }} className="flex items-center justify-center p-1.5 rounded-lg text-emerald-700 bg-emerald-50 dark:bg-emerald-900/20" title={isAr?'إضافة صورة أو شهادة':'Add photo or document'}><FileUp className="h-3.5 w-3.5"/></button>}
                   <button
                     onClick={() => setViewMember(s)}
                     className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[11px] font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer"
@@ -312,9 +362,22 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
             playerCount={coachPlayerCount(viewMember.id)}
             canSeeSalary={canSeeSalary}
             lang={lang}
+            documents={staffDocuments.filter(d=>d.staffId===viewMember.id)}
+            photoUrl={staffPhotoUrls[viewMember.id]}
           />
         </Modal>
       )}
+
+      <Modal open={!!uploadMember} onClose={()=>!uploadBusy&&setUploadMember(null)} title={isAr?'إضافة صورة أو مستند':'Add photo or document'}>
+        <div className="space-y-4">
+          {documentError&&<p role="alert" className="text-sm text-red-600">{documentError}</p>}
+          <select value={uploadType} onChange={e=>setUploadType(e.target.value)} className={inputCls}><option value="certificate">{isAr?'شهادة / رخصة':'Certificate / license'}</option><option value="profile_photo">{isAr?'صورة شخصية':'Profile photo'}</option><option value="other">{isAr?'مستند آخر':'Other document'}</option></select>
+          <input value={uploadTitle} onChange={e=>setUploadTitle(e.target.value)} className={inputCls} placeholder={isAr?'اسم المستند':'Document title'}/>
+          <input type="file" accept={uploadType==='profile_photo'?'image/jpeg,image/png,image/webp':'image/jpeg,image/png,image/webp,application/pdf'} onChange={e=>setUploadFile(e.target.files?.[0]||null)} className="block w-full text-sm"/>
+          {uploadType!=='profile_photo'&&<input type="date" value={uploadExpiry} onChange={e=>setUploadExpiry(e.target.value)} className={inputCls}/>}
+          <button disabled={!uploadFile||uploadBusy} onClick={()=>void handleDocumentUpload()} className="w-full rounded-xl bg-emerald-600 text-white py-2.5 font-bold disabled:opacity-50">{uploadBusy?(isAr?'جارٍ الرفع...':'Uploading...'):(isAr?'رفع وحفظ':'Upload & save')}</button>
+        </div>
+      </Modal>
 
       {deleteError && <p role="alert" className="text-sm font-bold text-red-600">{deleteError}</p>}
 
@@ -486,9 +549,6 @@ function StaffForm({
           <Field label={t.joinedDate}>
             <input type="date" value={form.joinedDate} onChange={(e) => set('joinedDate', e.target.value)} className={inputCls} />
           </Field>
-          <Field label={isAr ? 'الرمز التعبيري (Avatar)' : 'Avatar emoji'}>
-            <input value={form.avatarUrl} onChange={(e) => set('avatarUrl', e.target.value)} className={inputCls} maxLength={4} />
-          </Field>
           <Field label={isAr ? 'الرقم الوطني' : 'National ID'}>
             <input value={form.nationalId} onChange={(e) => set('nationalId', e.target.value)} className={inputCls} dir="ltr" />
           </Field>
@@ -553,12 +613,16 @@ function StaffDetail({
   playerCount,
   canSeeSalary,
   lang,
+  documents,
+  photoUrl,
 }: {
   member: Staff;
   teams: string[];
   playerCount: number;
   canSeeSalary: boolean;
   lang: Lang;
+  documents: StaffDocument[];
+  photoUrl?: string;
 }) {
   const t = tr(lang);
   const isAr = lang === 'ar';
@@ -567,9 +631,9 @@ function StaffDetail({
   return (
     <div className="space-y-4">
       {/* Identity */}
-      <div className="flex items-center gap-4">
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 flex items-center justify-center text-3xl">
-          {member.avatarUrl || '👤'}
+      <div className="flex items-center gap-4 rounded-2xl border border-slate-100 dark:border-slate-800 p-4">
+        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 flex items-center justify-center text-3xl overflow-hidden">
+          {photoUrl ? <img src={photoUrl} alt="" className="w-full h-full object-cover"/> : (member.avatarUrl || '👤')}
         </div>
         <div className="min-w-0">
           <h3 className="text-lg font-black text-slate-900 dark:text-white truncate">{member.name}</h3>
@@ -647,6 +711,8 @@ function StaffDetail({
           </div>
         </div>
       )}
+
+      {documents.filter(d=>d.documentType!=='profile_photo').length>0&&<div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 space-y-2"><p className="text-xs font-black text-slate-500 flex items-center gap-1.5"><FileText className="h-4 w-4"/>{isAr?'المستندات والشهادات':'Documents & certificates'}</p>{documents.filter(d=>d.documentType!=='profile_photo').map(d=>{const today=new Date().toISOString().slice(0,10);const in30=new Date(Date.now()+30*86400000).toISOString().slice(0,10);const expired=!!d.expiryDate&&d.expiryDate<today;const soon=!!d.expiryDate&&d.expiryDate>=today&&d.expiryDate<=in30;return <button key={d.id} onClick={async()=>window.open(await db.getStaffDocumentUrl(d.filePath),'_blank','noopener,noreferrer')} className="w-full flex items-center justify-between gap-3 border-t dark:border-slate-700 pt-3 text-sm"><span className="font-bold">{d.title}</span><span className={`flex items-center gap-1 text-xs font-bold ${expired?'text-red-600':soon?'text-amber-600':'text-emerald-600'}`}>{(expired||soon)&&<AlertTriangle className="h-3.5 w-3.5"/>}{expired?(isAr?'منتهية':'Expired'):soon?`${isAr?'تنتهي':'Expires'} ${d.expiryDate}`:d.expiryDate?`${isAr?'صالحة حتى':'Valid to'} ${d.expiryDate}`:(isAr?'عرض':'View')}</span></button>})}</div>}
 
       {/* Notes */}
       {member.notes && (

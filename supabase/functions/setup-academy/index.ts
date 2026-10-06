@@ -26,8 +26,8 @@ interface SetupRequest {
   [key: string]: unknown;
 }
 
-/** Verify the caller's JWT and return their email, or null. */
-async function getCallerEmail(req: Request): Promise<string | null> {
+/** Verify the caller's JWT and return the authenticated user id, or null. */
+async function getCallerUserId(req: Request): Promise<string | null> {
   const authHeader = req.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) return null;
   const token = authHeader.slice(7);
@@ -40,27 +40,20 @@ async function getCallerEmail(req: Request): Promise<string | null> {
 
   const { data: userData, error } = await client.auth.getUser(token);
   if (error || !userData.user) return null;
-  return userData.user.email?.toLowerCase() ?? null;
+  return userData.user.id;
 }
 
-/** Escape LIKE/ILIKE wildcards so a user-supplied value matches literally. */
-function escapeLikePattern(value: string): string {
-  return value.replace(/([\\%_])/g, "\\$1");
-}
-
-/** Check if the caller is an academy admin (staff with role 'manager'). */
-async function isAcademyAdmin(email: string): Promise<boolean> {
+/** Check if the caller is an active academy manager bound to this auth user id. */
+async function isAcademyAdmin(userId: string): Promise<boolean> {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const admin = createClient(supabaseUrl, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
-  // Case-insensitive but literal match. A raw ilike() would treat the caller's
-  // own email as a LIKE pattern, so `%`/`_`/`\` must be escaped first.
   const { data } = await admin
     .from("staff")
     .select("role,status")
-    .ilike("email", escapeLikePattern(email.toLowerCase()))
+    .eq("user_id", userId)
     .limit(1);
   return data?.[0]?.role === "manager" && data?.[0]?.status === "active";
 }
@@ -87,8 +80,8 @@ Deno.serve(async (req: Request) => {
 
   try {
     // ── Authenticate ──
-    const callerEmail = await getCallerEmail(req);
-    if (!callerEmail) {
+    const callerUserId = await getCallerUserId(req);
+    if (!callerUserId) {
       return new Response(
         JSON.stringify({ error: "Authentication required" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -96,9 +89,9 @@ Deno.serve(async (req: Request) => {
     }
 
     // ── Authorize: only academy admins can reset/seed ──
-    const admin = await isAcademyAdmin(callerEmail);
+    const admin = await isAcademyAdmin(callerUserId);
     if (!admin) {
-      console.warn(`[setup-academy] denied for ${callerEmail} — not an admin`);
+      console.warn("[setup-academy] denied — authenticated user is not an active manager");
       return new Response(
         JSON.stringify({ error: "Admin access required" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -113,6 +106,16 @@ Deno.serve(async (req: Request) => {
 
     const body = (await req.json()) as SetupRequest;
     const reset = body.reset === true;
+
+    // Production launch guard: setup/reset/seeding is an operator-only emergency
+    // path and is disabled unless explicitly enabled as a server secret.
+    // Normal users must onboard through reviewed parent/staff application flows.
+    if (Deno.env.get("ALLOW_DESTRUCTIVE_SETUP") !== "true") {
+      return new Response(
+        JSON.stringify({ error: "destructive_setup_disabled" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
 
     if (reset && body.confirm_reset !== true) {
       return new Response(
@@ -163,7 +166,7 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    console.log(`[setup-academy] ok for ${callerEmail} — seeded=${seeded} reset=${reset} usersCreated=${usersCreated}`);
+    console.log(`[setup-academy] ok — seeded=${seeded} reset=${reset} usersCreated=${usersCreated}`);
 
     return new Response(
       JSON.stringify({ success: true, seeded, usersCreated, reset, temporaryPasswords }),

@@ -1,8 +1,9 @@
 import { useState, useMemo, useEffect, useDeferredValue, type FormEvent } from 'react';
 import {
   Users, Plus, Search, Phone, Mail, Edit2, Trash2, Eye,
-  FileText, Star,
+  FileText, Star, TrendingUp,
 } from 'lucide-react';
+import { evaluationFrameworkScores } from '@/lib/evaluation-scores';
 import type { Player, Parent, Team, Lang, Role, PlayerEvaluation } from '@/types';
 import { Badge, Modal, ConfirmDialog, PageHeader, EmptyState, FormField, FormError, SaveButton, inputCls } from '@/components/ui';
 import { tr, positionLabel } from '@/lib/i18n';
@@ -38,6 +39,7 @@ export function Players({ players, parents, teams, evaluations, onPlayersChange,
   const deferredSearch = useDeferredValue(search);
   const [teamFilter, setTeamFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [parentLinkFilter, setParentLinkFilter] = useState('all');
   const [showAdd, setShowAdd] = useState(false);
   const [editPlayer, setEditPlayer] = useState<Player | null>(null);
   const [viewPlayer, setViewPlayer] = useState<Player | null>(null);
@@ -71,9 +73,11 @@ export function Players({ players, parents, teams, evaluations, onPlayersChange,
       if (q && !p.name.toLowerCase().includes(q) && !p.parentName.toLowerCase().includes(q)) return false;
       if (teamFilter !== 'all' && p.teamId !== teamFilter) return false;
       if (statusFilter !== 'all' && p.status !== statusFilter) return false;
+      if (parentLinkFilter === 'linked' && !p.parentId) return false;
+      if (parentLinkFilter === 'unlinked' && p.parentId) return false;
       return true;
     });
-  }, [players, deferredSearch, teamFilter, statusFilter]);
+  }, [players, deferredSearch, teamFilter, statusFilter, parentLinkFilter]);
 
   const teamName = (id: string) => teams.find((t) => t.id === id)?.name || (isAr ? 'غير محدد' : 'Not specified');
 
@@ -122,6 +126,11 @@ export function Players({ players, parents, teams, evaluations, onPlayersChange,
           <option value="all">{isAr ? 'كل الفرق' : 'All teams'}</option>
           {teams.map((tm) => <option key={tm.id} value={tm.id}>{tm.name}</option>)}
         </select>
+        <select value={parentLinkFilter} onChange={(e) => setParentLinkFilter(e.target.value)} className="px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-semibold text-slate-700 dark:text-slate-200 cursor-pointer">
+          <option value="all">{isAr ? 'كل روابط أولياء الأمور' : 'All parent links'}</option>
+          <option value="linked">{isAr ? 'ولي أمر مرتبط' : 'Parent linked'}</option>
+          <option value="unlinked">{isAr ? 'بدون ولي أمر مرتبط' : 'No linked parent'}</option>
+        </select>
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-semibold text-slate-700 dark:text-slate-200 cursor-pointer">
           <option value="all">{isAr ? 'كل الحالات' : 'All statuses'}</option>
           <option value="active">{t.active}</option>
@@ -159,9 +168,12 @@ export function Players({ players, parents, teams, evaluations, onPlayersChange,
                   <p className="text-[11px] text-slate-400 mt-0.5 text-center">{teamName(p.teamId)}</p>
                 </div>
               </div>
-              <div className="flex items-center justify-center mb-3">
+              <div className="flex items-center justify-center gap-2 mb-3">
                 <Badge color={p.status === 'active' ? 'emerald' : 'slate'}>
                   {p.status === 'active' ? t.active : t.inactive}
+                </Badge>
+                <Badge color={p.parentId ? 'blue' : 'amber'}>
+                  {p.parentId ? (isAr ? 'ولي أمر مرتبط' : 'Parent linked') : (isAr ? 'بدون ربط' : 'Unlinked')}
                 </Badge>
               </div>
 
@@ -372,6 +384,22 @@ function PlayerDetail({ player, team, evaluations, lang }: { player: Player; tea
   const t = tr(lang);
   const isAr = lang === 'ar';
   const playerEvals = useMemo(() => evaluations.filter(e => e.playerId === player.id && e.status === 'published').sort((a, b) => b.evaluationDate.localeCompare(a.evaluationDate)), [evaluations, player.id]);
+  const progress = useMemo(() => {
+    if (playerEvals.length < 2) return null;
+    const latest = playerEvals[0];
+    const first = playerEvals[playerEvals.length - 1];
+    const delta = (current: number | null, baseline: number | null) =>
+      current != null && baseline != null ? current - baseline : null;
+    return {
+      firstDate: first.evaluationDate,
+      latestDate: latest.evaluationDate,
+      overall: delta(latest.overallScore, first.overallScore),
+      technical: delta(evaluationFrameworkScores(latest).technical, evaluationFrameworkScores(first).technical),
+      tactical: delta(evaluationFrameworkScores(latest).tactical, evaluationFrameworkScores(first).tactical),
+      physical: delta(evaluationFrameworkScores(latest).physical, evaluationFrameworkScores(first).physical),
+      psychosocial: delta(evaluationFrameworkScores(latest).psychosocial, evaluationFrameworkScores(first).psychosocial),
+    };
+  }, [playerEvals]);
   return (
     <div className="space-y-5">
       <div className="flex items-center gap-4">
@@ -416,6 +444,38 @@ function PlayerDetail({ player, team, evaluations, lang }: { player: Player; tea
           </div>
         </div>
       </div>
+
+      {/* Progress summary */}
+      {progress && (
+        <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-2 mb-3">
+            <TrendingUp className="h-4 w-4 text-emerald-500" />
+            <h4 className="text-sm font-black text-slate-900 dark:text-white">{isAr ? 'ملخص تطور اللاعب' : 'Player progress summary'}</h4>
+          </div>
+          <div className="p-3 rounded-xl border border-emerald-100 dark:border-emerald-900/50 bg-emerald-50/50 dark:bg-emerald-950/20">
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 mb-3">
+              {progress.firstDate} → {progress.latestDate} · {playerEvals.length} {isAr ? 'تقييمات منشورة' : 'published reviews'}
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {[
+                { label: isAr ? 'الإجمالي' : 'Overall', value: progress.overall },
+                { label: isAr ? 'فني' : 'Technical', value: progress.technical },
+                { label: isAr ? 'تكتيكي' : 'Tactical', value: progress.tactical },
+                { label: isAr ? 'بدني' : 'Physical', value: progress.physical },
+                { label: isAr ? 'نفسي واجتماعي' : 'Psychosocial', value: progress.psychosocial },
+              ].map(item => (
+                <div key={item.label} className="p-2 rounded-lg bg-white/80 dark:bg-slate-900/70">
+                  <p className="text-[10px] font-bold text-slate-400">{item.label}</p>
+                  <p className={`text-sm font-black ${item.value == null ? 'text-slate-400' : item.value > 0.05 ? 'text-emerald-600' : item.value < -0.05 ? 'text-amber-600' : 'text-slate-600 dark:text-slate-300'}`}>
+                    {item.value == null ? '—' : `${item.value > 0 ? '+' : ''}${item.value.toFixed(1)}`}
+                  </p>
+                </div>
+              ))}
+            </div>
+            <p className="mt-2 text-[9px] text-slate-400">{isAr ? 'التغير مقارنة بأول تقييم منشور للاعب.' : 'Change compared with the player’s first published review.'}</p>
+          </div>
+        </div>
+      )}
 
       {/* Evaluations section */}
       {playerEvals.length > 0 && (

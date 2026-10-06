@@ -1,12 +1,13 @@
 import { getLifecycleStatus, type LifecycleStatus } from '@/lib/report-dates';
 import { calcEndDate } from '@/lib/subscription-dates';
 import { errorMessage } from '@/lib/registration';
-import { useState, useMemo, useDeferredValue, type FormEvent } from 'react';
+import { useEffect, useState, useMemo, useDeferredValue, type FormEvent } from 'react';
 import {
   Wallet, Plus, Search, CheckCircle, Clock, TrendingUp, TrendingDown,
   Receipt, DollarSign, Calendar, Edit2, Trash2, Bell, AlertCircle, Loader2,
 } from 'lucide-react';
-import type { Subscription, Player, Parent, Transaction, Staff, Settings, Lang, Role } from '@/types';
+import type { Subscription, Player, Parent, Transaction, Staff, Settings, Lang, Role, PaymentProof } from '@/types';
+import { db } from '@/lib/store';
 import { Badge, Modal, ConfirmDialog, PageHeader, EmptyState, StatCard, FormField, FormError, SaveButton, inputCls } from '@/components/ui';
 import { RemindersPanel } from '@/components/RemindersPanel';
 import { PaymentReceipt } from '@/components/PaymentReceipt';
@@ -23,6 +24,7 @@ interface SubscriptionsProps {
   onPayment: (sub: Subscription, method: string) => Promise<void>;
   onSubscriptionsChange: (s: Subscription[]) => Promise<void>;
   onTransactionsChange: (t: Transaction[]) => void;
+  onRefresh: () => Promise<void>;
   activeRole: Role;
   lang: Lang;
 }
@@ -83,13 +85,14 @@ export function Subscriptions({
   onSubscriptionsChange,
   onTransactionsChange,
   onPayment,
+  onRefresh,
   activeRole,
   lang,
 }: SubscriptionsProps) {
   const planAmounts = getPlanAmounts(settings);
   const t = tr(lang);
   const isAr = lang === 'ar';
-  const [activeTab, setActiveTab] = useState<'subscriptions' | 'transactions' | 'reminders'>('subscriptions');
+  const [activeTab, setActiveTab] = useState<'subscriptions' | 'transactions' | 'reminders' | 'proofs'>('subscriptions');
   const [search, setSearch] = useState('');
   const deferredSearch = useDeferredValue(search);
   const [statusFilter, setStatusFilter] = useState('all');
@@ -100,13 +103,41 @@ export function Subscriptions({
   const [deleteTransId, setDeleteTransId] = useState<string | null>(null);
   const [markingPaidId, setMarkingPaidId] = useState<string | null>(null);
   const [receiptSub, setReceiptSub] = useState<Subscription | null>(null);
+  const [paymentProofs, setPaymentProofs] = useState<PaymentProof[]>([]);
+  const [proofBusy, setProofBusy] = useState<string | null>(null);
+  const [proofError, setProofError] = useState('');
+  const [proofReview, setProofReview] = useState<PaymentProof | null>(null);
+  const [proofReviewNote, setProofReviewNote] = useState('');
+  const [proofReviewStatus, setProofReviewStatus] = useState<'rejected' | 'needs_info'>('needs_info');
 
   const [paymentTarget, setPaymentTarget] = useState<Subscription | null>(null);
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [paymentError, setPaymentError] = useState('');
   const canPay = activeRole === 'manager' || activeRole === 'accountant';
+  const canSeeFinance = activeRole === 'manager' || activeRole === 'accountant';
   const isManager = activeRole === 'manager';
   const canManage = activeRole === 'manager' || activeRole === 'accountant' || activeRole === 'receptionist';
+  useEffect(() => {
+    if (!canSeeFinance) return;
+    db.getPaymentProofs().then(setPaymentProofs).catch((e) => setProofError(errorMessage(e, isAr)));
+  }, [canSeeFinance, subscriptions.length]);
+
+  const refreshProofs = async () => setPaymentProofs(await db.getPaymentProofs());
+  const approveProof = async (proof: PaymentProof) => {
+    try { setProofBusy(proof.id); setProofError(''); await db.approvePaymentProof(proof.id); await Promise.all([refreshProofs(), onRefresh()]); }
+    catch (e) { setProofError(errorMessage(e, isAr)); }
+    finally { setProofBusy(null); }
+  };
+  const openProof = async (proof: PaymentProof) => {
+    try { const url = await db.getPaymentProofUrl(proof.proofPath); window.open(url, '_blank', 'noopener,noreferrer'); }
+    catch (e) { setProofError(errorMessage(e, isAr)); }
+  };
+  const submitProofReview = async () => {
+    if (!proofReview || !proofReviewNote.trim()) return;
+    try { setProofBusy(proofReview.id); await db.reviewPaymentProof(proofReview.id, proofReviewStatus, proofReviewNote); setProofReview(null); setProofReviewNote(''); await Promise.all([refreshProofs(), onRefresh()]); }
+    catch (e) { setProofError(errorMessage(e, isAr)); }
+    finally { setProofBusy(null); }
+  };
   const recorderName = staff.find((s) => s.role === activeRole)?.name || (isAr ? 'النظام' : 'System');
 
   const STATUS_FILTERS = useMemo(() => [
@@ -189,8 +220,8 @@ export function Subscriptions({
       <PageHeader
         title={t.subscriptions}
         subtitle={isAr
-          ? `${subscriptions.length} اشتراك · ${transactions.length} معاملة مالية`
-          : `${subscriptions.length} subscriptions · ${transactions.length} transactions`}
+          ? (canSeeFinance ? `${subscriptions.length} اشتراك · ${transactions.length} معاملة مالية` : `${subscriptions.length} اشتراك`)
+          : (canSeeFinance ? `${subscriptions.length} subscriptions · ${transactions.length} transactions` : `${subscriptions.length} subscriptions`)}
       >
         {((activeTab === 'subscriptions' && canManage) || (activeTab === 'transactions' && canPay)) && (
           <button
@@ -205,27 +236,27 @@ export function Subscriptions({
 
       {/* ---------------- KPIs ---------------- */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <StatCard
+        {canSeeFinance && <StatCard
           icon={<DollarSign className="h-5 w-5" />}
           label={t.totalRevenue}
           value={`${totalRevenue.toLocaleString()} ${t.currency}`}
           color="emerald"
           sublabel={t.financialInput}
-        />
-        <StatCard
+        />}
+        {canSeeFinance && <StatCard
           icon={<Receipt className="h-5 w-5" />}
           label={t.totalExpenses}
           value={`${totalExpenses.toLocaleString()} ${t.currency}`}
           color="red"
           sublabel={t.operatingExpenses}
-        />
-        <StatCard
+        />}
+        {canSeeFinance && <StatCard
           icon={<Wallet className="h-5 w-5" />}
           label={t.netProfit}
           value={`${netProfit >= 0 ? '+' : '−'}${Math.abs(netProfit).toLocaleString()} ${t.currency}`}
           color={netProfitColor}
           sublabel={netProfit >= 0 ? t.netProfitPositive : t.netProfitNegative}
-        />
+        />}
         <StatCard
           icon={<CheckCircle className="h-5 w-5" />}
           label={t.paidSubscriptions}
@@ -251,7 +282,7 @@ export function Subscriptions({
             {subscriptions.length}
           </span>
         </button>
-        <button
+        {canSeeFinance && <button
           onClick={() => setActiveTab('transactions')}
           className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold transition cursor-pointer ${
             activeTab === 'transactions'
@@ -264,7 +295,10 @@ export function Subscriptions({
           <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
             {transactions.length}
           </span>
-        </button>
+        </button>}
+        {canSeeFinance && <button onClick={() => setActiveTab('proofs')} className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold transition cursor-pointer ${activeTab === 'proofs' ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}>
+          <Receipt className="h-4 w-4" />{isAr ? 'إثباتات الدفع' : 'Payment proofs'}<span className="text-[10px] px-1.5 py-0.5 rounded-md bg-slate-200 dark:bg-slate-700">{paymentProofs.filter(p=>p.status==='pending').length}</span>
+        </button>}
         <button
           onClick={() => setActiveTab('reminders')}
           className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold transition cursor-pointer ${
@@ -451,6 +485,21 @@ export function Subscriptions({
         </>
       )}
 
+      {activeTab === 'proofs' && canSeeFinance && <div className="space-y-3">
+        {proofError && <p role="alert" className="rounded-xl bg-red-50 text-red-700 p-3 text-sm">{proofError}</p>}
+        {paymentProofs.length===0 ? <EmptyState icon={<Receipt className="h-8 w-8"/>} title={isAr?'لا توجد إثباتات دفع':'No payment proofs'} subtitle={isAr?'ستظهر طلبات أولياء الأمور هنا بعد رفع إيصال التحويل.':'Parent transfer proofs will appear here after upload.'}/> :
+        paymentProofs.map((proof)=>{
+          const player=playerOf(proof.playerId);
+          return <div key={proof.id} className="bg-white dark:bg-slate-900 rounded-2xl border dark:border-slate-800 p-4 flex flex-wrap items-center gap-4">
+            <div className="flex-1 min-w-48"><p className="font-black">{player?.name || t.unknownPlayer}</p><p className="text-xs text-slate-500">{proof.amount} {t.currency} · {proof.transferDate}</p>{proof.receiptNumber&&<p className="text-xs font-black text-emerald-600 mt-1">{isAr?'رقم الإيصال':'Receipt'}: SA-{String(proof.receiptNumber).padStart(6,'0')}</p>}{proof.parentNote&&<p className="text-xs mt-1">{proof.parentNote}</p>}{proof.reviewedAt&&<p className="text-[10px] text-slate-400 mt-1">{isAr?'تمت المراجعة':'Reviewed'}: {new Date(proof.reviewedAt).toLocaleString(isAr?'ar-BH':'en-BH')}</p>}</div>
+            <Badge color={proof.status==='approved'?'emerald':proof.status==='rejected'?'red':'amber'}>{proof.status==='pending'?(isAr?'بانتظار المراجعة':'Pending review'):proof.status==='approved'?(isAr?'معتمد':'Approved'):proof.status==='needs_info'?(isAr?'يحتاج استكمال':'Needs info'):(isAr?'مرفوض':'Rejected')}</Badge>
+            <button onClick={()=>void openProof(proof)} className="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-xs font-bold">{isAr?'عرض الإثبات':'View proof'}</button>
+            {proof.status==='pending'&&<><button disabled={proofBusy===proof.id} onClick={()=>void approveProof(proof)} className="px-3 py-2 rounded-lg bg-emerald-600 text-white text-xs font-bold disabled:opacity-50">{isAr?'اعتماد':'Approve'}</button><button onClick={()=>{setProofReview(proof);setProofReviewStatus('needs_info');setProofReviewNote('')}} className="px-3 py-2 rounded-lg bg-amber-100 text-amber-800 text-xs font-bold">{isAr?'مراجعة':'Review'}</button></>}
+            {proof.reviewNote&&<p className="w-full text-xs text-slate-500">{proof.reviewNote}</p>}
+          </div>;
+        })}
+      </div>}
+
       {/* ---------------- Transactions Tab ---------------- */}
       {activeTab === 'transactions' && (
         <>
@@ -533,6 +582,13 @@ export function Subscriptions({
         <RemindersAnalyticsTab subscriptions={subscriptions} players={players} parents={parents} lang={lang} />
       )}
 
+      <Modal open={!!proofReview} onClose={()=>setProofReview(null)} title={isAr?'مراجعة إثبات الدفع':'Review payment proof'}>
+        <div className="space-y-4">
+          <select value={proofReviewStatus} onChange={e=>setProofReviewStatus(e.target.value as 'rejected'|'needs_info')} className={inputCls}><option value="needs_info">{isAr?'يحتاج استكمال':'Needs more information'}</option><option value="rejected">{isAr?'رفض':'Reject'}</option></select>
+          <textarea value={proofReviewNote} onChange={e=>setProofReviewNote(e.target.value)} className={inputCls} rows={4} placeholder={isAr?'سبب المراجعة مطلوب':'Review reason is required'}/>
+          <button disabled={!proofReviewNote.trim() || !!proofBusy} onClick={()=>void submitProofReview()} className="w-full rounded-xl bg-amber-600 text-white py-2.5 font-bold disabled:opacity-50">{isAr?'حفظ القرار':'Save decision'}</button>
+        </div>
+      </Modal>
       <Modal open={!!paymentTarget} onClose={() => { if (!markingPaidId) setPaymentTarget(null); }} title={t.confirmPayment}>
         <div className="space-y-4">
           {paymentError && <p role="alert" className="text-sm text-red-600">{paymentError}</p>}
@@ -543,7 +599,7 @@ export function Subscriptions({
           <button className="bg-emerald-600 text-white rounded-lg py-2 px-4 disabled:opacity-50" disabled={!!markingPaidId} onClick={() => void handleMarkPaid()}>{markingPaidId ? t.processing : t.confirmPayment}</button>
         </div>
       </Modal>
-      {receiptSub && <PaymentReceipt subscription={receiptSub} transactions={transactions} players={players} settings={settings} lang={lang} onClose={() => setReceiptSub(null)} />}
+      {receiptSub && <PaymentReceipt subscription={receiptSub} transactions={transactions} players={players} parents={parents} settings={settings} lang={lang} officialReceiptNumber={paymentProofs.find((proof) => proof.subscriptionId === receiptSub.id && proof.status === 'approved')?.receiptNumber} onClose={() => setReceiptSub(null)} />}
 
       {/* ---------------- Modals ---------------- */}
       {(showAddSub || editSub) && (

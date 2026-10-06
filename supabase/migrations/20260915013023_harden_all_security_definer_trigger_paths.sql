@@ -13,3 +13,4 @@ alter function internal.validate_subscription_player() set search_path='';
 alter function internal.validate_subscription_state() set search_path='';
 alter function internal.validate_team_coach() set search_path='';
 alter function internal.validate_transaction_subscription_link() set search_path='';
+alter function internal.validate_match_result() set search_path='';

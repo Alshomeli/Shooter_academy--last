@@ -7,12 +7,13 @@ import {
 import type { Player, Team, Staff, Match, Training, Transaction, Subscription, Tournament, Parent, Attendance, PlayerEvaluation, Lang, Role } from '@/types';
 import { PageHeader } from '@/components/ui';
 import { AIOperationsPanel } from '@/components/AIOperationsPanel';
+import { ChatGPTIntegrationStatus } from '@/components/ChatGPTIntegrationStatus';
 import { tr } from '@/lib/i18n';
 import { fetchAllPlayerFiles, type UploadedFile } from '@/lib/uploads';
 import type { AIContext } from '@/views/ai-context';
 import { askManagementAI, type ManagementAIPersona } from '@/lib/ai-assistant';
 import {
-  generateTrainingPlan, generateNutritionAdvice, generateCommunicationTemplate,
+  generateNutritionAdvice, generateCommunicationTemplate,
   generatePositionEvaluation,
   generateScheduleConflicts, generateMatchPrep, generateFullReport, fmt,
 } from '@/lib/ai-generators';
@@ -92,6 +93,19 @@ const PERSONA_COLORS: Record<Persona['color'], {
 };
 
 const LIVE_AI_PERSONAS = new Set<PersonaId>(['financial', 'operations', 'documents', 'communication', 'players', 'training', 'matches', 'scout']);
+
+const PERSONA_ROLES: Record<PersonaId, Role[]> = {
+  technical: ['manager', 'coach'],
+  financial: ['manager', 'accountant'],
+  players: ['manager', 'coach'],
+  matches: ['manager', 'coach'],
+  documents: ['manager', 'receptionist'],
+  training: ['manager', 'coach'],
+  nutrition: ['manager', 'coach'],
+  scout: ['manager', 'coach'],
+  operations: ['manager', 'receptionist'],
+  communication: ['manager', 'receptionist'],
+};
 
 const SUGGESTIONS: Record<PersonaId, string[]> = {
   technical: ['حلل أداء الفرق', 'توصيات لتحسين الحضور', 'تقرير شامل'],
@@ -337,20 +351,42 @@ function generateResponse(personaId: PersonaId, q: string, c: AIContext, teams: 
 
 export function AICenter({ players, subscriptions, transactions, staff, teams, matches, trainings, tournaments, parents, attendance, evaluations, activeRole, lang, onRefresh }: AICenterProps) {
   const t = tr(lang);
-  const [activePersona, setActivePersona] = useState<PersonaId>('technical');
+  const allowedPersonas = useMemo(
+    () => PERSONAS.filter((p) => PERSONA_ROLES[p.id].includes(activeRole)),
+    [activeRole],
+  );
+  const [activePersona, setActivePersona] = useState<PersonaId>(() => {
+    if (activeRole === 'accountant') return 'financial';
+    if (activeRole === 'receptionist') return 'operations';
+    return 'technical';
+  });
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [documents, setDocuments] = useState<UploadedFile[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const persona = useMemo(() => PERSONAS.find((p) => p.id === activePersona)!, [activePersona]);
+  useEffect(() => {
+    if (!PERSONA_ROLES[activePersona].includes(activeRole)) {
+      setActivePersona(allowedPersonas[0]?.id ?? 'technical');
+    }
+  }, [activeRole, activePersona, allowedPersonas]);
+
+  const persona = useMemo(() => allowedPersonas.find((p) => p.id === activePersona) ?? allowedPersonas[0] ?? PERSONAS[0], [activePersona, allowedPersonas]);
   const personaStyle = PERSONA_COLORS[persona.color];
   const PersonaIcon = persona.icon;
 
   useEffect(() => { setMessages([{ id: uid(), role: 'ai', text: persona.welcome }]); }, [persona.welcome]);
   useEffect(() => { const el = scrollRef.current; if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' }); }, [messages, isTyping]);
-  useEffect(() => { let active = true; fetchAllPlayerFiles().then((files) => { if (active) setDocuments(files); }); return () => { active = false; }; }, []);
+  useEffect(() => {
+    let active = true;
+    if (activeRole !== 'manager' && activeRole !== 'receptionist') {
+      setDocuments([]);
+      return () => { active = false; };
+    }
+    fetchAllPlayerFiles().then((files) => { if (active) setDocuments(files); });
+    return () => { active = false; };
+  }, [activeRole]);
 
   const ctx = useMemo(() => buildContext(players, subscriptions, transactions, staff, teams, matches, trainings, tournaments, parents, attendance, documents, t.currency),
     [players, subscriptions, transactions, staff, teams, matches, trainings, tournaments, parents, attendance, documents, t.currency]);
@@ -398,7 +434,9 @@ export function AICenter({ players, subscriptions, transactions, staff, teams, m
         </button>
       </PageHeader>
 
-      <AIInsights players={players} subscriptions={subscriptions} transactions={transactions} matches={matches} trainings={trainings} documents={documents} currency={t.currency} />
+      <AIInsights players={players} subscriptions={subscriptions} transactions={transactions} matches={matches} trainings={trainings} documents={documents} evaluations={evaluations} currency={t.currency} />
+
+      <ChatGPTIntegrationStatus lang={lang} />
 
       <AIOperationsPanel activeRole={activeRole} lang={lang} subscriptions={subscriptions} players={players} evaluations={evaluations} trainings={trainings} onCompleted={onRefresh} />
 
@@ -409,7 +447,7 @@ export function AICenter({ players, subscriptions, transactions, staff, teams, m
             <span className="text-[11px] font-black uppercase tracking-wider text-slate-400">المساعدون</span>
           </div>
           <div className="space-y-2 max-h-[60vh] lg:max-h-none overflow-y-auto lg:overflow-visible pr-1 -mr-1">
-            {PERSONAS.map((p) => {
+            {allowedPersonas.map((p) => {
               const styles = PERSONA_COLORS[p.color];
               const Icon = p.icon;
               const isActive = p.id === activePersona;
@@ -520,8 +558,8 @@ function TypingIndicator({ personaColor, personaIcon: Icon }: { personaColor: Pe
   );
 }
 
-function AIInsights({ players, subscriptions, transactions, matches, trainings, documents, currency }: {
-  players: Player[]; subscriptions: Subscription[]; transactions: Transaction[]; matches: Match[]; trainings: Training[]; documents: UploadedFile[]; currency: string;
+function AIInsights({ players, subscriptions, transactions, matches, trainings, documents, evaluations, currency }: {
+  players: Player[]; subscriptions: Subscription[]; transactions: Transaction[]; matches: Match[]; trainings: Training[]; documents: UploadedFile[]; evaluations: PlayerEvaluation[]; currency: string;
 }) {
   const insights = useMemo(() => {
     const net = transactions.filter((tx) => tx.type === 'revenue').reduce((s, tx) => s + tx.amount, 0) - transactions.filter((tx) => tx.type === 'expense').reduce((s, tx) => s + tx.amount, 0);
@@ -531,6 +569,16 @@ function AIInsights({ players, subscriptions, transactions, matches, trainings, 
     const winRate = completed.length > 0 ? Math.round((matches.filter((m) => m.result === 'win').length / completed.length) * 100) : 0;
     const withDocs = new Set(documents.map((d) => d.playerId)).size;
     const docCoverage = players.length > 0 ? Math.round((withDocs / players.length) * 100) : 0;
+    const published = evaluations.filter((ev) => ev.status === 'published');
+    const byPlayer = new Map<string, PlayerEvaluation[]>();
+    published.forEach((ev) => byPlayer.set(ev.playerId, [...(byPlayer.get(ev.playerId) || []), ev]));
+    const latest = Array.from(byPlayer.values()).map((items) => {
+      const sorted = [...items].sort((a, b) => a.evaluationDate.localeCompare(b.evaluationDate));
+      return sorted[sorted.length - 1];
+    });
+    const progressHistory = Array.from(byPlayer.values()).filter((items) => items.length >= 2).length;
+    const today = new Date().toISOString().slice(0, 10);
+    const reassessmentDue = latest.filter((ev) => ev.reassessmentDate && ev.reassessmentDate <= today).length;
     const alerts: { icon: typeof AlertTriangle; text: string; level: 'warning' | 'success' | 'info' }[] = [];
     const unpaidAmount = subscriptions.filter((s) => s.status === 'unpaid').reduce((s, sub) => s + sub.amount, 0);
     if (unpaidAmount > 0) alerts.push({ icon: AlertTriangle, text: `${subscriptions.filter((s) => s.status === 'unpaid').length} اشتراك متأخر بقيمة ${unpaidAmount.toLocaleString()} ${currency}`, level: 'warning' });
@@ -539,9 +587,10 @@ function AIInsights({ players, subscriptions, transactions, matches, trainings, 
     if (winRate >= 60 && completed.length > 0) alerts.push({ icon: Trophy, text: `معدل فوز ممتاز ${winRate}%`, level: 'success' });
     else if (winRate < 40 && completed.length > 0) alerts.push({ icon: AlertTriangle, text: `معدل الفوز منخفض ${winRate}%`, level: 'warning' });
     if (players.length > 0 && docCoverage < 50) alerts.push({ icon: FileText, text: `${players.length - withDocs} لاعب بدون مستندات`, level: 'info' });
+    if (reassessmentDue > 0) alerts.push({ icon: AlertTriangle, text: `${reassessmentDue} إعادة تقييم لاعب مستحقة`, level: 'warning' });
     if (trainings.length === 0) alerts.push({ icon: Lightbulb, text: 'لا توجد تدريبات مسجلة', level: 'info' });
-    return { net, collectionRate, winRate, docCoverage, alerts };
-  }, [players, subscriptions, transactions, matches, trainings, documents, currency]);
+    return { net, collectionRate, winRate, docCoverage, progressHistory, reassessmentDue, alerts };
+  }, [players, subscriptions, transactions, matches, trainings, documents, evaluations, currency]);
 
   const alertStyles = {
     warning: 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800/30 text-amber-700 dark:text-amber-400',
@@ -555,11 +604,13 @@ function AIInsights({ players, subscriptions, transactions, matches, trainings, 
         <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 text-white flex items-center justify-center"><Brain className="h-4 w-4" /></div>
         <div><h3 className="text-sm font-black text-slate-900 dark:text-white">رؤى ذكية فورية</h3><p className="text-[11px] text-slate-400">تحليل آلي لبيانات الأكاديمية</p></div>
       </div>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 mb-4">
         <InsightCard icon={TrendingUp} label="صافي الحركة المالية" value={`${insights.net >= 0 ? '+' : ''}${insights.net.toLocaleString()}`} unit={currency} color={insights.net >= 0 ? 'emerald' : 'red'} />
         <InsightCard icon={Target} label="نسبة الاشتراكات المدفوعة" value={`${insights.collectionRate}%`} color={insights.collectionRate >= 70 ? 'emerald' : 'amber'} />
         <InsightCard icon={Trophy} label="معدل الفوز" value={`${insights.winRate}%`} color={insights.winRate >= 50 ? 'emerald' : 'amber'} />
         <InsightCard icon={FileText} label="تغطية المستندات" value={`${insights.docCoverage}%`} color={insights.docCoverage >= 70 ? 'emerald' : 'blue'} />
+        <InsightCard icon={TrendingUp} label="سجلات التطور" value={insights.progressHistory.toString()} color="blue" />
+        <InsightCard icon={AlertTriangle} label="إعادة تقييم مستحقة" value={insights.reassessmentDue.toString()} color={insights.reassessmentDue > 0 ? 'amber' : 'emerald'} />
       </div>
       {insights.alerts.length > 0 && (
         <div className="space-y-2">

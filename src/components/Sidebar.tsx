@@ -53,14 +53,14 @@ export function Sidebar({
   const brandName = academyName?.trim() || t.academyShort;
   const configuredLogo = logoUrl?.trim() || '';
   const logoIsImage = /^(https?:\/\/|data:image\/|\/)/i.test(configuredLogo);
-  const fallbackLogo = '/copilot_image_1776165482483-300x300.png';
+  const fallbackLogo = '/shooter-logo.svg';
 
   const navItems: NavItem[] = [
     { id: 'dashboard', label: t.dashboard, icon: LayoutDashboard, allowedRoles: ['manager', 'accountant', 'coach', 'receptionist'] },
     { id: 'approvals', label: isAr ? 'الموافقات' : 'Approvals', icon: ShieldCheck, allowedRoles: ['manager'] },
     { id: 'registration-admin', label: t.registrationAdmin, icon: FileCheck, allowedRoles: ['manager'] },
     { id: 'players', label: t.players, icon: Users, allowedRoles: ['manager', 'receptionist', 'coach'] },
-    { id: 'parents', label: t.parents, icon: UsersRound, allowedRoles: ['manager', 'receptionist', 'coach', 'accountant'] },
+    { id: 'parents', label: t.parents, icon: UsersRound, allowedRoles: ['manager', 'receptionist', 'coach'] },
     { id: 'teams', label: t.teams, icon: Trophy, allowedRoles: ['manager', 'coach', 'receptionist'] },
     { id: 'staff', label: t.staff, icon: Dumbbell, allowedRoles: ['manager'] },
     { id: 'subscriptions', label: t.subscriptions, icon: Wallet, allowedRoles: ['manager', 'accountant', 'receptionist'] },
@@ -102,15 +102,17 @@ export function Sidebar({
           {/* Logo header */}
           <div className="p-6 border-b border-slate-800 flex items-center gap-3 bg-emerald-950/20">
             <div className="relative group shrink-0">
-              <div className="absolute -inset-0.5 bg-gradient-to-tr from-emerald-500 to-amber-500 rounded-full blur opacity-40 group-hover:opacity-75 transition duration-1000" />
-              <div className="relative w-13 h-13 rounded-full overflow-hidden bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg ring-2 ring-emerald-400/30">
-                {configuredLogo && !logoIsImage
-                  ? <span className="text-2xl" aria-label={isAr ? 'شعار الأكاديمية' : 'Academy logo'}>{configuredLogo}</span>
-                  : <img src={logoIsImage ? configuredLogo : fallbackLogo} alt={isAr ? 'شعار الأكاديمية' : 'Academy logo'} className="h-10 w-10 object-contain" />}
+              <div className="absolute -inset-0.5 rounded-full blur opacity-40 group-hover:opacity-75 transition duration-1000" style={{ backgroundColor: '#cbd5e1' }} />
+              <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-white flex items-center justify-center shadow-lg ring-1 ring-white/30 p-1">
+                <img
+                  src={logoIsImage ? configuredLogo : fallbackLogo}
+                  alt={isAr ? 'شعار الأكاديمية' : 'Academy logo'}
+                  className="h-full w-full object-contain bg-white"
+                />
               </div>
             </div>
             <div className="min-w-0 flex-1">
-              <h1 className="font-black text-base text-emerald-400 tracking-tight leading-tight">{brandName}</h1>
+              <h1 className="font-black text-base tracking-tight leading-tight" style={{ color: '#e2e8f0' }}>{brandName}</h1>
               <p className="text-[10px] text-slate-400 font-bold tracking-wider mt-0.5 uppercase">SHOOTER ACADEMY</p>
               <p className="text-[9px] text-emerald-500 font-semibold mt-0.5">{t.systemTitle}</p>
             </div>

@@ -91,6 +91,8 @@ export interface Attendance {
   playerId: string;
   sessionDate: string;
   sessionType: 'training' | 'match';
+  trainingId?: string;
+  matchId?: string;
   status: 'present' | 'absent' | 'excused';
   notes?: string;
 }
@@ -203,15 +205,81 @@ export interface Settings {
   subscriptionFeeQuarterly: number;
   subscriptionFeeSemiAnnual: number;
   subscriptionFeeYearly: number;
+  benefitIban?: string;
+  benefitAccountName?: string;
+  paymentInstructionsAr?: string;
+  paymentInstructionsEn?: string;
+}
+
+export interface PaymentProof {
+  id: string;
+  subscriptionId: string;
+  playerId: string;
+  parentUserId: string;
+  amount: number;
+  transferDate: string;
+  proofPath: string;
+  status: 'pending' | 'approved' | 'rejected' | 'needs_info';
+  parentNote: string;
+  reviewNote: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  receiptNumber?: number;
+  createdAt: string;
+}
+
+export interface PlayerDocument {
+  id: string;
+  playerId?: string;
+  fileName: string;
+  filePath: string;
+  fileType: string;
+  fileCategory: 'photo' | 'document';
+  fileSize: number;
+  uploadedAt: string;
+}
+
+export interface StaffDocument {
+  id: string;
+  staffId: string;
+  documentType: string;
+  title: string;
+  filePath: string;
+  expiryDate?: string;
+  notes: string;
+  createdAt: string;
 }
 
 export interface CurrentUser {
   authUserId?: string;
   registrationOnly?: boolean;
+  registrationMode?: 'parent' | 'staff';
+  accountDisabled?: boolean;
   id: string;
   name: string;
   email: string;
   role: Role;
+}
+
+export interface StaffApplication {
+  id: string;
+  applicantUserId: string;
+  requestedRole: 'manager' | 'coach' | 'accountant' | 'receptionist';
+  fullName: string;
+  email: string;
+  phone: string;
+  nationalId: string;
+  specialization: string;
+  experienceYears: number | null;
+  licenses: string[];
+  applicantNotes: string;
+  status: 'draft' | 'pending' | 'needs_info' | 'approved' | 'rejected';
+  reviewNotes: string;
+  submittedAt: string | null;
+  reviewedAt: string | null;
+  approvedStaffId: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export type Lang = 'ar' | 'en';
@@ -234,6 +302,7 @@ export type ViewId =
   | 'messages'
   | 'settings'
   | 'registration'
+  | 'staff-registration'
   | 'registration-admin';
 
 /* ---- Registration module ---- */

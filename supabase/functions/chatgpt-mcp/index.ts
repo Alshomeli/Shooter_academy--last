@@ -4,9 +4,44 @@ import { McpServer } from "npm:@modelcontextprotocol/sdk@1.25.3/server/mcp.js";
 import { WebStandardStreamableHTTPServerTransport } from "npm:@modelcontextprotocol/sdk@1.25.3/server/webStandardStreamableHttp.js";
 import { Hono } from "npm:hono@^4.9.7";
 import { z } from "npm:zod@^4.1.13";
-import { withOAuthProtectedResource } from "npm:@supabase/server@^1.6.0";
 
 type GatewayBody = Record<string, unknown>;
+
+function projectUrl(): string {
+  const url = Deno.env.get("SUPABASE_URL");
+  if (!url) throw new Error("server_configuration_error");
+  return url.replace(/\/$/, "");
+}
+
+function mcpResourceUrl(): string {
+  return `${projectUrl()}/functions/v1/chatgpt-mcp/mcp`;
+}
+
+function oauthResourceMetadataUrl(): string {
+  return `${projectUrl()}/functions/v1/chatgpt-mcp/.well-known/oauth-protected-resource`;
+}
+
+function oauthResourceMetadata() {
+  return {
+    resource: mcpResourceUrl(),
+    authorization_servers: [`${projectUrl()}/auth/v1`],
+    bearer_methods_supported: ["header"],
+  };
+}
+
+function unauthorizedResponse() {
+  return Response.json(
+    { error: "authentication_required" },
+    {
+      status: 401,
+      headers: {
+        "Cache-Control": "no-store",
+        "Access-Control-Allow-Origin": "*",
+        "WWW-Authenticate": `Bearer resource_metadata="${oauthResourceMetadataUrl()}"`,
+      },
+    },
+  );
+}
 
 function publicKey(): string {
   const raw = Deno.env.get("SUPABASE_PUBLISHABLE_KEYS");
@@ -219,10 +254,28 @@ function makeServer(authHeader: string) {
 
 const app = new Hono().basePath("/chatgpt-mcp");
 
+app.get("/.well-known/oauth-protected-resource", () =>
+  Response.json(oauthResourceMetadata(), {
+    headers: {
+      "Cache-Control": "no-store",
+      "Access-Control-Allow-Origin": "*",
+    },
+  }),
+);
+
+app.get("/oauth-protected-resource", () =>
+  Response.json(oauthResourceMetadata(), {
+    headers: {
+      "Cache-Control": "no-store",
+      "Access-Control-Allow-Origin": "*",
+    },
+  }),
+);
+
 app.all("/mcp", async (c) => {
   const authHeader = c.req.header("authorization") || "";
   if (!authHeader.startsWith("Bearer ") || !(await validateUser(authHeader))) {
-    return Response.json({ error: "authentication_required" }, { status: 401 });
+    return unauthorizedResponse();
   }
 
   const server = makeServer(authHeader);
@@ -230,8 +283,6 @@ app.all("/mcp", async (c) => {
   await server.connect(transport);
   return transport.handleRequest(c.req.raw);
 });
-
-const protectedHandler = withOAuthProtectedResource(app.fetch);
 
 Deno.serve((req) => {
   const pathname = new URL(req.url).pathname;
@@ -250,5 +301,5 @@ Deno.serve((req) => {
       },
     });
   }
-  return protectedHandler(req);
+  return app.fetch(req);
 });
