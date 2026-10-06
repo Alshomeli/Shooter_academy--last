@@ -60,7 +60,7 @@ export function PaymentReceipt({ subscription, transactions, players, parents, s
           </div>
           <div className="grid grid-cols-3 gap-2 py-4 border-t text-xs">
             {methodChecks.map((item) => (
-              <div key={item.key} className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 p-2">
+              <div key={item.key} className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 p-2 bg-white">
                 <span className="inline-flex h-4 w-4 items-center justify-center border border-slate-500 text-[10px] font-black">{item.checked ? '✓' : ''}</span>
                 <span>{ar ? item.labelAr : item.labelEn}</span>
               </div>
