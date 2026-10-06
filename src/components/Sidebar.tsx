@@ -32,6 +32,13 @@ interface NavItem {
   allowedRoles: Role[];
 }
 
+interface NavGroup {
+  id: 'management' | 'operations' | 'system';
+  labelAr: string;
+  labelEn: string;
+  items: NavItem[];
+}
+
 function getRoleOptions(lang: Lang): { value: Role; label: string }[] {
   const t = tr(lang);
   return [
@@ -55,29 +62,51 @@ export function Sidebar({
   const logoIsImage = /^(https?:\/\/|data:image\/|\/)/i.test(configuredLogo);
   const fallbackLogo = '/shooter-logo.png';
 
-  const navItems: NavItem[] = [
-    { id: 'dashboard', label: t.dashboard, icon: LayoutDashboard, allowedRoles: ['manager', 'accountant', 'coach', 'receptionist'] },
-    { id: 'approvals', label: isAr ? 'الموافقات' : 'Approvals', icon: ShieldCheck, allowedRoles: ['manager'] },
-    { id: 'registration-admin', label: t.registrationAdmin, icon: FileCheck, allowedRoles: ['manager'] },
-    { id: 'players', label: t.players, icon: Users, allowedRoles: ['manager', 'receptionist', 'coach'] },
-    { id: 'parents', label: t.parents, icon: UsersRound, allowedRoles: ['manager', 'receptionist', 'coach'] },
-    { id: 'teams', label: t.teams, icon: Trophy, allowedRoles: ['manager', 'coach', 'receptionist'] },
-    { id: 'staff', label: t.staff, icon: Dumbbell, allowedRoles: ['manager'] },
-    { id: 'subscriptions', label: t.subscriptions, icon: Wallet, allowedRoles: ['manager', 'accountant', 'receptionist'] },
-    { id: 'attendance', label: t.attendance, icon: ClipboardCheck, allowedRoles: ['manager', 'coach', 'receptionist'] },
-    { id: 'schedules', label: t.schedules, icon: CalendarDays, allowedRoles: ['manager', 'coach'] },
-    { id: 'tournaments', label: t.tournaments, icon: Medal, allowedRoles: ['manager', 'coach', 'receptionist'] },
-    { id: 'evaluations', label: t.evaluations, icon: Star, allowedRoles: ['manager', 'coach'] },
-    { id: 'reports', label: t.reports, icon: BarChart3, allowedRoles: ['manager', 'accountant', 'coach', 'receptionist'] },
-    { id: 'audit-logs', label: t.auditLogs, icon: ScrollText, allowedRoles: ['manager'] },
-
-    { id: 'messages', label: t.messages, icon: Send, allowedRoles: ['manager', 'coach', 'receptionist', 'accountant'] },
-    { id: 'ai-center', label: t.aiCenter, icon: Sparkles, allowedRoles: ['manager', 'accountant', 'coach', 'receptionist'] },
-    { id: 'registration', label: t.registration, icon: ClipboardList, allowedRoles: ['parent'] },
-    { id: 'settings', label: t.settings, icon: SettingsIcon, allowedRoles: ['manager'] },
+  const navGroups: NavGroup[] = [
+    {
+      id: 'management',
+      labelAr: 'الإدارة',
+      labelEn: 'Management',
+      items: [
+        { id: 'dashboard', label: t.dashboard, icon: LayoutDashboard, allowedRoles: ['manager', 'accountant', 'coach', 'receptionist'] },
+        { id: 'registration-admin', label: t.registrationAdmin, icon: FileCheck, allowedRoles: ['manager'] },
+        { id: 'approvals', label: isAr ? 'الموافقات' : 'Approvals', icon: ShieldCheck, allowedRoles: ['manager'] },
+        { id: 'players', label: t.players, icon: Users, allowedRoles: ['manager', 'receptionist', 'coach'] },
+        { id: 'parents', label: t.parents, icon: UsersRound, allowedRoles: ['manager', 'receptionist', 'coach'] },
+        { id: 'teams', label: t.teams, icon: Trophy, allowedRoles: ['manager', 'coach', 'receptionist'] },
+      ],
+    },
+    {
+      id: 'operations',
+      labelAr: 'العمليات',
+      labelEn: 'Operations',
+      items: [
+        { id: 'staff', label: t.staff, icon: Dumbbell, allowedRoles: ['manager'] },
+        { id: 'subscriptions', label: t.subscriptions, icon: Wallet, allowedRoles: ['manager', 'accountant', 'receptionist'] },
+        { id: 'attendance', label: t.attendance, icon: ClipboardCheck, allowedRoles: ['manager', 'coach', 'receptionist'] },
+        { id: 'schedules', label: t.schedules, icon: CalendarDays, allowedRoles: ['manager', 'coach'] },
+        { id: 'tournaments', label: t.tournaments, icon: Medal, allowedRoles: ['manager', 'coach', 'receptionist'] },
+        { id: 'evaluations', label: t.evaluations, icon: Star, allowedRoles: ['manager', 'coach'] },
+      ],
+    },
+    {
+      id: 'system',
+      labelAr: 'النظام',
+      labelEn: 'System',
+      items: [
+        { id: 'reports', label: t.reports, icon: BarChart3, allowedRoles: ['manager', 'accountant', 'coach', 'receptionist'] },
+        { id: 'audit-logs', label: t.auditLogs, icon: ScrollText, allowedRoles: ['manager'] },
+        { id: 'messages', label: t.messages, icon: Send, allowedRoles: ['manager', 'coach', 'receptionist', 'accountant'] },
+        { id: 'ai-center', label: t.aiCenter, icon: Sparkles, allowedRoles: ['manager', 'accountant', 'coach', 'receptionist'] },
+        { id: 'registration', label: t.registration, icon: ClipboardList, allowedRoles: ['parent'] },
+        { id: 'settings', label: t.settings, icon: SettingsIcon, allowedRoles: ['manager'] },
+      ],
+    },
   ];
 
-  const visibleItems = navItems.filter((item) => item.allowedRoles.includes(activeRole));
+  const visibleGroups = navGroups
+    .map((group) => ({ ...group, items: group.items.filter((item) => item.allowedRoles.includes(activeRole)) }))
+    .filter((group) => group.items.length > 0);
 
   const handleNav = (id: ViewId) => {
     setCurrentTab(id);
@@ -100,25 +129,27 @@ export function Sidebar({
       >
         <div>
           {/* Logo header */}
-          <div className="p-6 border-b border-slate-800 flex items-center gap-3 bg-brand-950/20">
-            <div className="relative group shrink-0">
-              <div className="absolute -inset-0.5 rounded-full blur opacity-40 group-hover:opacity-75 transition duration-1000" style={{ backgroundColor: '#cbd5e1' }} />
-              <div className="relative w-20 h-20 flex items-center justify-center">
-                <img
-                  src={logoIsImage ? configuredLogo : fallbackLogo}
-                  alt={isAr ? 'شعار الأكاديمية' : 'Academy logo'}
-                  className="h-full w-full object-contain drop-shadow-[0_6px_18px_rgba(0,0,0,0.35)]"
-                />
-              </div>
-            </div>
-            <div className="min-w-0 flex-1">
-              <h1 className="font-black text-base tracking-tight leading-tight" style={{ color: '#e2e8f0' }}>{brandName}</h1>
-              <p className="text-[10px] text-slate-400 font-bold tracking-wider mt-0.5 uppercase">SHOOTER ACADEMY</p>
-              <p className="text-[9px] text-brand-500 font-semibold mt-0.5">{t.systemTitle}</p>
-            </div>
-            <button onClick={() => setMobileOpen(false)} aria-label={lang === 'ar' ? 'إغلاق القائمة' : 'Close menu'} className="lg:hidden p-1.5 rounded-lg hover:bg-slate-800 transition cursor-pointer">
+          <div className="relative px-4 pt-4 pb-5 border-b border-slate-800 bg-brand-950/20 text-center">
+            <button
+              onClick={() => setMobileOpen(false)}
+              aria-label={lang === 'ar' ? 'إغلاق القائمة' : 'Close menu'}
+              className="lg:hidden absolute top-3 left-3 p-1.5 rounded-lg hover:bg-slate-800 transition cursor-pointer"
+            >
               <X className="h-5 w-5" />
             </button>
+            <div className="mx-auto w-32 h-28 flex items-center justify-center overflow-hidden">
+              <img
+                src={logoIsImage ? configuredLogo : fallbackLogo}
+                onError={(e) => { e.currentTarget.src = fallbackLogo; }}
+                alt={isAr ? 'شعار الأكاديمية' : 'Academy logo'}
+                className="h-full w-full object-contain drop-shadow-[0_8px_22px_rgba(0,0,0,0.45)]"
+              />
+            </div>
+            <div className="mt-1 min-w-0">
+              <h1 className="font-black text-lg tracking-tight leading-tight text-slate-100">{brandName}</h1>
+              <p className="text-[10px] text-slate-400 font-bold tracking-[0.16em] mt-1 uppercase">SHOOTER ACADEMY</p>
+              <p className="text-[9px] text-brand-500 font-semibold mt-1">{t.systemTitle}</p>
+            </div>
           </div>
 
           {/* Signed-in identity and permission level (assigned by a manager) */}
@@ -133,25 +164,34 @@ export function Sidebar({
           </div>
 
           {/* Nav items */}
-          <nav className="px-3 pb-4 space-y-0.5 overflow-y-auto max-h-[calc(100vh-460px)]">
-            {visibleItems.map((item) => {
-              const Icon = item.icon;
-              const active = currentTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => handleNav(item.id)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer text-right ${
-                    active
-                      ? 'bg-brand-600 text-white shadow-lg shadow-brand-900/20'
-                      : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
-                  }`}
-                >
-                  <Icon className="h-4 w-4 shrink-0" />
-                  <span className="truncate">{item.label}</span>
-                </button>
-              );
-            })}
+          <nav className="px-3 pb-4 overflow-y-auto max-h-[calc(100vh-500px)]">
+            {visibleGroups.map((group, groupIndex) => (
+              <div key={group.id} className={groupIndex > 0 ? 'mt-4 pt-3 border-t border-slate-800/80' : ''}>
+                <div className="px-3 mb-1.5 text-[10px] font-black tracking-wide text-slate-500 uppercase">
+                  {isAr ? group.labelAr : group.labelEn}
+                </div>
+                <div className="space-y-0.5">
+                  {group.items.map((item) => {
+                    const Icon = item.icon;
+                    const active = currentTab === item.id;
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => handleNav(item.id)}
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer text-right ${
+                          active
+                            ? 'bg-brand-600 text-white shadow-lg shadow-brand-900/20'
+                            : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
+                        }`}
+                      >
+                        <Icon className="h-4 w-4 shrink-0" />
+                        <span className="truncate">{item.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </nav>
         </div>
 
