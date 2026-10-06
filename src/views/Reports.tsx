@@ -289,7 +289,7 @@ export function Reports({
         </div>
       </div>
       <PageHeader title={t.reports} subtitle={t.reportsSubtitle}>
-        <button onClick={() => exportReportCsv('players', players, teams)} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition cursor-pointer shadow-sm">
+        <button onClick={() => exportReportCsv('players', players, teams)} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold text-white bg-brand-600 hover:bg-brand-700 transition cursor-pointer shadow-sm">
           <Download className="h-4 w-4" /> {t.exportPlayersCsv}
         </button>
         {(activeRole === 'manager' || activeRole === 'accountant') && <button onClick={() => exportReportCsv('financial', transactions, teams)} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 transition cursor-pointer shadow-sm">
@@ -314,7 +314,7 @@ export function Reports({
                 onClick={() => setDatePreset(key)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
                   datePreset === key
-                    ? 'bg-emerald-600 text-white shadow-sm'
+                    ? 'bg-brand-600 text-white shadow-sm'
                     : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
                 }`}
               >
@@ -324,9 +324,9 @@ export function Reports({
           </div>
           {datePreset === 'custom' && (
             <div className="flex items-center gap-2">
-              <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs py-1.5 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50" dir="ltr" />
+              <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs py-1.5 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50" dir="ltr" />
               <span className="text-xs text-slate-400">→</span>
-              <input type="date" min={customFrom} value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs py-1.5 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50" dir="ltr" />
+              <input type="date" min={customFrom} value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs py-1.5 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50" dir="ltr" />
             </div>
           )}
         </div>
@@ -348,7 +348,7 @@ export function Reports({
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           <div>
-            <p className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-3 flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-emerald-500" />{t.monthlyRevenueBars}</p>
+            <p className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-3 flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-brand-500" />{t.monthlyRevenueBars}</p>
             <BarChart data={financial.revenueBars} valueFormatter={(v) => v.toLocaleString()} height={180} />
           </div>
           <div>
@@ -379,7 +379,7 @@ export function Reports({
           <div className="rounded-xl bg-slate-50 dark:bg-slate-800/40 p-5">
             <p className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-4">{t.matchResultsBreakdown}</p>
             <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-xl bg-emerald-50 dark:bg-emerald-900/20 p-4 text-center"><p className="text-3xl font-black text-emerald-600 dark:text-emerald-400">{performance.wins}</p><p className="text-xs font-bold text-emerald-700 dark:text-emerald-500 mt-1">{t.win}</p></div>
+              <div className="rounded-xl bg-brand-50 dark:bg-brand-900/20 p-4 text-center"><p className="text-3xl font-black text-brand-600 dark:text-brand-400">{performance.wins}</p><p className="text-xs font-bold text-brand-700 dark:text-brand-500 mt-1">{t.win}</p></div>
               <div className="rounded-xl bg-amber-50 dark:bg-amber-900/20 p-4 text-center"><p className="text-3xl font-black text-amber-600 dark:text-amber-400">{performance.draws}</p><p className="text-xs font-bold text-amber-700 dark:text-amber-500 mt-1">{t.draw}</p></div>
               <div className="rounded-xl bg-red-50 dark:bg-red-900/20 p-4 text-center"><p className="text-3xl font-black text-red-600 dark:text-red-400">{performance.losses}</p><p className="text-xs font-bold text-red-700 dark:text-red-500 mt-1">{t.loss}</p></div>
               <div className="rounded-xl bg-slate-100 dark:bg-slate-700/40 p-4 text-center"><p className="text-3xl font-black text-slate-600 dark:text-slate-300">{performance.scheduled}</p><p className="text-xs font-bold text-slate-700 dark:text-slate-400 mt-1">{t.scheduled}</p></div>
@@ -390,7 +390,7 @@ export function Reports({
 
       {/* Player Statistics */}
       <SectionCard>
-        <SectionHeader icon={<Users className="h-5 w-5" />} title={t.playerStatistics} subtitle={t.playerStatisticsSubtitle} gradient="from-emerald-500 to-emerald-600" />
+        <SectionHeader icon={<Users className="h-5 w-5" />} title={t.playerStatistics} subtitle={t.playerStatisticsSubtitle} gradient="from-brand-500 to-brand-600" />
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <StatCard icon={<Users className="h-5 w-5" />} label={t.totalPlayers} value={playerStats.totalPlayers} sublabel={t.allRegistered} color="emerald" />
           <StatCard icon={<Activity className="h-5 w-5" />} label={t.activePlayersCount} value={playerStats.activePlayers} sublabel={`${playerStats.totalPlayers > 0 ? Math.round((playerStats.activePlayers / playerStats.totalPlayers) * 100) : 0}%`} color="blue" />
@@ -411,7 +411,7 @@ export function Reports({
 
       {/* Player Development Analytics */}
       {(activeRole === 'manager' || activeRole === 'coach') && <SectionCard>
-        <SectionHeader icon={<TrendingUp className="h-5 w-5" />} title={isAr ? 'تحليلات تطور اللاعبين' : 'Player Development Analytics'} subtitle={isAr ? 'مؤشرات مجمعة من التقييمات المنشورة، بدون ترتيب أو مقارنة بين اللاعبين.' : 'Aggregate indicators from published reviews, without ranking or comparing players.'} gradient="from-emerald-500 to-teal-600" />
+        <SectionHeader icon={<TrendingUp className="h-5 w-5" />} title={isAr ? 'تحليلات تطور اللاعبين' : 'Player Development Analytics'} subtitle={isAr ? 'مؤشرات مجمعة من التقييمات المنشورة، بدون ترتيب أو مقارنة بين اللاعبين.' : 'Aggregate indicators from published reviews, without ranking or comparing players.'} gradient="from-brand-500 to-teal-600" />
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
           <StatCard icon={<Award className="h-5 w-5" />} label={isAr ? 'التقييمات المنشورة' : 'Published reviews'} value={developmentStats.publishedCount} color="emerald" />
           <StatCard icon={<TrendingUp className="h-5 w-5" />} label={isAr ? 'لاعبون لديهم سجل تطور' : 'Players with progress history'} value={developmentStats.playersWithHistory} sublabel={isAr ? 'تقييمان أو أكثر' : '2+ published reviews'} color="blue" />
@@ -423,7 +423,7 @@ export function Reports({
             {developmentStats.changes.map(item => (
               <div key={item.label} className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
                 <p className="text-[11px] font-bold text-slate-400">{item.label}</p>
-                <p className={`mt-1 text-xl font-black ${item.value == null ? 'text-slate-400' : item.value > 0.05 ? 'text-emerald-600' : item.value < -0.05 ? 'text-amber-600' : 'text-slate-700 dark:text-slate-200'}`}>
+                <p className={`mt-1 text-xl font-black ${item.value == null ? 'text-slate-400' : item.value > 0.05 ? 'text-brand-600' : item.value < -0.05 ? 'text-amber-600' : 'text-slate-700 dark:text-slate-200'}`}>
                   {item.value == null ? '—' : `${item.value > 0 ? '+' : ''}${item.value.toFixed(1)}`}
                 </p>
                 <p className="text-[9px] text-slate-400 mt-1">{isAr ? 'نقطة من 5' : 'points out of 5'}</p>
@@ -450,10 +450,10 @@ export function Reports({
           <div className="rounded-xl bg-slate-50 dark:bg-slate-800/40 p-5">
             <p className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-4">{t.attendanceBreakdown}</p>
             <div className="space-y-3">
-              <div className="flex items-center gap-3 p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-900/20">
-                <div className="w-10 h-10 rounded-lg bg-emerald-500 flex items-center justify-center text-white shrink-0"><TrendingUp className="h-5 w-5" /></div>
+              <div className="flex items-center gap-3 p-3.5 rounded-xl bg-brand-50 dark:bg-brand-900/20">
+                <div className="w-10 h-10 rounded-lg bg-brand-500 flex items-center justify-center text-white shrink-0"><TrendingUp className="h-5 w-5" /></div>
                 <div className="flex-1"><p className="text-sm font-bold text-slate-800 dark:text-slate-200">{t.present}</p><p className="text-[11px] text-slate-400">{attendanceStats.present} {isAr ? 'سجل' : 'records'}</p></div>
-                <span className="text-lg font-black text-emerald-600 dark:text-emerald-400">{attendanceStats.presentRate}%</span>
+                <span className="text-lg font-black text-brand-600 dark:text-brand-400">{attendanceStats.presentRate}%</span>
               </div>
               <div className="flex items-center gap-3 p-3.5 rounded-xl bg-red-50 dark:bg-red-900/20">
                 <div className="w-10 h-10 rounded-lg bg-red-500 flex items-center justify-center text-white shrink-0"><Activity className="h-5 w-5" /></div>

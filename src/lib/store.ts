@@ -22,8 +22,8 @@ const PREFIX = 'shooter_';
 export const prefs = {
   getLang: (): Lang => (localStorage.getItem(PREFIX + 'lang') as Lang) || 'ar',
   saveLang: (v: Lang) => localStorage.setItem(PREFIX + 'lang', v),
-  getDarkMode: (): boolean => localStorage.getItem(PREFIX + 'dark_mode') === 'true',
-  saveDarkMode: (v: boolean) => localStorage.setItem(PREFIX + 'dark_mode', String(v)),
+  getDarkMode: (): boolean => localStorage.getItem(PREFIX + 'red_identity_mode') !== 'false',
+  saveDarkMode: (v: boolean) => localStorage.setItem(PREFIX + 'red_identity_mode', String(v)),
 };
 
 /* ---------- Auth ---------- */

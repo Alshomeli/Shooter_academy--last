@@ -92,26 +92,26 @@ export function Login({ onLogin, lang, setLang, recovery = false, registrationEn
     <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl p-6 sm:p-8 shadow-xl text-slate-900 dark:text-white">
       <div className="flex items-center justify-between mb-6">
         <img src="/shooter-logo.png" alt={text('أكاديمية شوتر', 'Shooter Academy')} className="h-24 w-24 object-contain drop-shadow-xl" />
-        <button type="button" className="text-sm text-emerald-600 font-bold" onClick={() => setLang(ar ? 'en' : 'ar')}>{ar ? 'English' : 'العربية'}</button>
+        <button type="button" className="text-sm text-brand-600 font-bold" onClick={() => setLang(ar ? 'en' : 'ar')}>{ar ? 'English' : 'العربية'}</button>
       </div>
       <h1 className="text-2xl font-black mb-2">{text('أكاديمية شوتر', 'Shooter Academy')}</h1>
       <h2 className="font-bold mb-5 text-slate-500">{titles[screen]}</h2>
       {error && <p role="alert" className="mb-4 p-3 rounded-lg bg-red-50 text-red-700 text-sm flex gap-2"><AlertCircle className="h-5 w-5 shrink-0" />{error}</p>}
-      {message && <p role="status" className="mb-4 p-3 rounded-lg bg-emerald-50 text-emerald-800 text-sm">{message}</p>}
+      {message && <p role="status" className="mb-4 p-3 rounded-lg bg-brand-50 text-brand-800 text-sm">{message}</p>}
       {screen === 'register' && <div className="mb-4 grid grid-cols-2 gap-2">
-        <button type="button" onClick={() => { setRegistrationKind('parent'); if (staffRegistrationEntry) window.history.replaceState({}, '', '?view=registration'); }} className={`rounded-lg border px-3 py-2 text-sm font-bold ${registrationKind === 'parent' ? 'border-emerald-600 bg-emerald-50 text-emerald-700' : 'border-slate-200'}`}>{text('ولي أمر', 'Parent')}</button>
-        <button type="button" onClick={() => { setRegistrationKind('staff'); if (registrationEntry) window.history.replaceState({}, '', '?view=staff-registration'); }} className={`rounded-lg border px-3 py-2 text-sm font-bold ${registrationKind === 'staff' ? 'border-emerald-600 bg-emerald-50 text-emerald-700' : 'border-slate-200'}`}>{text('مدير / موظف / مدرب', 'Manager / staff / coach')}</button>
+        <button type="button" onClick={() => { setRegistrationKind('parent'); if (staffRegistrationEntry) window.history.replaceState({}, '', '?view=registration'); }} className={`rounded-lg border px-3 py-2 text-sm font-bold ${registrationKind === 'parent' ? 'border-brand-600 bg-brand-50 text-brand-700' : 'border-slate-200'}`}>{text('ولي أمر', 'Parent')}</button>
+        <button type="button" onClick={() => { setRegistrationKind('staff'); if (registrationEntry) window.history.replaceState({}, '', '?view=staff-registration'); }} className={`rounded-lg border px-3 py-2 text-sm font-bold ${registrationKind === 'staff' ? 'border-brand-600 bg-brand-50 text-brand-700' : 'border-slate-200'}`}>{text('مدير / موظف / مدرب', 'Manager / staff / coach')}</button>
       </div>}
       <form onSubmit={submit} className="space-y-4">
         <fieldset disabled={busy} className="space-y-4 disabled:opacity-60">
           {screen !== 'reset' && <FormField label={text('البريد الإلكتروني', 'Email')}><input aria-label={text('البريد الإلكتروني', 'Email')} className={inputCls} type="email" dir="ltr" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} /></FormField>}
           {screen !== 'forgot' && <FormField label={text('كلمة المرور', 'Password')}><input aria-label={text('كلمة المرور', 'Password')} className={inputCls} type="password" autoComplete={screen === 'login' ? 'current-password' : 'new-password'} required value={password} onChange={e => setPassword(e.target.value)} /></FormField>}
           {(screen === 'register' || screen === 'reset') && <><p className="text-xs text-slate-500">{text('10 أحرف على الأقل، تتضمن حروفًا إنجليزية وأرقامًا.', 'At least 10 characters, including letters and numbers.')}</p><FormField label={text('تأكيد كلمة المرور', 'Confirm password')}><input aria-label={text('تأكيد كلمة المرور', 'Confirm password')} className={inputCls} type="password" autoComplete="new-password" required value={confirm} onChange={e => setConfirm(e.target.value)} /></FormField></>}
-          <button className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-lg" type="submit">{busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <LogIn className="h-5 w-5" />}{titles[screen]}</button>
+          <button className="w-full flex items-center justify-center gap-2 bg-brand-600 hover:bg-brand-700 text-white font-bold py-3 rounded-lg" type="submit">{busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <LogIn className="h-5 w-5" />}{titles[screen]}</button>
         </fieldset>
       </form>
       {(screen === 'login' || screen === 'register') && <button type="button" disabled={busy} onClick={() => void googleLogin()} className="mt-4 w-full rounded-lg border border-slate-300 dark:border-slate-600 px-4 py-3 text-sm font-bold hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50">{text('المتابعة باستخدام Google', 'Continue with Google')}</button>}
-      <div className="mt-5 flex flex-wrap gap-4 text-sm text-emerald-700 font-bold">
+      <div className="mt-5 flex flex-wrap gap-4 text-sm text-brand-700 font-bold">
         {screen === 'login' ? <><button disabled={busy} onClick={() => { window.location.search = '?view=registration'; }}>{text('تسجيل ولي أمر وأبنائه', 'Register parent and children')}</button><button disabled={busy} onClick={() => { window.location.search = '?view=staff-registration'; }}>{text('طلب مدير / موظف / مدرب', 'Manager / staff / coach application')}</button><button disabled={busy} onClick={() => changeScreen('forgot')}>{text('نسيت كلمة المرور؟', 'Forgot password?')}</button></> : screen !== 'reset' && <button disabled={busy} onClick={() => changeScreen('login')}>{text('العودة للدخول', 'Back to sign in')}</button>}
       </div>
       {screen === 'register' && <p className="mt-4 text-xs text-slate-500">{registrationKind === 'staff'

@@ -157,7 +157,7 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
         {canManage && (
           <button
             onClick={() => setShowAdd(true)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold shadow-sm transition cursor-pointer"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-bold shadow-sm transition cursor-pointer"
           >
             <Plus className="h-4 w-4" />
             {t.add}
@@ -181,7 +181,7 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={isAr ? 'ابحث بالاسم أو البريد أو التخصص...' : 'Search by name, email or specialization...'}
-            className="w-full bg-white dark:bg-slate-900 text-sm py-2.5 pr-10 pl-4 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-800 dark:text-white"
+            className="w-full bg-white dark:bg-slate-900 text-sm py-2.5 pr-10 pl-4 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white"
           />
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -191,8 +191,8 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
               onClick={() => setRoleFilter(rf.value)}
               className={`px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer border ${
                 roleFilter === rf.value
-                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
-                  : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-emerald-400'
+                  ? 'bg-brand-600 text-white border-brand-600 shadow-sm'
+                  : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-brand-400'
               }`}
             >
               {rf.label}
@@ -310,7 +310,7 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
                 {/* Actions */}
                 <div className="flex items-center gap-1 mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
                   <ContactLinks phone={s.phone} email={s.email} small />
-                  {canUploadFor(s) && <button onClick={() => { setUploadMember(s); setUploadType('certificate'); }} className="flex items-center justify-center p-1.5 rounded-lg text-emerald-700 bg-emerald-50 dark:bg-emerald-900/20" title={isAr?'إضافة صورة أو شهادة':'Add photo or document'}><FileUp className="h-3.5 w-3.5"/></button>}
+                  {canUploadFor(s) && <button onClick={() => { setUploadMember(s); setUploadType('certificate'); }} className="flex items-center justify-center p-1.5 rounded-lg text-brand-700 bg-brand-50 dark:bg-brand-900/20" title={isAr?'إضافة صورة أو شهادة':'Add photo or document'}><FileUp className="h-3.5 w-3.5"/></button>}
                   <button
                     onClick={() => setViewMember(s)}
                     className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[11px] font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer"
@@ -375,7 +375,7 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
           <input value={uploadTitle} onChange={e=>setUploadTitle(e.target.value)} className={inputCls} placeholder={isAr?'اسم المستند':'Document title'}/>
           <input type="file" accept={uploadType==='profile_photo'?'image/jpeg,image/png,image/webp':'image/jpeg,image/png,image/webp,application/pdf'} onChange={e=>setUploadFile(e.target.files?.[0]||null)} className="block w-full text-sm"/>
           {uploadType!=='profile_photo'&&<input type="date" value={uploadExpiry} onChange={e=>setUploadExpiry(e.target.value)} className={inputCls}/>}
-          <button disabled={!uploadFile||uploadBusy} onClick={()=>void handleDocumentUpload()} className="w-full rounded-xl bg-emerald-600 text-white py-2.5 font-bold disabled:opacity-50">{uploadBusy?(isAr?'جارٍ الرفع...':'Uploading...'):(isAr?'رفع وحفظ':'Upload & save')}</button>
+          <button disabled={!uploadFile||uploadBusy} onClick={()=>void handleDocumentUpload()} className="w-full rounded-xl bg-brand-600 text-white py-2.5 font-bold disabled:opacity-50">{uploadBusy?(isAr?'جارٍ الرفع...':'Uploading...'):(isAr?'رفع وحفظ':'Upload & save')}</button>
         </div>
       </Modal>
 
@@ -390,7 +390,7 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
             <select
               value={reassignCoachId ?? ''}
               onChange={(e) => setReassignCoachId(e.target.value || null)}
-              className="w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-800 dark:text-white"
+              className="w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white"
             >
               <option value="">{t.noReplacement}</option>
               {staff.filter((s) => s.role === 'coach' && s.status === 'active' && s.id !== deleteId).map((s) => (
@@ -712,7 +712,7 @@ function StaffDetail({
         </div>
       )}
 
-      {documents.filter(d=>d.documentType!=='profile_photo').length>0&&<div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 space-y-2"><p className="text-xs font-black text-slate-500 flex items-center gap-1.5"><FileText className="h-4 w-4"/>{isAr?'المستندات والشهادات':'Documents & certificates'}</p>{documents.filter(d=>d.documentType!=='profile_photo').map(d=>{const today=new Date().toISOString().slice(0,10);const in30=new Date(Date.now()+30*86400000).toISOString().slice(0,10);const expired=!!d.expiryDate&&d.expiryDate<today;const soon=!!d.expiryDate&&d.expiryDate>=today&&d.expiryDate<=in30;return <button key={d.id} onClick={async()=>window.open(await db.getStaffDocumentUrl(d.filePath),'_blank','noopener,noreferrer')} className="w-full flex items-center justify-between gap-3 border-t dark:border-slate-700 pt-3 text-sm"><span className="font-bold">{d.title}</span><span className={`flex items-center gap-1 text-xs font-bold ${expired?'text-red-600':soon?'text-amber-600':'text-emerald-600'}`}>{(expired||soon)&&<AlertTriangle className="h-3.5 w-3.5"/>}{expired?(isAr?'منتهية':'Expired'):soon?`${isAr?'تنتهي':'Expires'} ${d.expiryDate}`:d.expiryDate?`${isAr?'صالحة حتى':'Valid to'} ${d.expiryDate}`:(isAr?'عرض':'View')}</span></button>})}</div>}
+      {documents.filter(d=>d.documentType!=='profile_photo').length>0&&<div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 space-y-2"><p className="text-xs font-black text-slate-500 flex items-center gap-1.5"><FileText className="h-4 w-4"/>{isAr?'المستندات والشهادات':'Documents & certificates'}</p>{documents.filter(d=>d.documentType!=='profile_photo').map(d=>{const today=new Date().toISOString().slice(0,10);const in30=new Date(Date.now()+30*86400000).toISOString().slice(0,10);const expired=!!d.expiryDate&&d.expiryDate<today;const soon=!!d.expiryDate&&d.expiryDate>=today&&d.expiryDate<=in30;return <button key={d.id} onClick={async()=>window.open(await db.getStaffDocumentUrl(d.filePath),'_blank','noopener,noreferrer')} className="w-full flex items-center justify-between gap-3 border-t dark:border-slate-700 pt-3 text-sm"><span className="font-bold">{d.title}</span><span className={`flex items-center gap-1 text-xs font-bold ${expired?'text-red-600':soon?'text-amber-600':'text-brand-600'}`}>{(expired||soon)&&<AlertTriangle className="h-3.5 w-3.5"/>}{expired?(isAr?'منتهية':'Expired'):soon?`${isAr?'تنتهي':'Expires'} ${d.expiryDate}`:d.expiryDate?`${isAr?'صالحة حتى':'Valid to'} ${d.expiryDate}`:(isAr?'عرض':'View')}</span></button>})}</div>}
 
       {/* Notes */}
       {member.notes && (
@@ -730,7 +730,7 @@ function StaffDetail({
 /* ----------------------------- Helpers ----------------------------- */
 
 const inputCls =
-  'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-800 dark:text-white';
+  'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white';
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (

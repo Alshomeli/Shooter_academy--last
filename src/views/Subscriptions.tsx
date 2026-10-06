@@ -226,7 +226,7 @@ export function Subscriptions({
         {((activeTab === 'subscriptions' && canManage) || (activeTab === 'transactions' && canPay)) && (
           <button
             onClick={() => (activeTab === 'subscriptions' ? setShowAddSub(true) : setShowAddTrans(true))}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold shadow-sm transition cursor-pointer"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-bold shadow-sm transition cursor-pointer"
           >
             <Plus className="h-4 w-4" />
             {addLabel}
@@ -272,7 +272,7 @@ export function Subscriptions({
           onClick={() => setActiveTab('subscriptions')}
           className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold transition cursor-pointer ${
             activeTab === 'subscriptions'
-              ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm'
+              ? 'bg-white dark:bg-slate-900 text-brand-600 dark:text-brand-400 shadow-sm'
               : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
           }`}
         >
@@ -286,7 +286,7 @@ export function Subscriptions({
           onClick={() => setActiveTab('transactions')}
           className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold transition cursor-pointer ${
             activeTab === 'transactions'
-              ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm'
+              ? 'bg-white dark:bg-slate-900 text-brand-600 dark:text-brand-400 shadow-sm'
               : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
           }`}
         >
@@ -296,14 +296,14 @@ export function Subscriptions({
             {transactions.length}
           </span>
         </button>}
-        {canSeeFinance && <button onClick={() => setActiveTab('proofs')} className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold transition cursor-pointer ${activeTab === 'proofs' ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}>
+        {canSeeFinance && <button onClick={() => setActiveTab('proofs')} className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold transition cursor-pointer ${activeTab === 'proofs' ? 'bg-white dark:bg-slate-900 text-brand-600 dark:text-brand-400 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}>
           <Receipt className="h-4 w-4" />{isAr ? 'إثباتات الدفع' : 'Payment proofs'}<span className="text-[10px] px-1.5 py-0.5 rounded-md bg-slate-200 dark:bg-slate-700">{paymentProofs.filter(p=>p.status==='pending').length}</span>
         </button>}
         <button
           onClick={() => setActiveTab('reminders')}
           className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold transition cursor-pointer ${
             activeTab === 'reminders'
-              ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm'
+              ? 'bg-white dark:bg-slate-900 text-brand-600 dark:text-brand-400 shadow-sm'
               : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
           }`}
         >
@@ -324,7 +324,7 @@ export function Subscriptions({
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={t.searchPlayer}
-                className="w-full bg-white dark:bg-slate-900 text-sm py-2.5 pr-10 pl-4 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-800 dark:text-white"
+                className="w-full bg-white dark:bg-slate-900 text-sm py-2.5 pr-10 pl-4 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white"
               />
             </div>
             <div className="flex items-center gap-2 flex-wrap">
@@ -334,8 +334,8 @@ export function Subscriptions({
                   onClick={() => setStatusFilter(sf.value)}
                   className={`px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer border ${
                     statusFilter === sf.value
-                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
-                      : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-emerald-400'
+                      ? 'bg-brand-600 text-white border-brand-600 shadow-sm'
+                      : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-brand-400'
                   }`}
                 >
                   {sf.label}
@@ -364,7 +364,7 @@ export function Subscriptions({
                     <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
                       {/* Player */}
                       <div className="flex items-center gap-2.5 flex-1 min-w-40">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-100 to-emerald-50 dark:from-emerald-900/30 dark:to-emerald-900/10 flex items-center justify-center text-sm font-black text-emerald-600 dark:text-emerald-400 shrink-0">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-100 to-brand-50 dark:from-brand-900/30 dark:to-brand-900/10 flex items-center justify-center text-sm font-black text-brand-600 dark:text-brand-400 shrink-0">
                           {(player?.name || '?').charAt(0)}
                         </div>
                         <div className="min-w-0">
@@ -431,7 +431,7 @@ export function Subscriptions({
                           <button
                             onClick={() => { setPaymentTarget(sub); setPaymentError(''); setPaymentMethod('cash'); }}
                             disabled={markingPaidId === sub.id}
-                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-brand-700 dark:text-brand-400 bg-brand-50 dark:bg-brand-900/20 hover:bg-brand-100 dark:hover:bg-brand-900/30 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             {markingPaidId === sub.id ? (
                               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -491,10 +491,10 @@ export function Subscriptions({
         paymentProofs.map((proof)=>{
           const player=playerOf(proof.playerId);
           return <div key={proof.id} className="bg-white dark:bg-slate-900 rounded-2xl border dark:border-slate-800 p-4 flex flex-wrap items-center gap-4">
-            <div className="flex-1 min-w-48"><p className="font-black">{player?.name || t.unknownPlayer}</p><p className="text-xs text-slate-500">{proof.amount} {t.currency} · {proof.transferDate}</p>{proof.receiptNumber&&<p className="text-xs font-black text-emerald-600 mt-1">{isAr?'رقم الإيصال':'Receipt'}: SA-{String(proof.receiptNumber).padStart(6,'0')}</p>}{proof.parentNote&&<p className="text-xs mt-1">{proof.parentNote}</p>}{proof.reviewedAt&&<p className="text-[10px] text-slate-400 mt-1">{isAr?'تمت المراجعة':'Reviewed'}: {new Date(proof.reviewedAt).toLocaleString(isAr?'ar-BH':'en-BH')}</p>}</div>
+            <div className="flex-1 min-w-48"><p className="font-black">{player?.name || t.unknownPlayer}</p><p className="text-xs text-slate-500">{proof.amount} {t.currency} · {proof.transferDate}</p>{proof.receiptNumber&&<p className="text-xs font-black text-brand-600 mt-1">{isAr?'رقم الإيصال':'Receipt'}: SA-{String(proof.receiptNumber).padStart(6,'0')}</p>}{proof.parentNote&&<p className="text-xs mt-1">{proof.parentNote}</p>}{proof.reviewedAt&&<p className="text-[10px] text-slate-400 mt-1">{isAr?'تمت المراجعة':'Reviewed'}: {new Date(proof.reviewedAt).toLocaleString(isAr?'ar-BH':'en-BH')}</p>}</div>
             <Badge color={proof.status==='approved'?'emerald':proof.status==='rejected'?'red':'amber'}>{proof.status==='pending'?(isAr?'بانتظار المراجعة':'Pending review'):proof.status==='approved'?(isAr?'معتمد':'Approved'):proof.status==='needs_info'?(isAr?'يحتاج استكمال':'Needs info'):(isAr?'مرفوض':'Rejected')}</Badge>
             <button onClick={()=>void openProof(proof)} className="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-xs font-bold">{isAr?'عرض الإثبات':'View proof'}</button>
-            {proof.status==='pending'&&<><button disabled={proofBusy===proof.id} onClick={()=>void approveProof(proof)} className="px-3 py-2 rounded-lg bg-emerald-600 text-white text-xs font-bold disabled:opacity-50">{isAr?'اعتماد':'Approve'}</button><button onClick={()=>{setProofReview(proof);setProofReviewStatus('needs_info');setProofReviewNote('')}} className="px-3 py-2 rounded-lg bg-amber-100 text-amber-800 text-xs font-bold">{isAr?'مراجعة':'Review'}</button></>}
+            {proof.status==='pending'&&<><button disabled={proofBusy===proof.id} onClick={()=>void approveProof(proof)} className="px-3 py-2 rounded-lg bg-brand-600 text-white text-xs font-bold disabled:opacity-50">{isAr?'اعتماد':'Approve'}</button><button onClick={()=>{setProofReview(proof);setProofReviewStatus('needs_info');setProofReviewNote('')}} className="px-3 py-2 rounded-lg bg-amber-100 text-amber-800 text-xs font-bold">{isAr?'مراجعة':'Review'}</button></>}
             {proof.reviewNote&&<p className="w-full text-xs text-slate-500">{proof.reviewNote}</p>}
           </div>;
         })}
@@ -523,7 +523,7 @@ export function Subscriptions({
                       <div
                         className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
                           isRevenue
-                            ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400'
+                            ? 'bg-brand-100 dark:bg-brand-900/30 text-brand-600 dark:text-brand-400'
                             : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
                         }`}
                       >
@@ -550,7 +550,7 @@ export function Subscriptions({
                       {/* Amount */}
                       <div
                         className={`text-sm font-black shrink-0 ${
-                          isRevenue ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
+                          isRevenue ? 'text-brand-600 dark:text-brand-400' : 'text-red-600 dark:text-red-400'
                         }`}
                       >
                         {isRevenue ? '+' : '−'}
@@ -596,7 +596,7 @@ export function Subscriptions({
           <FormField label={t.paymentMethod}><select className={inputCls} value={paymentMethod} disabled={!!markingPaidId} onChange={e => setPaymentMethod(e.target.value)}>
             {['cash', 'bank_transfer', 'benefit', 'card'].map(method => <option key={method} value={method}>{paymentMethodLabel(method, lang)}</option>)}
           </select></FormField>
-          <button className="bg-emerald-600 text-white rounded-lg py-2 px-4 disabled:opacity-50" disabled={!!markingPaidId} onClick={() => void handleMarkPaid()}>{markingPaidId ? t.processing : t.confirmPayment}</button>
+          <button className="bg-brand-600 text-white rounded-lg py-2 px-4 disabled:opacity-50" disabled={!!markingPaidId} onClick={() => void handleMarkPaid()}>{markingPaidId ? t.processing : t.confirmPayment}</button>
         </div>
       </Modal>
       {receiptSub && <PaymentReceipt subscription={receiptSub} transactions={transactions} players={players} parents={parents} settings={settings} lang={lang} officialReceiptNumber={paymentProofs.find((proof) => proof.subscriptionId === receiptSub.id && proof.status === 'approved')?.receiptNumber} onClose={() => setReceiptSub(null)} />}
@@ -813,7 +813,7 @@ function SubscriptionForm({
         </div>
 
         {/* Auto-fill hint */}
-        <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-50/60 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/20 text-[11px] text-emerald-700 dark:text-emerald-400 font-semibold">
+        <div className="flex items-center gap-2 p-3 rounded-xl bg-brand-50/60 dark:bg-brand-900/10 border border-brand-100 dark:border-brand-900/20 text-[11px] text-brand-700 dark:text-brand-400 font-semibold">
           <DollarSign className="h-4 w-4 shrink-0" />
           {t.autoFillHint}
         </div>
@@ -1070,7 +1070,7 @@ function RemindersAnalyticsTab({
       {/* Analytics section */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm">
         <div className="flex items-center gap-2 mb-5">
-          <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 flex items-center justify-center">
+          <div className="w-8 h-8 rounded-lg bg-brand-100 dark:bg-brand-900/30 text-brand-600 flex items-center justify-center">
             <TrendingUp className="h-4 w-4" />
           </div>
           <h3 className="text-sm font-black text-slate-900 dark:text-white">{t.subscriptionAnalytics}</h3>
@@ -1092,10 +1092,10 @@ function RemindersAnalyticsTab({
               <div className="space-y-1.5">
                 {/* Paid bar */}
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-bold text-emerald-600 w-14 shrink-0">{t.paid}</span>
+                  <span className="text-[10px] font-bold text-brand-600 w-14 shrink-0">{t.paid}</span>
                   <div className="flex-1 bg-slate-100 dark:bg-slate-800 rounded-full h-3 overflow-hidden">
                     <div
-                      className="h-full bg-emerald-500 rounded-full transition-all"
+                      className="h-full bg-brand-500 rounded-full transition-all"
                       style={{ width: `${(d.paid / maxCount) * 100}%` }}
                     />
                   </div>

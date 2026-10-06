@@ -78,7 +78,7 @@ export function DocumentUpload({ playerId, category, label, compact }: DocumentU
     <div className="space-y-3">
       {label && (
         <div className="flex items-center gap-2">
-          {isPhoto ? <ImageIcon className="h-4 w-4 text-emerald-500" /> : <FileText className="h-4 w-4 text-blue-500" />}
+          {isPhoto ? <ImageIcon className="h-4 w-4 text-brand-500" /> : <FileText className="h-4 w-4 text-blue-500" />}
           <h4 className="text-sm font-black text-slate-900 dark:text-white">{label}</h4>
           <span className="text-[10px] text-slate-400 font-semibold">
             {files.length} files
@@ -94,8 +94,8 @@ export function DocumentUpload({ playerId, category, label, compact }: DocumentU
         onClick={() => inputRef.current?.click()}
         className={`relative cursor-pointer rounded-xl border-2 border-dashed p-4 text-center transition ${
           dragOver
-            ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
-            : 'border-slate-200 dark:border-slate-700 hover:border-emerald-400 dark:hover:border-emerald-600'
+            ? 'border-brand-500 bg-brand-50 dark:bg-brand-900/20'
+            : 'border-slate-200 dark:border-slate-700 hover:border-brand-400 dark:hover:border-brand-600'
         }`}
       >
         <input
@@ -108,12 +108,12 @@ export function DocumentUpload({ playerId, category, label, compact }: DocumentU
         />
         {uploading ? (
           <div className="flex flex-col items-center gap-2 py-2">
-            <Loader2 className="h-6 w-6 text-emerald-500 animate-spin" />
+            <Loader2 className="h-6 w-6 text-brand-500 animate-spin" />
             <p className="text-xs font-bold text-slate-500">Uploading & compressing...</p>
           </div>
         ) : (
           <div className="flex flex-col items-center gap-1.5 py-1">
-            <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${isPhoto ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-600'}`}>
+            <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${isPhoto ? 'bg-brand-100 dark:bg-brand-900/30 text-brand-600' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-600'}`}>
               <Upload className="h-4 w-4" />
             </div>
             <p className="text-xs font-bold text-slate-600 dark:text-slate-300">

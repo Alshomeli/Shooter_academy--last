@@ -102,7 +102,7 @@ export function Players({ players, parents, teams, evaluations, onPlayersChange,
         {canEdit && (
           <button
             onClick={() => setShowAdd(true)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold shadow-sm transition cursor-pointer"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-bold shadow-sm transition cursor-pointer"
           >
             <Plus className="h-4 w-4" />
             {t.add}
@@ -119,7 +119,7 @@ export function Players({ players, parents, teams, evaluations, onPlayersChange,
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={isAr ? 'ابحث باسم اللاعب أو ولي الأمر...' : 'Search by player or parent name...'}
-            className="w-full bg-white dark:bg-slate-900 text-sm py-2.5 pr-10 pl-4 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-slate-800 dark:text-white"
+            className="w-full bg-white dark:bg-slate-900 text-sm py-2.5 pr-10 pl-4 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white"
           />
         </div>
         <select value={teamFilter} onChange={(e) => setTeamFilter(e.target.value)} className="px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-semibold text-slate-700 dark:text-slate-200 cursor-pointer">
@@ -154,10 +154,10 @@ export function Players({ players, parents, teams, evaluations, onPlayersChange,
                     src={photoMap[p.id]}
                     alt={p.name}
                     loading="lazy"
-                    className="w-14 h-14 rounded-full object-cover border-2 border-white dark:border-slate-900 shadow-lg shadow-emerald-900/20"
+                    className="w-14 h-14 rounded-full object-cover border-2 border-white dark:border-slate-900 shadow-lg shadow-brand-900/20"
                   />
                 ) : (
-                  <div className="w-14 h-14 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center text-white font-black text-base shadow-lg shadow-emerald-600/30 border-2 border-white dark:border-slate-900">
+                  <div className="w-14 h-14 rounded-full bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center text-white font-black text-base shadow-lg shadow-brand-600/30 border-2 border-white dark:border-slate-900">
                     #{p.jerseyNumber}
                   </div>
                 )}
@@ -403,7 +403,7 @@ function PlayerDetail({ player, team, evaluations, lang }: { player: Player; tea
   return (
     <div className="space-y-5">
       <div className="flex items-center gap-4">
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center text-white font-black text-2xl">
+        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center text-white font-black text-2xl">
           #{player.jerseyNumber}
         </div>
         <div>
@@ -449,10 +449,10 @@ function PlayerDetail({ player, team, evaluations, lang }: { player: Player; tea
       {progress && (
         <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-2 mb-3">
-            <TrendingUp className="h-4 w-4 text-emerald-500" />
+            <TrendingUp className="h-4 w-4 text-brand-500" />
             <h4 className="text-sm font-black text-slate-900 dark:text-white">{isAr ? 'ملخص تطور اللاعب' : 'Player progress summary'}</h4>
           </div>
-          <div className="p-3 rounded-xl border border-emerald-100 dark:border-emerald-900/50 bg-emerald-50/50 dark:bg-emerald-950/20">
+          <div className="p-3 rounded-xl border border-brand-100 dark:border-brand-900/50 bg-brand-50/50 dark:bg-brand-950/20">
             <p className="text-[10px] text-slate-500 dark:text-slate-400 mb-3">
               {progress.firstDate} → {progress.latestDate} · {playerEvals.length} {isAr ? 'تقييمات منشورة' : 'published reviews'}
             </p>
@@ -466,7 +466,7 @@ function PlayerDetail({ player, team, evaluations, lang }: { player: Player; tea
               ].map(item => (
                 <div key={item.label} className="p-2 rounded-lg bg-white/80 dark:bg-slate-900/70">
                   <p className="text-[10px] font-bold text-slate-400">{item.label}</p>
-                  <p className={`text-sm font-black ${item.value == null ? 'text-slate-400' : item.value > 0.05 ? 'text-emerald-600' : item.value < -0.05 ? 'text-amber-600' : 'text-slate-600 dark:text-slate-300'}`}>
+                  <p className={`text-sm font-black ${item.value == null ? 'text-slate-400' : item.value > 0.05 ? 'text-brand-600' : item.value < -0.05 ? 'text-amber-600' : 'text-slate-600 dark:text-slate-300'}`}>
                     {item.value == null ? '—' : `${item.value > 0 ? '+' : ''}${item.value.toFixed(1)}`}
                   </p>
                 </div>
@@ -489,19 +489,19 @@ function PlayerDetail({ player, team, evaluations, lang }: { player: Player; tea
               <div key={ev.id} className="p-3 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-bold text-slate-500">{ev.evaluationDate} &middot; {ev.periodType === 'monthly' ? t.monthly : ev.periodType === 'quarterly' ? t.quarterly : t.customPeriod}</span>
-                  {ev.overallScore != null && <span className="text-sm font-black text-emerald-600">{ev.overallScore.toFixed(1)}/5</span>}
+                  {ev.overallScore != null && <span className="text-sm font-black text-brand-600">{ev.overallScore.toFixed(1)}/5</span>}
                 </div>
                 <div className="grid grid-cols-5 gap-2 text-center text-[10px]">
                   {[{l: isAr ? 'فني' : 'TEC', v: ev.technicalScore}, {l: isAr ? 'تكت' : 'TAC', v: ev.tacticalScore}, {l: isAr ? 'بدن' : 'PHY', v: ev.physicalScore}, {l: isAr ? 'ذهن' : 'MEN', v: ev.mentalScore}, {l: isAr ? 'انض' : 'DIS', v: ev.disciplineScore}].map(s => (
                     <div key={s.l}>
                       <div className={`mx-auto w-8 h-8 rounded-lg flex items-center justify-center font-black text-white text-xs ${
-                        !s.v ? 'bg-slate-300' : s.v >= 4 ? 'bg-emerald-500' : s.v >= 3 ? 'bg-amber-500' : 'bg-red-500'
+                        !s.v ? 'bg-slate-300' : s.v >= 4 ? 'bg-brand-500' : s.v >= 3 ? 'bg-amber-500' : 'bg-red-500'
                       }`}>{s.v ?? '-'}</div>
                       <p className="mt-1 font-bold text-slate-400">{s.l}</p>
                     </div>
                   ))}
                 </div>
-                {ev.strengths && <p className="mt-2 text-[11px] text-emerald-600 dark:text-emerald-400"><strong>{t.strengths}:</strong> {ev.strengths}</p>}
+                {ev.strengths && <p className="mt-2 text-[11px] text-brand-600 dark:text-brand-400"><strong>{t.strengths}:</strong> {ev.strengths}</p>}
                 {ev.coachRecommendation && <p className="text-[11px] text-blue-600 dark:text-blue-400"><strong>{t.coachRecommendation}:</strong> {ev.coachRecommendation}</p>}
               </div>
             ))}
