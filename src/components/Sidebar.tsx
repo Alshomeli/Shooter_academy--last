@@ -53,7 +53,7 @@ export function Sidebar({
   const brandName = academyName?.trim() || t.academyShort;
   const configuredLogo = logoUrl?.trim() || '';
   const logoIsImage = /^(https?:\/\/|data:image\/|\/)/i.test(configuredLogo);
-  const fallbackLogo = '/1790474303638.jpg';
+  const fallbackLogo = '/shooter-logo.svg';
 
   const navItems: NavItem[] = [
     { id: 'dashboard', label: t.dashboard, icon: LayoutDashboard, allowedRoles: ['manager', 'accountant', 'coach', 'receptionist'] },
