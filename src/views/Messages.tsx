@@ -26,6 +26,9 @@ const MESSAGE_TYPES: Array<{ value: MessageType; label: string; labelEn: string;
 
 type RecipientMode = 'all' | 'team' | 'individual';
 
+const BUSINESS_WHATSAPP_DISPLAY = '0097332287776';
+const BUSINESS_WHATSAPP_LINK = '97332287776';
+
 function cleanPhone(phone: string): string {
   return phone.replace(/[^0-9]/g, '');
 }
@@ -335,6 +338,23 @@ export function Messages({ players, teams, subscriptions, lang }: MessagesProps)
       {/* Action bar */}
       {recipients.length > 0 ? (
         <div className="sticky bottom-4 p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-lg space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-900/40 px-3 py-2.5">
+            <div>
+              <p className="text-xs font-black text-emerald-800 dark:text-emerald-200">
+                {isAr ? 'واتساب الأعمال للإشعارات الجماعية' : 'Business WhatsApp for bulk notifications'}
+              </p>
+              <p className="text-xs text-emerald-700 dark:text-emerald-300" dir="ltr">{BUSINESS_WHATSAPP_DISPLAY}</p>
+            </div>
+            <a
+              href={`https://wa.me/${BUSINESS_WHATSAPP_LINK}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 text-xs font-bold transition"
+            >
+              {isAr ? 'فتح واتساب الأعمال' : 'Open Business WhatsApp'}
+            </a>
+          </div>
+
           {recipientMode !== 'individual' && (
             <div className="flex items-center justify-between">
               <p className="text-xs font-bold text-slate-600 dark:text-slate-300">
