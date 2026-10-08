@@ -123,8 +123,8 @@ export function Sidebar({
 
       <aside
         id="sidebar"
-        className={`shooter-sidebar fixed lg:relative inset-y-0 right-0 z-50 lg:z-auto w-72 min-h-screen flex flex-col justify-between shrink-0 shadow-2xl transition-all duration-300 ${
-          mobileOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'
+        className={`shooter-sidebar fixed lg:relative inset-y-0 z-50 lg:z-auto w-72 min-h-screen flex flex-col justify-between shrink-0 shadow-2xl transition-all duration-300 ${isAr ? 'right-0' : 'left-0'} ${
+          mobileOpen ? 'translate-x-0' : (isAr ? 'translate-x-full lg:translate-x-0' : '-translate-x-full lg:translate-x-0')
         } ${darkMode ? 'bg-slate-950 text-slate-100 border-l border-slate-900' : 'bg-slate-900 text-white border-l border-slate-800'}`}
       >
         <div className="flex-1 min-h-0 flex flex-col">
