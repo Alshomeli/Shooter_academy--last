@@ -184,7 +184,7 @@ export function Sidebar({
                       <button
                         key={item.id}
                         onClick={() => handleNav(item.id)}
-                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer text-right ${
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer text-start ${
                           active
                             ? 'bg-gradient-to-l from-brand-600 to-brand-500 text-white shadow-lg shadow-brand-950/30 ring-1 ring-brand-400/20'
                             : 'text-slate-300 hover:bg-slate-800/70 hover:text-white'
