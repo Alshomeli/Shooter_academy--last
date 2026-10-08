@@ -203,12 +203,12 @@ export function AttendanceView({ players, teams, attendance, matches, trainings,
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-100 dark:border-slate-800 text-[11px] font-bold text-slate-500 dark:text-slate-400">
-                  <th className="text-right py-3 px-4">{isAr ? 'اللاعب' : 'Player'}</th>
-                  <th className="text-right py-3 px-4">{t.team}</th>
-                  <th className="text-right py-3 px-4">{t.sessionDate}</th>
-                  <th className="text-right py-3 px-4">{t.sessionType}</th>
-                  <th className="text-right py-3 px-4">{t.status}</th>
-                  <th className="text-right py-3 px-4">{t.notes}</th>
+                  <th className="text-start py-3 px-4">{isAr ? 'اللاعب' : 'Player'}</th>
+                  <th className="text-start py-3 px-4">{t.team}</th>
+                  <th className="text-start py-3 px-4">{t.sessionDate}</th>
+                  <th className="text-start py-3 px-4">{t.sessionType}</th>
+                  <th className="text-start py-3 px-4">{t.status}</th>
+                  <th className="text-start py-3 px-4">{t.notes}</th>
                   {activeRole === 'manager' && <th className="text-center py-3 px-4">{t.actions}</th>}
                 </tr>
               </thead>
