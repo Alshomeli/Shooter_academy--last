@@ -231,8 +231,8 @@ export function RegistrationAdmin({ lang, activeRole, teams, players, onRefresh 
       </div>
 
       <div className="flex flex-wrap gap-3">
-        <label className="text-xs text-slate-500">{isAr ? 'من تاريخ' : 'From'}<input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className={inputCls} /></label>
-        <label className="text-xs text-slate-500">{isAr ? 'إلى تاريخ' : 'To'}<input type="date" min={dateFrom} value={dateTo} onChange={e => setDateTo(e.target.value)} className={inputCls} /></label>
+        <label className="text-xs text-slate-600 dark:text-slate-300">{isAr ? 'من تاريخ' : 'From'}<input lang={lang} dir={isAr ? 'rtl' : 'ltr'} type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className={inputCls} /></label>
+        <label className="text-xs text-slate-600 dark:text-slate-300">{isAr ? 'إلى تاريخ' : 'To'}<input lang={lang} dir={isAr ? 'rtl' : 'ltr'} type="date" min={dateFrom} value={dateTo} onChange={e => setDateTo(e.target.value)} className={inputCls} /></label>
       </div>
       {error && <p role="alert" className="text-xs text-red-500 font-bold">{error}</p>}
 
@@ -250,7 +250,7 @@ export function RegistrationAdmin({ lang, activeRole, teams, players, onRefresh 
               <button
                 key={app.id}
                 onClick={() => { setSelectedApp(app); setReviewNotes(''); setError(''); }}
-                className="w-full bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-4 hover:shadow-md transition-shadow cursor-pointer text-right"
+                className="w-full bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-4 hover:shadow-md transition-shadow cursor-pointer text-start"
               >
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
@@ -260,11 +260,11 @@ export function RegistrationAdmin({ lang, activeRole, teams, players, onRefresh 
                     <p className="text-sm font-black text-slate-900 dark:text-white truncate">{app.parentName}</p>
                     <div className="flex items-center gap-2 mt-1 flex-wrap">
                       <Badge color={cfg.color}>{statusLabel(app.status)}</Badge>
-                      <span className="text-[11px] text-slate-400">{regTypeLabel(app.registrationType)}</span>
-                      <span className="text-[11px] text-slate-400">· {app.children.length} {isAr ? 'لاعب' : 'player(s)'}</span>
+                      <span className="text-[11px] text-slate-500 dark:text-slate-300">{regTypeLabel(app.registrationType)}</span>
+                      <span className="text-[11px] text-slate-500 dark:text-slate-300">· {app.children.length} {isAr ? 'لاعب' : 'player(s)'}</span>
                     </div>
                   </div>
-                  <div className="text-xs text-slate-400 shrink-0" dir="ltr">
+                  <div className="text-xs text-slate-500 dark:text-slate-300 shrink-0" dir="ltr">
                     {app.createdAt.substring(0, 10)}
                   </div>
                   {isAr ? <ChevronLeft className="h-4 w-4 text-slate-400 shrink-0" /> : <ChevronRight className="h-4 w-4 text-slate-400 shrink-0" />}
@@ -581,7 +581,7 @@ function Section({ title, icon, children }: { title: string; icon: React.ReactNo
 function Dt({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="text-[11px] text-slate-400">{label}</dt>
+      <dt className="text-[11px] text-slate-500 dark:text-slate-300">{label}</dt>
       <dd className="text-sm font-bold text-slate-800 dark:text-white">{value}</dd>
     </div>
   );
