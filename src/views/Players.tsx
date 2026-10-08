@@ -97,7 +97,7 @@ export function Players({ players, parents, teams, evaluations, onPlayersChange,
   };
 
   return (
-    <div className="space-y-5 text-right" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+    <div className="space-y-5 text-start" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
       <PageHeader title={t.players} subtitle={isAr ? `${players.length} لاعب مسجل في الأكاديمية` : `${players.length} players registered`}>
         {canEdit && (
           <button
