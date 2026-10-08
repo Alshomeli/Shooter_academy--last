@@ -724,7 +724,7 @@ export default function App() {
               {showNotifications && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setShowNotifications(false)} />
-                  <div className={`fixed sm:absolute left-3 right-3 sm:right-auto sm:left-0 sm:w-80 mt-2 rounded-2xl shadow-2xl border z-50 animate-fadeIn ${
+                  <div className={`fixed sm:absolute left-3 right-3 sm:w-80 mt-2 rounded-2xl shadow-2xl border z-50 animate-fadeIn ${lang === 'ar' ? 'sm:left-0 sm:right-auto' : 'sm:right-0 sm:left-auto'} ${
                     darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'
                   }`}>
                     <div className={`px-4 py-3 border-b flex items-center justify-between ${darkMode ? 'border-slate-800' : 'border-slate-100'}`}>
