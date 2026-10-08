@@ -297,7 +297,7 @@ export function Messages({ players, teams, subscriptions, lang }: MessagesProps)
                   <button
                     key={p.id}
                     onClick={() => setSelectedPlayerId(p.id)}
-                    className={`flex items-center gap-2 p-2.5 rounded-xl border text-right transition cursor-pointer ${
+                    className={`flex items-center gap-2 p-2.5 rounded-xl border text-start transition cursor-pointer ${
                       isSelected
                         ? 'border-brand-500 bg-brand-50 dark:bg-brand-900/20'
                         : 'border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 hover:border-brand-300'
