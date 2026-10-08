@@ -83,7 +83,7 @@ export function AttendanceView({ players, teams, attendance, matches, trainings,
   const today = new Date().toISOString().substring(0, 10);
 
   return (
-    <div className="space-y-5 text-right" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+    <div className="space-y-5 text-start" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
       <PageHeader title={t.attendance} subtitle={isAr ? `${kpis.total} سجل مسجل · نسبة الحضور ${kpis.rate}%` : `${kpis.total} records · Attendance rate ${kpis.rate}%`}>
         {canEdit && (
           <button
@@ -91,7 +91,7 @@ export function AttendanceView({ players, teams, attendance, matches, trainings,
             className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-bold shadow-sm transition cursor-pointer"
           >
             <Plus className="h-4 w-4" />
-            تسجيل حضور جديد
+            {isAr ? 'تسجيل حضور جديد' : 'Record New Attendance'}
           </button>
         )}
       </PageHeader>
