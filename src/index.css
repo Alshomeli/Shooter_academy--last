@@ -147,3 +147,10 @@ button[class~="bg-brand-600"]:hover {
 .dark .text-brand-600, .dark .text-brand-700, .dark .text-brand-800 {
   color: #ff6570;
 }
+
+/* Accessible secondary text on dark panels. Preserve semantic status colors. */
+.dark .text-slate-400 { color: #b9c6d8; }
+.dark .text-slate-500 { color: #b9c6d8; }
+.dark input[type="date"] { color-scheme: dark; }
+/* Bidirectional user-entered names remain in their original script. */
+[dir="ltr"] [dir="auto"], [dir="rtl"] [dir="auto"] { unicode-bidi: plaintext; }
