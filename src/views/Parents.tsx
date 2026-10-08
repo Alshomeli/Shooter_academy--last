@@ -96,7 +96,7 @@ export function Parents({ parents, players, teams, subscriptions, onParentsChang
   };
 
   return (
-    <div className="space-y-5 text-right" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+    <div className="space-y-5 text-start" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
       <PageHeader title={t.parents} subtitle={isAr ? `${parents.length} ولي أمر مسجل في الأكاديمية` : `${parents.length} parents registered`}>
         {canEdit && (
           <button
