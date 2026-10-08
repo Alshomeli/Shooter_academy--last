@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { ClipboardCheck, Loader2, LogOut, Send } from 'lucide-react';
 import { FormField, inputCls } from '@/components/ui';
 import { getMyStaffApplication, saveStaffApplication, submitStaffApplication } from '@/lib/staff-registration';
@@ -50,7 +50,8 @@ export function StaffRegistration({ user, lang, onLogout, onApproved }: {
     } finally { setLoading(false); }
   };
 
-  useEffect(() => { void load(); }, []);
+  const initialLoad = useRef(load);
+  useEffect(() => { void initialLoad.current(); }, []);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();

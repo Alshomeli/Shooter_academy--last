@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { CheckCircle2, Clipboard, CreditCard, FileText, FileUp, LogOut, Plus, Printer, RefreshCw, Star, UserRound, CalendarCheck2, WalletCards } from 'lucide-react';
-import { Registration } from '@/views/Registration';
 import { Badge, Modal } from '@/components/ui';
 import { errorMessage, fetchMyApplications } from '@/lib/registration';
 import type { RegistrationApplication } from '@/types';
@@ -8,6 +7,8 @@ import { planLabel } from '@/lib/i18n';
 import type { Attendance, CurrentUser, Lang, PaymentProof, Player, PlayerDocument, PlayerEvaluation, Settings, Subscription } from '@/types';
 import { db } from '@/lib/store';
 import { tr } from '@/lib/i18n';
+
+const Registration = lazy(() => import('@/views/Registration').then(m => ({ default: m.Registration })));
 
 const bahrainToday = () => {
   const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Bahrain', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
@@ -170,7 +171,7 @@ export function ParentPortal({ user, players, subscriptions, attendance, evaluat
       </Modal>
       <Modal open={editor !== null} closeDisabled={registrationBusy} onClose={() => { if (!registrationBusy) setEditor(null); }} title={text('تسجيل الأبناء', 'Children registration')} size="xl">
         {registrationBusy && <p role="status" className="mb-3 text-sm text-slate-500">{text('انتظر اكتمال الحفظ أو رفع الملفات قبل إغلاق الطلب.', 'Wait for saving or uploads to finish before closing the application.')}</p>}
-        {editor && <Registration key={editor === 'new' ? 'new' : editor.id} initial={editor === 'new' ? undefined : editor} lang={lang} onSaved={refresh} onBusyChange={setRegistrationBusy} onExit={() => { if (!registrationBusy) setEditor(null); }} />}
+        {editor && <Suspense fallback={<p role="status">{lang === 'ar' ? 'جارٍ التحميل…' : 'Loading…'}</p>}><Registration key={editor === 'new' ? 'new' : editor.id} initial={editor === 'new' ? undefined : editor} lang={lang} onSaved={refresh} onBusyChange={setRegistrationBusy} onExit={() => { if (!registrationBusy) setEditor(null); }} /></Suspense>}
       </Modal>
     </div>
   </main>;

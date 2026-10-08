@@ -132,10 +132,9 @@ export function Reports({
   }, [subscriptions, rangeFrom, rangeTo]);
 
 
-  const inRange = (date: string) => (!rangeFrom || date >= rangeFrom) && (!rangeTo || date <= rangeTo);
-  const filteredMatches = useMemo(() => matches.filter((m) => inRange(m.matchDate)), [matches, rangeFrom, rangeTo]);
-  const filteredAttendance = useMemo(() => attendance.filter((a) => inRange(a.sessionDate)), [attendance, rangeFrom, rangeTo]);
-  const filteredEvaluations = useMemo(() => evaluations.filter((e) => inRange(e.evaluationDate)), [evaluations, rangeFrom, rangeTo]);
+  const filteredMatches = useMemo(() => matches.filter((m) => (!rangeFrom || m.matchDate >= rangeFrom) && (!rangeTo || m.matchDate <= rangeTo)), [matches, rangeFrom, rangeTo]);
+  const filteredAttendance = useMemo(() => attendance.filter((a) => (!rangeFrom || a.sessionDate >= rangeFrom) && (!rangeTo || a.sessionDate <= rangeTo)), [attendance, rangeFrom, rangeTo]);
+  const filteredEvaluations = useMemo(() => evaluations.filter((e) => (!rangeFrom || e.evaluationDate >= rangeFrom) && (!rangeTo || e.evaluationDate <= rangeTo)), [evaluations, rangeFrom, rangeTo]);
 
 
 

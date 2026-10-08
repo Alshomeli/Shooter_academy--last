@@ -198,6 +198,13 @@ function OAuthConsent({ lang }: { lang: Lang }) {
 
 installAuthRecovery();
 
+const allowedViewsByRole: Record<Exclude<Role, 'parent'>, ViewId[]> = {
+    manager: ['dashboard', 'approvals', 'registration-admin', 'players', 'parents', 'teams', 'staff', 'subscriptions', 'attendance', 'schedules', 'tournaments', 'evaluations', 'reports', 'audit-logs', 'messages', 'ai-center', 'settings'],
+    accountant: ['dashboard', 'subscriptions', 'reports', 'messages', 'ai-center'],
+    coach: ['dashboard', 'players', 'parents', 'teams', 'attendance', 'schedules', 'tournaments', 'evaluations', 'reports', 'messages', 'ai-center'],
+    receptionist: ['dashboard', 'players', 'parents', 'teams', 'subscriptions', 'attendance', 'tournaments', 'reports', 'messages', 'ai-center'],
+  };
+
 export default function App() {
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [activeRole, setActiveRole] = useState<Role>('manager');
@@ -494,12 +501,7 @@ export default function App() {
     parent: t.parent,
   };
 
-  const allowedViewsByRole: Record<Exclude<Role, 'parent'>, ViewId[]> = {
-    manager: ['dashboard', 'approvals', 'registration-admin', 'players', 'parents', 'teams', 'staff', 'subscriptions', 'attendance', 'schedules', 'tournaments', 'evaluations', 'reports', 'audit-logs', 'messages', 'ai-center', 'settings'],
-    accountant: ['dashboard', 'subscriptions', 'reports', 'messages', 'ai-center'],
-    coach: ['dashboard', 'players', 'parents', 'teams', 'attendance', 'schedules', 'tournaments', 'evaluations', 'reports', 'messages', 'ai-center'],
-    receptionist: ['dashboard', 'players', 'parents', 'teams', 'subscriptions', 'attendance', 'tournaments', 'reports', 'messages', 'ai-center'],
-  };
+
 
   const safeCurrentTab: ViewId = activeRole === 'parent'
     ? 'dashboard'

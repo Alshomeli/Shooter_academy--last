@@ -1,3 +1,4 @@
+import { collectPages } from '@/lib/pagination';
 import { supabase } from '@/lib/supabase';
 import { collectionChanges, type Row } from '@/lib/collection-diff';
 import type {
@@ -55,10 +56,29 @@ export async function signOut() {
 
 /* ---------- Generic helpers ---------- */
 
+async function fetchRows(table: string, columns = '*'): Promise<Record<string, unknown>[]> {
+  return collectPages(async (after) => {
+    let query = supabase.from(table).select(columns).order('id').limit(500);
+    if (after !== undefined) query = query.gt('id', after);
+    const { data, error } = await query;
+    if (error) throw error;
+    return (data || []) as unknown as (Record<string, unknown> & { id: string })[];
+  });
+}
+
 async function fetchAll<T>(table: string, mapper: (r: Record<string, unknown>) => T): Promise<T[]> {
-  const { data, error } = await supabase.from(table).select('*');
-  if (error) throw error;
-  return (data || []).map(r => ({ ...mapper(r), version: Number(r.row_version) }));
+  const data = await fetchRows(table);
+  return data.map(r => ({ ...mapper(r), version: Number(r.row_version) }));
+}
+
+async function fetchPrivateRows(name: string): Promise<Record<string, unknown>[]> {
+  return collectPages(async after => {
+    let query = supabase.rpc(name).order('id').limit(500);
+    if (after !== undefined) query = query.gt('id', after);
+    const { data, error } = await query;
+    if (error) throw error;
+    return (data || []) as (Record<string, unknown> & { id: string })[];
+  });
 }
 
 const TABLE_PUBLIC_COLUMNS: Record<string, string> = {
@@ -78,11 +98,8 @@ async function upsertRow<T>(table: string, row: Record<string, unknown>, mapper:
    through a privileged function and we merge them back in. */
 
 async function fetchStaffRows(): Promise<Record<string, unknown>[]> {
-  const { data, error } = await supabase.from('staff').select(TABLE_PUBLIC_COLUMNS.staff);
-  if (error) throw error;
-  const rows = (data || []) as unknown as Record<string, unknown>[];
-  const { data: privateRows, error: privateError } = await supabase.rpc('get_staff_private');
-  if (privateError) throw privateError;
+  const rows = await fetchRows('staff', TABLE_PUBLIC_COLUMNS.staff);
+  const privateRows = await fetchPrivateRows('get_staff_private');
   const byId = new Map<string, { salary?: number; national_id?: string | null }>();
   for (const p of (privateRows || []) as { id: string; salary: number; national_id: string | null }[]) {
     byId.set(p.id, { salary: Number(p.salary) || 0, national_id: p.national_id });
@@ -95,11 +112,8 @@ async function fetchStaffRows(): Promise<Record<string, unknown>[]> {
 
 
 async function fetchParentRows(): Promise<Parent[]> {
-  const { data, error } = await supabase.from('parents').select(TABLE_PUBLIC_COLUMNS.parents);
-  if (error) throw error;
-  const rows = (data || []) as unknown as Record<string, unknown>[];
-  const { data: privateRows, error: privateError } = await supabase.rpc('get_parent_private');
-  if (privateError) throw privateError;
+  const rows = await fetchRows('parents', TABLE_PUBLIC_COLUMNS.parents);
+  const privateRows = await fetchPrivateRows('get_parent_private');
   const byId = new Map<string, { national_id?: string | null }>();
   for (const p of (privateRows || []) as { id: string; national_id: string | null }[]) {
     byId.set(p.id, { national_id: p.national_id });
@@ -111,11 +125,8 @@ async function fetchParentRows(): Promise<Parent[]> {
 }
 
 async function fetchPlayerRows(): Promise<Player[]> {
-  const { data, error } = await supabase.from('players').select(TABLE_PUBLIC_COLUMNS.players);
-  if (error) throw error;
-  const rows = (data || []) as unknown as Record<string, unknown>[];
-  const { data: privateRows, error: privateError } = await supabase.rpc('get_player_private');
-  if (privateError) throw privateError;
+  const rows = await fetchRows('players', TABLE_PUBLIC_COLUMNS.players);
+  const privateRows = await fetchPrivateRows('get_player_private');
   const byId = new Map<string, { notes?: string | null }>();
   for (const p of (privateRows || []) as { id: string; notes: string | null }[]) {
     byId.set(p.id, { notes: p.notes });
@@ -135,20 +146,9 @@ async function syncTable<T extends { id: string; version?: number }>(
   table: string, items: T[], previous: T[], toRowFn: (item: T) => Record<string, unknown>,
 ): Promise<void> {
   const changes = collectionChanges(previous, items, i => toRowFn(i) as Row);
-  for (const change of changes) {
-    if (change.kind === 'insert') {
-      const { error } = await supabase.from(table).insert(change.row);
-      if (error) throw error;
-      continue;
-    }
-    const mutation = change.kind === 'delete'
-      ? supabase.from(table).delete()
-      : supabase.from(table).update(change.patch);
-    const { data, error } = await mutation.eq('id', change.id)
-      .eq('row_version', change.version).select('id').maybeSingle();
-    if (error) throw error;
-    if (!data) throw new Error('STALE_RECORD');
-  }
+  if (!changes.length) return;
+  const { error } = await supabase.rpc('apply_collection_changes', { p_table: table, p_changes: changes });
+  if (error) throw error;
 }
 
 /* ---------- Staff ---------- */
