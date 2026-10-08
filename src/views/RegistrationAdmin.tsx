@@ -208,11 +208,11 @@ export function RegistrationAdmin({ lang, activeRole, teams, players, onRefresh 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-48">
-          <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <input
             value={search} onChange={(e) => setSearch(e.target.value)}
             placeholder={isAr ? 'بحث بالاسم أو الهاتف...' : 'Search by name or phone...'}
-            className={`${inputCls} pr-10`}
+            className={`${inputCls} ps-10`}
           />
         </div>
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className={`${inputCls} max-w-40`}>
