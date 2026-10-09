@@ -19,9 +19,9 @@ create table if not exists internal.telegram_admin_actions (
 revoke all on internal.telegram_manager_bindings from public, anon, authenticated;
 revoke all on internal.telegram_admin_actions from public, anon, authenticated;
 
-insert into internal.telegram_manager_bindings(chat_id_hash, staff_id, active)
-values ('77aa335710747063044d0b8d13ab0c4576ea69f2e9fd5beb71167d9bdfda2a11','staff-1',true)
-on conflict (chat_id_hash) do update set staff_id=excluded.staff_id, active=true;
+-- Manager Telegram bindings are operational data, not schema seed data.
+-- Configure them separately after a real, active manager staff record exists.
+-- This migration must also succeed on an empty preview database.
 
 create or replace function internal.telegram_approve_registration_application(
   p_application_id uuid,
