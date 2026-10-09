@@ -21,16 +21,29 @@ export const supabase = createClient(url, anonKey, {
 });
 
 let authRecoveryInstalled = false;
+let authRecoveryInProgress = false;
+
+export function isInvalidRefreshTokenError(reason: unknown): boolean {
+  const error = reason && typeof reason === 'object'
+    ? reason as { code?: unknown; message?: unknown }
+    : null;
+  const code = String(error?.code ?? '');
+  const message = String(error?.message ?? (typeof reason === 'string' ? reason : ''));
+  return code === 'refresh_token_not_found' ||
+    /refresh token.*not found|invalid refresh token/i.test(message);
+}
 
 export function installAuthRecovery() {
   if (authRecoveryInstalled || typeof window === 'undefined') return;
   authRecoveryInstalled = true;
 
   window.addEventListener('unhandledrejection', (event) => {
-    const reason = event.reason;
-    const message = reason instanceof Error ? reason.message : String(reason ?? '');
-    if (!/refresh token.*not found|invalid refresh token/i.test(message)) return;
-
-    void supabase.auth.signOut({ scope: 'local' }).catch(() => undefined);
+    if (!isInvalidRefreshTokenError(event.reason) || authRecoveryInProgress) return;
+    authRecoveryInProgress = true;
+    // Only clear the browser's local session. The App auth-state listener
+    // handles signed-out UI state; never revoke other devices' sessions here.
+    void supabase.auth.signOut({ scope: 'local' })
+      .catch(() => undefined)
+      .finally(() => { authRecoveryInProgress = false; });
   });
 }
