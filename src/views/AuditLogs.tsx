@@ -30,7 +30,10 @@ function actionColor(action: string): 'green' | 'blue' | 'amber' | 'red' | 'gray
 
 function csvCell(value: unknown): string {
   // Neutralize spreadsheet formulas and leading control characters from user input.
-  const text = String(value ?? '').replace(/[\x00-\x1F\x7F]/g, ' ');
+  const text = Array.from(String(value ?? ''), (char) => {
+    const code = char.charCodeAt(0);
+    return code < 32 || code === 127 ? ' ' : char;
+  }).join('');
   const safe = /^[\s]*[=+@-]/.test(text) ? "'" + text : text;
   return '"' + safe.replace(/"/g, '""') + '"';
 }
