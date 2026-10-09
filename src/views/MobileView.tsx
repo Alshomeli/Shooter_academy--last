@@ -77,7 +77,7 @@ export function MobileView({ subscriptions, lang }: MobileViewProps) {
               {/* App content */}
               <div className="px-4 pb-4 h-full overflow-y-auto">
                 <div className="flex items-center gap-2 mb-4 pt-2">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center text-white font-black text-lg">🎯</div>
+                  <div className="w-10 h-10 rounded-xl bg-linear-to-br from-brand-500 to-brand-600 flex items-center justify-center text-white font-black text-lg">🎯</div>
                   <div>
                     <p className="text-white text-sm font-black">{t.academyName}</p>
                     <p className="text-brand-400 text-[9px]">{isAr ? 'ولي الأمر' : 'Parent'}</p>
@@ -118,9 +118,9 @@ export function MobileView({ subscriptions, lang }: MobileViewProps) {
 
           {/* App info */}
           <div className="space-y-4">
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-xs">
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center text-white">
+                <div className="w-12 h-12 rounded-2xl bg-linear-to-br from-brand-500 to-brand-600 flex items-center justify-center text-white">
                   <Smartphone className="h-6 w-6" />
                 </div>
                 <div>
@@ -162,7 +162,7 @@ export function MobileView({ subscriptions, lang }: MobileViewProps) {
               <StatCard icon={<Bell className="h-5 w-5" />} label={isAr ? 'إشعارات مرسلة' : 'Notifications sent'} value="3,892" sublabel={isAr ? 'هذا الشهر' : 'This month'} color="blue" />
             </div>
 
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-xs">
               <div className="flex items-center gap-2 mb-3">
                 <QrCode className="h-5 w-5 text-brand-600" />
                 <h3 className="text-sm font-black text-slate-900 dark:text-white">{isAr ? 'رمز التحميل السريع' : 'Quick download QR'}</h3>
@@ -179,7 +179,7 @@ export function MobileView({ subscriptions, lang }: MobileViewProps) {
       )}
 
       {activeTab === 'api' && (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-xs">
           <div className="flex items-center gap-2 mb-4">
             <Settings className="h-5 w-5 text-brand-600" />
             <h3 className="text-sm font-black text-slate-900 dark:text-white">{isAr ? 'واجهة برمجة التطبيقات (REST API)' : 'REST API'}</h3>
@@ -220,7 +220,7 @@ export function MobileView({ subscriptions, lang }: MobileViewProps) {
           ].map((n, i) => {
             const Icon = n.icon;
             return (
-              <div key={i} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-4 shadow-sm flex items-center gap-4">
+              <div key={i} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-4 shadow-xs flex items-center gap-4">
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white shrink-0 bg-${n.color}-500`}>
                   <Icon className="h-5 w-5" />
                 </div>

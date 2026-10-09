@@ -101,7 +101,7 @@ export function Parents({ parents, players, teams, subscriptions, onParentsChang
         {canEdit && (
           <button
             onClick={() => setShowAdd(true)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-bold shadow-sm transition cursor-pointer"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-bold shadow-xs transition cursor-pointer"
           >
             <Plus className="h-4 w-4" />
             {t.add}
@@ -114,13 +114,13 @@ export function Parents({ parents, players, teams, subscriptions, onParentsChang
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-48">
-          <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Search className="absolute inset-s-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t.searchParents}
-            className="w-full bg-white dark:bg-slate-900 text-sm py-2.5 ps-10 pe-4 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white"
+            className="w-full bg-white dark:bg-slate-900 text-sm py-2.5 ps-10 pe-4 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white"
           />
         </div>
         <select
@@ -157,11 +157,11 @@ export function Parents({ parents, players, teams, subscriptions, onParentsChang
             return (
               <div
                 key={p.id}
-                className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-4 shadow-sm hover:shadow-md transition-shadow group"
+                className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-4 shadow-xs hover:shadow-md transition-shadow group"
               >
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center text-xl shrink-0">
+                    <div className="w-11 h-11 rounded-xl bg-linear-to-br from-brand-500 to-brand-600 flex items-center justify-center text-xl shrink-0">
                       {p.avatarUrl || '👤'}
                     </div>
                     <div className="min-w-0">
@@ -486,7 +486,7 @@ function ParentDetail({
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-4">
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center text-3xl">
+        <div className="w-16 h-16 rounded-2xl bg-linear-to-br from-brand-500 to-brand-600 flex items-center justify-center text-3xl">
           {parent.avatarUrl || '👤'}
         </div>
         <div className="min-w-0">
@@ -544,7 +544,7 @@ function ParentDetail({
                   key={kid.id}
                   className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50"
                 >
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center text-white font-black text-sm shrink-0">
+                  <div className="w-10 h-10 rounded-xl bg-linear-to-br from-brand-500 to-brand-600 flex items-center justify-center text-white font-black text-sm shrink-0">
                     #{kid.jerseyNumber}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -574,7 +574,7 @@ function ParentDetail({
 }
 
 const inputCls =
-  'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white';
+  'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white';
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (

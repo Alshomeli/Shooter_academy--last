@@ -157,7 +157,7 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
         {canManage && (
           <button
             onClick={() => setShowAdd(true)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-bold shadow-sm transition cursor-pointer"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-bold shadow-xs transition cursor-pointer"
           >
             <Plus className="h-4 w-4" />
             {t.add}
@@ -181,7 +181,7 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={isAr ? 'ابحث بالاسم أو البريد أو التخصص...' : 'Search by name, email or specialization...'}
-            className="w-full bg-white dark:bg-slate-900 text-sm py-2.5 pr-10 pl-4 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white"
+            className="w-full bg-white dark:bg-slate-900 text-sm py-2.5 pr-10 pl-4 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white"
           />
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -191,7 +191,7 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
               onClick={() => setRoleFilter(rf.value)}
               className={`px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer border ${
                 roleFilter === rf.value
-                  ? 'bg-brand-600 text-white border-brand-600 shadow-sm'
+                  ? 'bg-brand-600 text-white border-brand-600 shadow-xs'
                   : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-brand-400'
               }`}
             >
@@ -220,12 +220,12 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
             return (
               <div
                 key={s.id}
-                className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-4 shadow-sm hover:shadow-md transition-shadow group"
+                className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-4 shadow-xs hover:shadow-md transition-shadow group"
               >
                 {/* Header */}
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 flex items-center justify-center text-2xl shrink-0 overflow-hidden">
+                    <div className="w-12 h-12 rounded-xl bg-linear-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 flex items-center justify-center text-2xl shrink-0 overflow-hidden">
                       {staffPhotoUrls[s.id] ? <img src={staffPhotoUrls[s.id]} alt="" className="w-full h-full object-cover"/> : (s.avatarUrl || '👤')}
                     </div>
                     <div className="min-w-0">
@@ -390,7 +390,7 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
             <select
               value={reassignCoachId ?? ''}
               onChange={(e) => setReassignCoachId(e.target.value || null)}
-              className="w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white"
+              className="w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white"
             >
               <option value="">{t.noReplacement}</option>
               {staff.filter((s) => s.role === 'coach' && s.status === 'active' && s.id !== deleteId).map((s) => (
@@ -632,7 +632,7 @@ function StaffDetail({
     <div className="space-y-4">
       {/* Identity */}
       <div className="flex items-center gap-4 rounded-2xl border border-slate-100 dark:border-slate-800 p-4">
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 flex items-center justify-center text-3xl overflow-hidden">
+        <div className="w-16 h-16 rounded-2xl bg-linear-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 flex items-center justify-center text-3xl overflow-hidden">
           {photoUrl ? <img src={photoUrl} alt="" className="w-full h-full object-cover"/> : (member.avatarUrl || '👤')}
         </div>
         <div className="min-w-0">
@@ -730,7 +730,7 @@ function StaffDetail({
 /* ----------------------------- Helpers ----------------------------- */
 
 const inputCls =
-  'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white';
+  'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white';
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (

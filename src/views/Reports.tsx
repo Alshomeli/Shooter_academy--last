@@ -30,7 +30,7 @@ interface ReportsProps {
 
 function SectionCard({ children }: { children: ReactNode }) {
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-xs">
       {children}
     </div>
   );
@@ -43,7 +43,7 @@ function SectionHeader({
 }) {
   return (
     <div className="flex items-center gap-3 mb-5">
-      <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center text-white shadow-lg shrink-0`}>
+      <div className={`w-11 h-11 rounded-xl bg-linear-to-br ${gradient} flex items-center justify-center text-white shadow-lg shrink-0`}>
         {icon}
       </div>
       <div className="min-w-0">
@@ -288,19 +288,19 @@ export function Reports({
         </div>
       </div>
       <PageHeader title={t.reports} subtitle={t.reportsSubtitle}>
-        <button onClick={() => exportReportCsv('players', players, teams)} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold text-white bg-brand-600 hover:bg-brand-700 transition cursor-pointer shadow-sm">
+        <button onClick={() => exportReportCsv('players', players, teams)} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold text-white bg-brand-600 hover:bg-brand-700 transition cursor-pointer shadow-xs">
           <Download className="h-4 w-4" /> {t.exportPlayersCsv}
         </button>
-        {(activeRole === 'manager' || activeRole === 'accountant') && <button onClick={() => exportReportCsv('financial', transactions, teams)} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 transition cursor-pointer shadow-sm">
+        {(activeRole === 'manager' || activeRole === 'accountant') && <button onClick={() => exportReportCsv('financial', transactions, teams)} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 transition cursor-pointer shadow-xs">
           <Download className="h-4 w-4" /> {t.exportFinancialCsv}
         </button>}
-        <button onClick={() => window.print()} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer shadow-sm">
+        <button onClick={() => window.print()} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer shadow-xs">
           <Printer className="h-4 w-4" /> {t.print}
         </button>
       </PageHeader>
 
       {/* Date Range Filter */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-4 shadow-sm">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-4 shadow-xs">
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400">
             <Calendar className="h-4 w-4" />
@@ -313,7 +313,7 @@ export function Reports({
                 onClick={() => setDatePreset(key)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
                   datePreset === key
-                    ? 'bg-brand-600 text-white shadow-sm'
+                    ? 'bg-brand-600 text-white shadow-xs'
                     : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
                 }`}
               >
@@ -323,9 +323,9 @@ export function Reports({
           </div>
           {datePreset === 'custom' && (
             <div className="flex items-center gap-2">
-              <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs py-1.5 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50" dir="ltr" />
+              <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs py-1.5 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-brand-500/50" dir="ltr" />
               <span className="text-xs text-slate-400">→</span>
-              <input type="date" min={customFrom} value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs py-1.5 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50" dir="ltr" />
+              <input type="date" min={customFrom} value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs py-1.5 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-brand-500/50" dir="ltr" />
             </div>
           )}
         </div>
@@ -347,15 +347,15 @@ export function Reports({
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           <div>
-            <p className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-3 flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-brand-500" />{t.monthlyRevenueBars}</p>
+            <p className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-3 flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-xs bg-brand-500" />{t.monthlyRevenueBars}</p>
             <BarChart data={financial.revenueBars} valueFormatter={(v) => v.toLocaleString()} height={180} />
           </div>
           <div>
-            <p className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-3 flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-red-500" />{t.monthlyExpenseBars}</p>
+            <p className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-3 flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-xs bg-red-500" />{t.monthlyExpenseBars}</p>
             <BarChart data={financial.expenseBars} valueFormatter={(v) => v.toLocaleString()} height={180} />
           </div>
           <div>
-            <p className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-3 flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-blue-500" />{t.netProfitTrend}</p>
+            <p className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-3 flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-xs bg-blue-500" />{t.netProfitTrend}</p>
             <LineChart data={financial.netTrend} color="#3b82f6" height={180} />
           </div>
         </div>

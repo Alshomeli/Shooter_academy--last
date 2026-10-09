@@ -142,8 +142,8 @@ export function Dashboard({ players, subscriptions, matches, transactions, staff
 
       {(activeRole === 'manager' || activeRole === 'coach') && <TelegramLinkCard lang={lang} />}
 
-      {activeRole === 'coach' && <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-slate-900 to-brand-950 p-5 sm:p-6 text-white shadow-xl shadow-slate-300/30 dark:shadow-none">
-        <div className="absolute -top-20 -end-10 h-48 w-48 rounded-full bg-brand-400/15 blur-3xl" />
+      {activeRole === 'coach' && <section className="relative overflow-hidden rounded-3xl bg-linear-to-br from-slate-950 via-slate-900 to-brand-950 p-5 sm:p-6 text-white shadow-xl shadow-slate-300/30 dark:shadow-none">
+        <div className="absolute -top-20 -inset-e-10 h-48 w-48 rounded-full bg-brand-400/15 blur-3xl" />
         <div className="relative flex flex-wrap items-start justify-between gap-5">
           <div><p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-300">{isAr ? 'مركز المدرب' : 'Coach workspace'}</p><h2 className="mt-2 text-xl sm:text-2xl font-black">{isAr ? 'ابدأ من أهم ما يحتاجه فريقك اليوم' : 'Start with what your team needs today'}</h2><p className="mt-1 max-w-2xl text-sm text-slate-300">{isAr ? 'تابع الحضور، جهّز المباريات، وراجع تطور اللاعبين من لوحة واحدة.' : 'Track attendance, prepare matches, and review player development from one focused workspace.'}</p></div>
           <div className="flex gap-2"><button onClick={() => setCurrentTab('attendance')} className="rounded-xl bg-brand-500 px-3 py-2 text-xs font-black text-white transition hover:bg-brand-400">{isAr ? 'تسجيل الحضور' : 'Record attendance'}</button><button onClick={() => setCurrentTab('evaluations')} className="rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-xs font-black text-white transition hover:bg-white/20">{isAr ? 'التقييمات' : 'Evaluations'}</button></div>
@@ -176,7 +176,7 @@ export function Dashboard({ players, subscriptions, matches, transactions, staff
       {/* Charts row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Revenue line chart */}
-        {canSeeFinance && <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm">
+        {canSeeFinance && <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-xs">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="text-sm font-black text-slate-900 dark:text-white">{t.monthlyRevenue}</h3>
@@ -191,7 +191,7 @@ export function Dashboard({ players, subscriptions, matches, transactions, staff
         </div>}
 
         {/* Position distribution donut */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-xs">
           <h3 className="text-sm font-black text-slate-900 dark:text-white mb-1">{t.positionDistribution}</h3>
           <p className="text-[11px] text-slate-400 mb-4">{t.positionDistributionHint}</p>
           <DonutChart
@@ -205,13 +205,13 @@ export function Dashboard({ players, subscriptions, matches, transactions, staff
       {/* Bottom row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Team players bar chart */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-xs">
           <h3 className="text-sm font-black text-slate-900 dark:text-white mb-4">{t.playersPerTeam}</h3>
           <BarChart data={teamPlayersData} />
         </div>
 
         {/* Match results donut */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-xs">
           <h3 className="text-sm font-black text-slate-900 dark:text-white mb-4">{t.matchResults}</h3>
           <DonutChart
             data={[
@@ -226,7 +226,7 @@ export function Dashboard({ players, subscriptions, matches, transactions, staff
         </div>
 
         {/* Recent matches */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-xs">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-black text-slate-900 dark:text-white">{t.recentMatches}</h3>
             <button onClick={() => setCurrentTab('schedules')} className="text-[11px] font-bold text-brand-600 hover:text-brand-700 cursor-pointer">{t.viewAll}</button>
@@ -261,7 +261,7 @@ export function Dashboard({ players, subscriptions, matches, transactions, staff
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {canSeeSubscriptions && <RemindersPanel reminders={reminders} onNavigate={() => setCurrentTab('subscriptions')} compact lang={lang} />}
 
-        {canSeeEvaluations && <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm">
+        {canSeeEvaluations && <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-xs">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="text-sm font-black text-slate-900 dark:text-white">{isAr ? 'إعادة تقييم اللاعبين' : 'Player reassessments'}</h3>
@@ -291,7 +291,7 @@ export function Dashboard({ players, subscriptions, matches, transactions, staff
         </div>}
 
         {/* Quick stats summary */}
-        {canSeeSubscriptions && <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm">
+        {canSeeSubscriptions && <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-xs">
           <h3 className="text-sm font-black text-slate-900 dark:text-white mb-4">{t.quickSummary}</h3>
           <div className="grid grid-cols-2 gap-3">
             <div className="p-3 rounded-xl bg-red-50 dark:bg-red-900/20">
@@ -317,7 +317,7 @@ export function Dashboard({ players, subscriptions, matches, transactions, staff
       </div>
 
       {/* Quick actions */}
-      <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl p-6 text-white shadow-lg">
+      <div className="bg-linear-to-br from-slate-900 to-slate-800 rounded-2xl p-6 text-white shadow-lg">
         <div className="flex items-center gap-2 mb-4">
           <ShieldCheck className="h-5 w-5 text-brand-400" />
           <h3 className="text-sm font-black">{t.quickActions}</h3>

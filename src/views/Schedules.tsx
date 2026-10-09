@@ -23,7 +23,7 @@ type MatchResult = Match['result'];
 type TrainingForm = Omit<Training, 'id'>;
 
 const inputCls =
-  'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white';
+  'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white';
 
 /* ---------- date / time helpers ---------- */
 function formatDate(dateStr: string, lang: Lang): string {
@@ -131,7 +131,7 @@ export function Schedules({
         {canEdit && tab === 'matches' && (
           <button
             onClick={() => setShowMatch(true)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-bold shadow-sm transition cursor-pointer"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-bold shadow-xs transition cursor-pointer"
           >
             <Plus className="h-4 w-4" />
             {isAr ? 'إضافة مباراة' : 'Add match'}
@@ -140,7 +140,7 @@ export function Schedules({
         {canEdit && tab === 'trainings' && (
           <button
             onClick={() => setShowTraining(true)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-bold shadow-sm transition cursor-pointer"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-bold shadow-xs transition cursor-pointer"
           >
             <Plus className="h-4 w-4" />
             {isAr ? 'إضافة تدريب' : 'Add training'}
@@ -154,7 +154,7 @@ export function Schedules({
           onClick={() => setTab('matches')}
           className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold transition cursor-pointer ${
             tab === 'matches'
-              ? 'bg-brand-600 text-white shadow-sm'
+              ? 'bg-brand-600 text-white shadow-xs'
               : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
           }`}
         >
@@ -168,7 +168,7 @@ export function Schedules({
           onClick={() => setTab('trainings')}
           className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold transition cursor-pointer ${
             tab === 'trainings'
-              ? 'bg-brand-600 text-white shadow-sm'
+              ? 'bg-brand-600 text-white shadow-xs'
               : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
           }`}
         >
@@ -236,7 +236,7 @@ export function Schedules({
                   return (
                     <div
                       key={m.id}
-                      className="relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm hover:shadow-md transition-shadow overflow-hidden"
+                      className="relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-xs hover:shadow-md transition-shadow overflow-hidden"
                     >
                       {/* left color bar based on result (right side in RTL) */}
                       <div className={`absolute top-0 bottom-0 right-0 w-1.5 ${rs.bar}`} />
@@ -244,7 +244,7 @@ export function Schedules({
                       {/* header row */}
                       <div className="flex items-start justify-between gap-3 mb-4 pr-2">
                         <div className="flex items-center gap-3 min-w-0">
-                          <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${rs.bar} flex items-center justify-center text-white shrink-0 shadow-lg`}>
+                          <div className={`w-11 h-11 rounded-xl bg-linear-to-br ${rs.bar} flex items-center justify-center text-white shrink-0 shadow-lg`}>
                             <rs.icon className="h-5 w-5" />
                           </div>
                           <div className="min-w-0">
@@ -383,7 +383,7 @@ export function Schedules({
                   return (
                     <div
                       key={tr.id}
-                      className="relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm hover:shadow-md transition-shadow overflow-hidden"
+                      className="relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-xs hover:shadow-md transition-shadow overflow-hidden"
                     >
                       {/* emerald accent bar */}
                       <div className="absolute top-0 bottom-0 right-0 w-1.5 bg-brand-500" />
@@ -391,7 +391,7 @@ export function Schedules({
                       {/* header */}
                       <div className="flex items-start justify-between gap-3 mb-4 pr-2">
                         <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center text-white shrink-0 shadow-lg">
+                          <div className="w-11 h-11 rounded-xl bg-linear-to-br from-brand-500 to-brand-600 flex items-center justify-center text-white shrink-0 shadow-lg">
                             <Dumbbell className="h-5 w-5" />
                           </div>
                           <div className="min-w-0">

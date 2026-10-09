@@ -429,7 +429,7 @@ export function AICenter({ players, subscriptions, transactions, staff, teams, m
   return (
     <div className="space-y-6" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
       <PageHeader title={t.aiCenter} subtitle="مساعد ذكي لتحليل بيانات الأكاديمية واتخاذ القرارات">
-        <button onClick={handleClear} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition cursor-pointer shadow-sm">
+        <button onClick={handleClear} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition cursor-pointer shadow-xs">
           <RefreshCw className="h-3.5 w-3.5" /> محادثة جديدة
         </button>
       </PageHeader>
@@ -453,9 +453,9 @@ export function AICenter({ players, subscriptions, transactions, staff, teams, m
               const isActive = p.id === activePersona;
               return (
                 <button key={p.id} onClick={() => { if (!isActive) setActivePersona(p.id); }}
-                  className={`w-full text-right p-3.5 rounded-2xl border bg-white dark:bg-slate-900 transition-all cursor-pointer shadow-sm hover:shadow-md ${isActive ? `${styles.activeBorder} shadow-md ${styles.activeShadow} ring-2 ${styles.ring}` : styles.border}`}>
+                  className={`w-full text-right p-3.5 rounded-2xl border bg-white dark:bg-slate-900 transition-all cursor-pointer shadow-xs hover:shadow-md ${isActive ? `${styles.activeBorder} shadow-md ${styles.activeShadow} ring-2 ${styles.ring}` : styles.border}`}>
                   <div className="flex items-center gap-3">
-                    <div className={`shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br ${styles.iconBg} flex items-center justify-center text-white shadow`}>
+                    <div className={`shrink-0 w-10 h-10 rounded-xl bg-linear-to-br ${styles.iconBg} flex items-center justify-center text-white shadow-sm`}>
                       <Icon className="h-5 w-5" />
                     </div>
                     <div className="min-w-0 flex-1">
@@ -478,10 +478,10 @@ export function AICenter({ players, subscriptions, transactions, staff, teams, m
           </div>
         </aside>
 
-        <section className="lg:col-span-3 flex flex-col bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden h-[70vh] min-h-[520px]">
+        <section className="lg:col-span-3 flex flex-col bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-xs overflow-hidden h-[70vh] min-h-[520px]">
           <div className="flex items-center justify-between gap-3 px-5 py-3.5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/30">
             <div className="flex items-center gap-3 min-w-0">
-              <div className={`relative shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br ${personaStyle.iconBg} flex items-center justify-center text-white shadow`}>
+              <div className={`relative shrink-0 w-10 h-10 rounded-xl bg-linear-to-br ${personaStyle.iconBg} flex items-center justify-center text-white shadow-sm`}>
                 <PersonaIcon className="h-5 w-5" />
                 <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-brand-400 border-2 border-white dark:border-slate-900" />
               </div>
@@ -512,11 +512,11 @@ export function AICenter({ players, subscriptions, transactions, staff, teams, m
               <div className="flex-1 relative">
                 <input type="text" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleSend(); }} disabled={isTyping}
                   placeholder="اكتب رسالتك إلى المساعد الذكي..."
-                  className="w-full px-4 py-3 pr-10 rounded-xl bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-brand-500 focus:bg-white dark:focus:bg-slate-900 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 outline-none transition disabled:opacity-60" />
+                  className="w-full px-4 py-3 pr-10 rounded-xl bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-brand-500 focus:bg-white dark:focus:bg-slate-900 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 outline-hidden transition disabled:opacity-60" />
                 <Sparkles className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300 dark:text-slate-600" />
               </div>
               <button onClick={() => handleSend()} disabled={!input.trim() || isTyping}
-                className="shrink-0 inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 text-white shadow-lg hover:shadow-brand-500/30 hover:scale-105 active:scale-95 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100" aria-label="إرسال">
+                className="shrink-0 inline-flex items-center justify-center w-12 h-12 rounded-xl bg-linear-to-br from-brand-500 to-brand-600 text-white shadow-lg hover:shadow-brand-500/30 hover:scale-105 active:scale-95 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100" aria-label="إرسال">
                 <Send className="h-5 w-5" />
               </button>
             </div>
@@ -532,10 +532,10 @@ function MessageBubble({ message, personaColor }: { message: ChatMessage; person
   const styles = PERSONA_COLORS[personaColor];
   return (
     <div className={`flex items-end gap-2.5 animate-fadeIn ${isAI ? 'flex-row' : 'flex-row-reverse'}`}>
-      <div className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-white shadow ${isAI ? `bg-gradient-to-br ${styles.iconBg}` : 'bg-slate-400 dark:bg-slate-600'}`}>
+      <div className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-white shadow-sm ${isAI ? `bg-linear-to-br ${styles.iconBg}` : 'bg-slate-400 dark:bg-slate-600'}`}>
         {isAI ? <Bot className="h-4 w-4" /> : <User className="h-4 w-4" />}
       </div>
-      <div className={`max-w-[80%] sm:max-w-[75%] px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-line shadow-sm ${isAI ? 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-bl-md border border-slate-100 dark:border-slate-700' : 'bg-brand-500 text-white rounded-br-md'}`}>
+      <div className={`max-w-[80%] sm:max-w-[75%] px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-line shadow-xs ${isAI ? 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-bl-md border border-slate-100 dark:border-slate-700' : 'bg-brand-500 text-white rounded-br-md'}`}>
         {message.text}
       </div>
     </div>
@@ -546,8 +546,8 @@ function TypingIndicator({ personaColor, personaIcon: Icon }: { personaColor: Pe
   const styles = PERSONA_COLORS[personaColor];
   return (
     <div className="flex items-end gap-2.5 animate-fadeIn">
-      <div className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-white shadow bg-gradient-to-br ${styles.iconBg}`}><Icon className="h-4 w-4" /></div>
-      <div className="px-4 py-3.5 rounded-2xl rounded-bl-md bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm">
+      <div className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-white shadow-sm bg-linear-to-br ${styles.iconBg}`}><Icon className="h-4 w-4" /></div>
+      <div className="px-4 py-3.5 rounded-2xl rounded-bl-md bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-xs">
         <div className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600 animate-bounce" style={{ animationDelay: '0ms' }} />
           <span className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600 animate-bounce" style={{ animationDelay: '150ms' }} />
@@ -599,9 +599,9 @@ function AIInsights({ players, subscriptions, transactions, matches, trainings, 
   };
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-4 sm:p-5 shadow-sm">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-4 sm:p-5 shadow-xs">
       <div className="flex items-center gap-2 mb-4">
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-brand-600 text-white flex items-center justify-center"><Brain className="h-4 w-4" /></div>
+        <div className="w-8 h-8 rounded-lg bg-linear-to-br from-brand-500 to-brand-600 text-white flex items-center justify-center"><Brain className="h-4 w-4" /></div>
         <div><h3 className="text-sm font-black text-slate-900 dark:text-white">رؤى ذكية فورية</h3><p className="text-[11px] text-slate-400">تحليل آلي لبيانات الأكاديمية</p></div>
       </div>
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 mb-4">

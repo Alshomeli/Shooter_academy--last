@@ -14,7 +14,7 @@ interface TournamentsProps {
 const EMOJI_OPTIONS = ['🏆', '🎖️', '🏅', '🥇', '🥈', '🥉', '⚽', '🔥'];
 
 const inputCls =
-  'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white';
+  'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white';
 
 export function Tournaments({ tournaments, onTournamentsChange, activeRole, lang }: TournamentsProps) {
   const t = tr(lang);
@@ -49,7 +49,7 @@ export function Tournaments({ tournaments, onTournamentsChange, activeRole, lang
         {canEdit && (
           <button
             onClick={() => setShowAdd(true)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-bold shadow-sm transition cursor-pointer"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-bold shadow-xs transition cursor-pointer"
           >
             <Plus className="h-4 w-4" />
             {t.add}
@@ -71,11 +71,11 @@ export function Tournaments({ tournaments, onTournamentsChange, activeRole, lang
             return (
               <div
                 key={tn.id}
-                className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm hover:shadow-md transition-shadow group flex flex-col"
+                className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-xs hover:shadow-md transition-shadow group flex flex-col"
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-2xl shrink-0 shadow-lg">
+                    <div className="w-12 h-12 rounded-xl bg-linear-to-br from-amber-400 to-amber-600 flex items-center justify-center text-2xl shrink-0 shadow-lg">
                       {tn.logoEmoji}
                     </div>
                     <div className="min-w-0">

@@ -21,7 +21,7 @@ type Status = 'present' | 'absent' | 'excused';
 type SessionType = 'training' | 'match';
 
 const inputCls =
-  'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white';
+  'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white';
 
 export function AttendanceView({ players, teams, attendance, matches, trainings, onAttendanceChange, activeRole, lang }: AttendanceProps) {
   const t = tr(lang);
@@ -88,7 +88,7 @@ export function AttendanceView({ players, teams, attendance, matches, trainings,
         {canEdit && (
           <button
             onClick={() => setShowAdd(true)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-bold shadow-sm transition cursor-pointer"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-bold shadow-xs transition cursor-pointer"
           >
             <Plus className="h-4 w-4" />
             {isAr ? 'تسجيل حضور جديد' : 'Record New Attendance'}
@@ -138,21 +138,21 @@ export function AttendanceView({ players, teams, attendance, matches, trainings,
       {/* Filters */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-4 flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-48">
-          <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Search className="absolute inset-s-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={isAr ? 'ابحث باسم اللاعب...' : 'Search by player name...'}
-            className="w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 ps-10 pe-4 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white"
+            className="w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 ps-10 pe-4 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white"
           />
         </div>
         <div className="relative">
-          <Users className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+          <Users className="absolute inset-s-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
           <select
             value={teamFilter}
             onChange={(e) => setTeamFilter(e.target.value)}
-            className="appearance-none px-3 py-2.5 ps-10 pe-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-semibold text-slate-700 dark:text-slate-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-500/50"
+            className="appearance-none px-3 py-2.5 ps-10 pe-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-semibold text-slate-700 dark:text-slate-200 cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-brand-500/50"
           >
             <option value="all">{isAr ? 'كل الفرق' : 'All teams'}</option>
             {teams.map((tm) => (
@@ -163,19 +163,19 @@ export function AttendanceView({ players, teams, attendance, matches, trainings,
         <select
           value={typeFilter}
           onChange={(e) => setTypeFilter(e.target.value)}
-          className="px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-semibold text-slate-700 dark:text-slate-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-500/50"
+          className="px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-semibold text-slate-700 dark:text-slate-200 cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-brand-500/50"
         >
           <option value="all">{isAr ? 'كل الأنواع' : 'All types'}</option>
           <option value="training">{t.training}</option>
           <option value="match">{t.match}</option>
         </select>
         <div className="relative">
-          <Calendar className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+          <Calendar className="absolute inset-s-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
           <input
             type="date"
             value={dateFilter}
             onChange={(e) => setDateFilter(e.target.value)}
-            className="bg-slate-50 dark:bg-slate-800 text-sm py-2.5 ps-10 pe-3 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white"
+            className="bg-slate-50 dark:bg-slate-800 text-sm py-2.5 ps-10 pe-3 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white"
           />
         </div>
         {(teamFilter !== 'all' || typeFilter !== 'all' || dateFilter || search) && (
@@ -222,7 +222,7 @@ export function AttendanceView({ players, teams, attendance, matches, trainings,
                     >
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center text-white font-black text-sm shrink-0">
+                          <div className="w-9 h-9 rounded-xl bg-linear-to-br from-brand-500 to-brand-600 flex items-center justify-center text-white font-black text-sm shrink-0">
                             #{player?.jerseyNumber ?? '?'}
                           </div>
                           <span className="font-bold text-slate-800 dark:text-slate-100">{playerName(a.playerId)}</span>
@@ -485,7 +485,7 @@ function BatchAttendanceForm({
                 {teamPlayers.map((p) => (
                   <div key={p.id} className="flex items-center justify-between gap-3 py-2.5 px-3">
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-slate-400 to-slate-500 flex items-center justify-center text-white font-black text-xs shrink-0">
+                      <div className="w-8 h-8 rounded-lg bg-linear-to-br from-slate-400 to-slate-500 flex items-center justify-center text-white font-black text-xs shrink-0">
                         #{p.jerseyNumber}
                       </div>
                       <div className="min-w-0">

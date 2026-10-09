@@ -129,7 +129,7 @@ export function Sidebar({
       >
         <div className="flex-1 min-h-0 flex flex-col">
           {/* Logo header */}
-          <div className="relative shrink-0 px-4 pt-3 pb-4 border-b border-slate-800 bg-gradient-to-b from-brand-950/35 to-slate-950 text-center overflow-hidden">
+          <div className="relative shrink-0 px-4 pt-3 pb-4 border-b border-slate-800 bg-linear-to-b from-brand-950/35 to-slate-950 text-center overflow-hidden">
             <div className="pointer-events-none absolute -top-10 -right-12 h-32 w-32 rotate-45 bg-brand-600/20" />
             <div className="pointer-events-none absolute -bottom-14 -left-12 h-32 w-32 rotate-45 bg-brand-600/15" />
             <button
@@ -186,7 +186,7 @@ export function Sidebar({
                         onClick={() => handleNav(item.id)}
                         className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer text-start ${
                           active
-                            ? 'bg-gradient-to-l from-brand-600 to-brand-500 text-white shadow-lg shadow-brand-950/30 ring-1 ring-brand-400/20'
+                            ? 'bg-linear-to-l from-brand-600 to-brand-500 text-white shadow-lg shadow-brand-950/30 ring-1 ring-brand-400/20'
                             : 'text-slate-300 hover:bg-slate-800/70 hover:text-white'
                         }`}
                       >

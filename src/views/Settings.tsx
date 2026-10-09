@@ -15,7 +15,7 @@ interface SettingsProps {
 }
 
 const inputCls =
-  'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white';
+  'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white';
 
 function resolveLogoSrc(value: string) {
   const raw = value.trim();
@@ -43,7 +43,7 @@ export function SettingsView({ settings, onSettingsChange, activeRole, lang }: S
           title={t.settings}
           subtitle={isAr ? 'تهيئة الإعدادات العامة للأكاديمية والرسوم المعتمدة' : 'Configure general academy settings and approved fees'}
         />
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-10 shadow-sm text-center">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-10 shadow-xs text-center">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-red-100 dark:bg-red-900/30 text-red-500 mb-4">
             <Info className="h-8 w-8" />
           </div>
@@ -85,7 +85,7 @@ export function SettingsView({ settings, onSettingsChange, activeRole, lang }: S
       {/* Form card */}
       <form
         onSubmit={handleSubmit}
-        className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-6 shadow-sm"
+        className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-6 shadow-xs"
       >
         {/* Info banner */}
         <div className="flex items-start gap-3 p-4 rounded-xl bg-brand-50/60 dark:bg-brand-900/10 border border-brand-100 dark:border-brand-900/20 mb-7">
@@ -253,7 +253,7 @@ export function SettingsView({ settings, onSettingsChange, activeRole, lang }: S
         <div className="flex justify-end pt-5 border-t border-slate-100 dark:border-slate-800">
           <button
             type="submit" disabled={saving}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-bold shadow-sm transition cursor-pointer"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-bold shadow-xs transition cursor-pointer"
           >
             <Save className="h-4 w-4" />
             {t.save}
@@ -264,7 +264,7 @@ export function SettingsView({ settings, onSettingsChange, activeRole, lang }: S
       {/* ----------------------- Success toast ----------------------- */}
       {saved && (
         <div
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[120] flex items-center gap-2.5 px-5 py-3 rounded-xl bg-brand-600 text-white shadow-2xl shadow-brand-900/20 animate-fadeIn"
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-120 flex items-center gap-2.5 px-5 py-3 rounded-xl bg-brand-600 text-white shadow-2xl shadow-brand-900/20 animate-fadeIn"
           role="status"
           aria-live="polite"
         >

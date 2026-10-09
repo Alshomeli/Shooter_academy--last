@@ -678,7 +678,7 @@ export default function App() {
 
       <div className="flex-1 flex flex-col min-h-screen overflow-x-hidden">
         {/* Header */}
-        <header className={`border-b py-3 sm:py-4 px-4 sm:px-6 lg:px-8 flex items-center justify-between shadow-sm shrink-0 transition-colors duration-300 ${
+        <header className={`border-b py-3 sm:py-4 px-4 sm:px-6 lg:px-8 flex items-center justify-between shadow-xs shrink-0 transition-colors duration-300 ${
           darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'
         }`}>
           <div className="flex items-center gap-3">
@@ -765,7 +765,7 @@ export default function App() {
             </div>
 
             <div className="flex items-center gap-2">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center text-white font-black text-sm shrink-0">
+              <div className="w-9 h-9 rounded-xl bg-linear-to-br from-brand-500 to-brand-600 flex items-center justify-center text-white font-black text-sm shrink-0">
                 {currentUser.name.charAt(0)}
               </div>
               <div className="hidden sm:block">

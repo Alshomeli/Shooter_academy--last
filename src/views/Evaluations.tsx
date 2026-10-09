@@ -625,7 +625,7 @@ export function Evaluations({ evaluations, players, teams, staff, activeRole, la
       {/* Filters */}
       <div className="flex flex-wrap gap-3 items-center">
         <div className="relative flex-1 min-w-[180px] max-w-xs">
-          <Search className="absolute top-1/2 -translate-y-1/2 start-3 h-4 w-4 text-slate-400 pointer-events-none" />
+          <Search className="absolute top-1/2 -translate-y-1/2 inset-s-3 h-4 w-4 text-slate-400 pointer-events-none" />
           <input value={searchQ} onChange={e => setSearchQ(e.target.value)} placeholder={t.search}
             className={`${inputCls} ps-9`} />
         </div>
