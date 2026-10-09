@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { isInvalidRefreshTokenError } from './auth-refresh-errors';
 
 function requiredEnv(name: string, value: string | undefined): string {
   const normalized = value?.trim();
@@ -23,15 +24,6 @@ export const supabase = createClient(url, anonKey, {
 let authRecoveryInstalled = false;
 let authRecoveryInProgress = false;
 
-export function isInvalidRefreshTokenError(reason: unknown): boolean {
-  const error = reason && typeof reason === 'object'
-    ? reason as { code?: unknown; message?: unknown }
-    : null;
-  const code = String(error?.code ?? '');
-  const message = String(error?.message ?? (typeof reason === 'string' ? reason : ''));
-  return code === 'refresh_token_not_found' ||
-    /refresh token.*not found|invalid refresh token/i.test(message);
-}
 
 export function installAuthRecovery() {
   if (authRecoveryInstalled || typeof window === 'undefined') return;
