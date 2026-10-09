@@ -249,7 +249,7 @@ export function Messages({ players, teams, subscriptions, lang }: MessagesProps)
                 onClick={() => setRecipientMode(mode.value)}
                 className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer border ${
                   active
-                    ? 'bg-brand-600 text-white border-brand-600 shadow-sm'
+                    ? 'bg-brand-600 text-white border-brand-600 shadow-xs'
                     : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-brand-400'
                 }`}
               >
@@ -280,13 +280,13 @@ export function Messages({ players, teams, subscriptions, lang }: MessagesProps)
         {recipientMode === 'individual' && (
           <div className="space-y-3">
             <div className="relative">
-              <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Search className="absolute inset-s-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={isAr ? 'ابحث باسم اللاعب أو ولي الأمر...' : 'Search by player or parent name...'}
-                className="w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 ps-10 pe-4 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white"
+                className="w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 ps-10 pe-4 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white"
               />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-64 overflow-y-auto">
@@ -362,7 +362,7 @@ export function Messages({ players, teams, subscriptions, lang }: MessagesProps)
               </p>
               <button
                 onClick={handleBulkWhatsApp}
-                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-bold transition cursor-pointer shadow-sm"
+                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-bold transition cursor-pointer shadow-xs"
               >
                 <Send className="h-4 w-4" />
                 {isAr ? 'فتح أول مستلم في واتساب' : 'Open first recipient in WhatsApp'}

@@ -56,7 +56,7 @@ export function DonutChart({ data, size = 160, thickness = 24, centerLabel, cent
       <div className="space-y-2 min-w-0 flex-1">
         {data.map((d, i) => (
           <div key={i} className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: d.color }} />
+            <span className="w-3 h-3 rounded-xs shrink-0" style={{ backgroundColor: d.color }} />
             <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 flex-1 truncate">{d.label}</span>
             <span className="text-xs font-black text-slate-900 dark:text-white">{d.value}</span>
           </div>

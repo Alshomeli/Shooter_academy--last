@@ -125,7 +125,7 @@ export function AuditLogs({ auditLogs, loginLogs, activeRole, lang }: AuditLogsP
               onClick={() => setTab(tb.id)}
               className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition cursor-pointer ${
                 tab === tb.id
-                  ? 'bg-white dark:bg-slate-700 text-brand-600 dark:text-brand-400 shadow-sm'
+                  ? 'bg-white dark:bg-slate-700 text-brand-600 dark:text-brand-400 shadow-xs'
                   : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
               }`}
             >
@@ -145,7 +145,7 @@ export function AuditLogs({ auditLogs, loginLogs, activeRole, lang }: AuditLogsP
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t.searchLogs}
-            className="w-full bg-white dark:bg-slate-900 text-sm py-2.5 pr-10 pl-3 rtl:pr-10 rtl:pl-3 ltr:pl-10 ltr:pr-3 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white"
+            className="w-full bg-white dark:bg-slate-900 text-sm py-2.5 pr-10 pl-3 rtl:pr-10 rtl:pl-3 ltr:pl-10 ltr:pr-3 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white"
           />
         </div>
         <div className="flex items-center gap-2">
@@ -153,7 +153,7 @@ export function AuditLogs({ auditLogs, loginLogs, activeRole, lang }: AuditLogsP
           <select
             value={roleFilter}
             onChange={(e) => setRoleFilter(e.target.value)}
-            className="bg-white dark:bg-slate-900 text-sm py-2.5 px-3 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white cursor-pointer"
+            className="bg-white dark:bg-slate-900 text-sm py-2.5 px-3 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white cursor-pointer"
           >
             <option value="all">{isAr ? 'جميع الأدوار' : 'All Roles'}</option>
             {roles.map((r) => (
@@ -171,7 +171,7 @@ export function AuditLogs({ auditLogs, loginLogs, activeRole, lang }: AuditLogsP
           subtitle={isAr ? 'لا توجد سجلات تطابق معايير البحث' : 'No logs match your search criteria'}
         />
       ) : (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-xs overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -204,7 +204,7 @@ export function AuditLogs({ auditLogs, loginLogs, activeRole, lang }: AuditLogsP
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <div className="flex items-center gap-1.5">
-                        <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center text-white text-[10px] font-black shrink-0">
+                        <div className="w-6 h-6 rounded-lg bg-linear-to-br from-brand-500 to-brand-600 flex items-center justify-center text-white text-[10px] font-black shrink-0">
                           {log.userName.charAt(0)}
                         </div>
                         <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{log.userName}</span>

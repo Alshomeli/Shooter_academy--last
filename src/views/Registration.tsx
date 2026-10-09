@@ -30,7 +30,7 @@ type Step = 0 | 1 | 2 | 3 | 4 | 5;
 const STEP_ICONS = [ClipboardList, User, Users, Camera, FileCheck, CheckCircle2];
 const BLOOD_TYPES = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 const DOC_TYPES = ['parent_cpr', 'player_cpr', 'passport', 'birth_certificate', 'medical_report', 'other'] as const;
-const inputCls = 'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white';
+const inputCls = 'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white';
 const maskCpr = (v: string) => v.length > 4 ? '***' + v.slice(-4) : v;
 const blankChild = () => ({ clientKey: crypto.randomUUID(), _key: crypto.randomUUID(), fullName: '', nationalId: '', birthDate: '', bloodType: '', notes: '' });
 
@@ -342,9 +342,9 @@ export function Registration({ lang, initial, onSaved, onExit, onBusyChange }: P
           const active = i === step;
           return (
             <div key={i} className="flex items-center gap-1">
-              {i > 0 && <div className={`w-4 sm:w-8 h-0.5 rounded ${done ? 'bg-brand-500' : 'bg-slate-200 dark:bg-slate-700'}`} />}
+              {i > 0 && <div className={`w-4 sm:w-8 h-0.5 rounded-sm ${done ? 'bg-brand-500' : 'bg-slate-200 dark:bg-slate-700'}`} />}
               <div className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold whitespace-nowrap transition ${
-                active ? 'bg-brand-600 text-white shadow' :
+                active ? 'bg-brand-600 text-white shadow-sm' :
                 done ? 'bg-brand-100 dark:bg-brand-900/30 text-brand-600 dark:text-brand-400' :
                 'bg-slate-100 dark:bg-slate-800 text-slate-400'
               }`}>
@@ -357,7 +357,7 @@ export function Registration({ lang, initial, onSaved, onExit, onBusyChange }: P
       </div>
 
       {/* Card */}
-      <fieldset disabled={draftCreating || submitting} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 sm:p-6 shadow-sm">
+      <fieldset disabled={draftCreating || submitting} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 sm:p-6 shadow-xs">
 
         {/* ======== STEP 0: Registration Type ======== */}
         {step === 0 && (
@@ -658,7 +658,7 @@ export function Registration({ lang, initial, onSaved, onExit, onBusyChange }: P
             <button
               onClick={goNext}
               disabled={!canGoNext() || draftCreating || submitting}
-              className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-brand-600 hover:bg-brand-500 shadow-sm transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-brand-600 hover:bg-brand-500 shadow-xs transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {(draftCreating || submitting) && <Loader2 className="h-4 w-4 animate-spin" />}
               {step === 4 ? t.regSubmit : t.regNext}
@@ -747,7 +747,7 @@ function ExistingAppStatus({ app, lang, onContinue, onDelete }: { app: Registrat
       <div className="text-center">
         <h1 className="text-xl font-black text-slate-900 dark:text-white">{t.registrationWizard}</h1>
       </div>
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-6 shadow-sm text-center space-y-4">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-6 shadow-xs text-center space-y-4">
         <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
           <Info className="h-7 w-7" />
         </div>

@@ -21,8 +21,8 @@ export function Modal({ open, onClose, closeDisabled = false, title, children, s
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm animate-fadeIn" onClick={closeDisabled ? undefined : onClose} />
+    <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-xs animate-fadeIn" onClick={closeDisabled ? undefined : onClose} />
       <div className={`relative w-full ${sizes[size]} max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 animate-fadeIn`}>
         <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-t-2xl">
           <h3 className="text-base font-black text-slate-900 dark:text-white">{title}</h3>
@@ -86,7 +86,7 @@ export function StatCard({ icon, label, value, sublabel, color = 'emerald', onCl
   return (
     <Comp
       onClick={onClick}
-      className={`bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm hover:shadow-md transition-all text-right w-full ${onClick ? 'cursor-pointer hover:-translate-y-0.5 active:translate-y-0' : ''}`}
+      className={`bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-xs hover:shadow-md transition-all text-right w-full ${onClick ? 'cursor-pointer hover:-translate-y-0.5 active:translate-y-0' : ''}`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -94,7 +94,7 @@ export function StatCard({ icon, label, value, sublabel, color = 'emerald', onCl
           <p className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">{value}</p>
           {sublabel && <p className="text-[11px] text-slate-400 mt-1 font-semibold">{sublabel}</p>}
         </div>
-        <div className={`shrink-0 w-11 h-11 rounded-xl bg-gradient-to-br ${colorMap[color]} flex items-center justify-center text-white shadow-lg`}>
+        <div className={`shrink-0 w-11 h-11 rounded-xl bg-linear-to-br ${colorMap[color]} flex items-center justify-center text-white shadow-lg`}>
           {icon}
         </div>
       </div>
@@ -159,8 +159,8 @@ export function ConfirmDialog({ open, onClose, onConfirm, title, message, confir
     finally { setBusy(false); }
   };
   return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm animate-fadeIn" onClick={onClose} />
+    <div className="fixed inset-0 z-110 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-xs animate-fadeIn" onClick={onClose} />
       <div className="relative w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 animate-fadeIn">
         <h3 className="text-base font-black text-slate-900 dark:text-white mb-2">{title}</h3>
         <p className="text-sm text-slate-600 dark:text-slate-300 mb-5 leading-relaxed">{message}</p>
@@ -180,7 +180,7 @@ export function ConfirmDialog({ open, onClose, onConfirm, title, message, confir
 
 /* ---------- Form helpers ---------- */
 
-export const inputCls = 'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white';
+export const inputCls = 'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white';
 
 export function FormField({ label, children, error }: { label: string; children: ReactNode; error?: string }) {
   return (
@@ -235,7 +235,7 @@ export function SkeletonCards({ count = 4 }: { count?: number }) {
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       {Array.from({ length: count }).map((_, i) => (
-        <div key={i} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm">
+        <div key={i} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-xs">
           <Skeleton className="h-3 w-20 mb-3" />
           <Skeleton className="h-7 w-16 mb-2" />
           <Skeleton className="h-2 w-24" />

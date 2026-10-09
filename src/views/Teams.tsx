@@ -20,7 +20,7 @@ interface TeamsProps {
 const WEEK_DAYS = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
 
 const inputCls =
-  'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white';
+  'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white';
 
 export function Teams({ teams, staff, players, onTeamsChange, onRefresh, activeRole, lang }: TeamsProps) {
   const t = tr(lang);
@@ -63,7 +63,7 @@ export function Teams({ teams, staff, players, onTeamsChange, onRefresh, activeR
         {canEdit && (
           <button
             onClick={() => setShowAdd(true)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-bold shadow-sm transition cursor-pointer"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-bold shadow-xs transition cursor-pointer"
           >
             <Plus className="h-4 w-4" />
             {t.add}
@@ -85,11 +85,11 @@ export function Teams({ teams, staff, players, onTeamsChange, onRefresh, activeR
             return (
               <div
                 key={tm.id}
-                className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm hover:shadow-md transition-shadow group flex flex-col"
+                className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-xs hover:shadow-md transition-shadow group flex flex-col"
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center text-white shrink-0 shadow-lg">
+                    <div className="w-12 h-12 rounded-xl bg-linear-to-br from-brand-500 to-brand-600 flex items-center justify-center text-white shrink-0 shadow-lg">
                       <Trophy className="h-6 w-6" />
                     </div>
                     <div className="min-w-0">
@@ -347,7 +347,7 @@ function TeamForm({
                   onClick={() => toggleDay(day)}
                   className={`py-2 px-1 rounded-lg text-xs font-bold border transition cursor-pointer ${
                     checked
-                      ? 'bg-brand-600 text-white border-brand-600 shadow-sm'
+                      ? 'bg-brand-600 text-white border-brand-600 shadow-xs'
                       : 'bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-brand-400'
                   }`}
                 >

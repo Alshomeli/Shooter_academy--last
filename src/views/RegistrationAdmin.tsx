@@ -186,7 +186,7 @@ export function RegistrationAdmin({ lang, activeRole, teams, players, onRefresh 
     );
   }
 
-  const inputCls = 'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white';
+  const inputCls = 'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white';
 
   return (
     <div className="space-y-5" dir={isAr ? 'rtl' : 'ltr'}>
@@ -208,7 +208,7 @@ export function RegistrationAdmin({ lang, activeRole, teams, players, onRefresh 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-48">
-          <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Search className="absolute inset-s-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <input
             value={search} onChange={(e) => setSearch(e.target.value)}
             placeholder={isAr ? 'بحث بالاسم أو الهاتف...' : 'Search by name or phone...'}
@@ -359,7 +359,7 @@ function AppDetail({
   const t = tr(lang);
   const isAr = lang === 'ar';
 
-  const inputCls = 'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white';
+  const inputCls = 'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white';
 
   const regTypeLabel = app.registrationType === 'initial_onboarding' ? t.regTypeOnboardingShort : t.regTypeNewShort;
   const cfg = STATUS_CONFIGS[app.status];
@@ -554,7 +554,7 @@ function AppDetail({
         <button
           onClick={onDelete}
           disabled={actionLoading}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-sm font-bold shadow-sm transition cursor-pointer disabled:opacity-50"
+          className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-sm font-bold shadow-xs transition cursor-pointer disabled:opacity-50"
         >
           <Trash2 className="h-4 w-4" /> {t.regDeleteApp}
         </button>

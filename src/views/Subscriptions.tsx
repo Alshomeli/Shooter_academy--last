@@ -226,7 +226,7 @@ export function Subscriptions({
         {((activeTab === 'subscriptions' && canManage) || (activeTab === 'transactions' && canPay)) && (
           <button
             onClick={() => (activeTab === 'subscriptions' ? setShowAddSub(true) : setShowAddTrans(true))}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-bold shadow-sm transition cursor-pointer"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-bold shadow-xs transition cursor-pointer"
           >
             <Plus className="h-4 w-4" />
             {addLabel}
@@ -272,7 +272,7 @@ export function Subscriptions({
           onClick={() => setActiveTab('subscriptions')}
           className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold transition cursor-pointer ${
             activeTab === 'subscriptions'
-              ? 'bg-white dark:bg-slate-900 text-brand-600 dark:text-brand-400 shadow-sm'
+              ? 'bg-white dark:bg-slate-900 text-brand-600 dark:text-brand-400 shadow-xs'
               : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
           }`}
         >
@@ -286,7 +286,7 @@ export function Subscriptions({
           onClick={() => setActiveTab('transactions')}
           className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold transition cursor-pointer ${
             activeTab === 'transactions'
-              ? 'bg-white dark:bg-slate-900 text-brand-600 dark:text-brand-400 shadow-sm'
+              ? 'bg-white dark:bg-slate-900 text-brand-600 dark:text-brand-400 shadow-xs'
               : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
           }`}
         >
@@ -296,14 +296,14 @@ export function Subscriptions({
             {transactions.length}
           </span>
         </button>}
-        {canSeeFinance && <button onClick={() => setActiveTab('proofs')} className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold transition cursor-pointer ${activeTab === 'proofs' ? 'bg-white dark:bg-slate-900 text-brand-600 dark:text-brand-400 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}>
+        {canSeeFinance && <button onClick={() => setActiveTab('proofs')} className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold transition cursor-pointer ${activeTab === 'proofs' ? 'bg-white dark:bg-slate-900 text-brand-600 dark:text-brand-400 shadow-xs' : 'text-slate-500 dark:text-slate-400'}`}>
           <Receipt className="h-4 w-4" />{isAr ? 'إثباتات الدفع' : 'Payment proofs'}<span className="text-[10px] px-1.5 py-0.5 rounded-md bg-slate-200 dark:bg-slate-700">{paymentProofs.filter(p=>p.status==='pending').length}</span>
         </button>}
         <button
           onClick={() => setActiveTab('reminders')}
           className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold transition cursor-pointer ${
             activeTab === 'reminders'
-              ? 'bg-white dark:bg-slate-900 text-brand-600 dark:text-brand-400 shadow-sm'
+              ? 'bg-white dark:bg-slate-900 text-brand-600 dark:text-brand-400 shadow-xs'
               : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
           }`}
         >
@@ -318,13 +318,13 @@ export function Subscriptions({
           {/* Search + status filter */}
           <div className="flex flex-wrap items-center gap-3">
             <div className="relative flex-1 min-w-56">
-              <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Search className="absolute inset-s-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={t.searchPlayer}
-                className="w-full bg-white dark:bg-slate-900 text-sm py-2.5 ps-10 pe-4 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white"
+                className="w-full bg-white dark:bg-slate-900 text-sm py-2.5 ps-10 pe-4 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white"
               />
             </div>
             <div className="flex items-center gap-2 flex-wrap">
@@ -334,7 +334,7 @@ export function Subscriptions({
                   onClick={() => setStatusFilter(sf.value)}
                   className={`px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer border ${
                     statusFilter === sf.value
-                      ? 'bg-brand-600 text-white border-brand-600 shadow-sm'
+                      ? 'bg-brand-600 text-white border-brand-600 shadow-xs'
                       : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-brand-400'
                   }`}
                 >
@@ -364,7 +364,7 @@ export function Subscriptions({
                     <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
                       {/* Player */}
                       <div className="flex items-center gap-2.5 flex-1 min-w-40">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-100 to-brand-50 dark:from-brand-900/30 dark:to-brand-900/10 flex items-center justify-center text-sm font-black text-brand-600 dark:text-brand-400 shrink-0">
+                        <div className="w-10 h-10 rounded-xl bg-linear-to-br from-brand-100 to-brand-50 dark:from-brand-900/30 dark:to-brand-900/10 flex items-center justify-center text-sm font-black text-brand-600 dark:text-brand-400 shrink-0">
                           {(player?.name || '?').charAt(0)}
                         </div>
                         <div className="min-w-0">
@@ -1068,7 +1068,7 @@ function RemindersAnalyticsTab({
       <RemindersPanel reminders={reminders} lang={lang} />
 
       {/* Analytics section */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-xs">
         <div className="flex items-center gap-2 mb-5">
           <div className="w-8 h-8 rounded-lg bg-brand-100 dark:bg-brand-900/30 text-brand-600 flex items-center justify-center">
             <TrendingUp className="h-4 w-4" />

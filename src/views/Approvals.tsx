@@ -150,7 +150,7 @@ export function Approvals({ staff, onStaffChange, onRefresh, activeRole, lang }:
         {applications.filter(a => a.status !== 'draft').length === 0 ? (
           <div className="rounded-2xl border border-slate-100 bg-white p-5 text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900">{isAr ? 'لا توجد طلبات موظفين حالياً.' : 'No staff applications yet.'}</div>
         ) : applications.filter(a => a.status !== 'draft').map(app => (
-          <div key={app.id} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <div key={app.id} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -172,7 +172,7 @@ export function Approvals({ staff, onStaffChange, onRefresh, activeRole, lang }:
               </div>
               {app.status === 'pending' && (
                 <div className="flex flex-wrap gap-2">
-                  <button disabled={processingId === app.id} onClick={() => void handleApplicationApproval(app.id)} className="flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-black text-white shadow-sm hover:bg-brand-500 disabled:opacity-50"><CheckCircle className="h-4 w-4" />{isAr ? 'قبول وتفعيل الحساب' : 'Approve & activate account'}</button>
+                  <button disabled={processingId === app.id} onClick={() => void handleApplicationApproval(app.id)} className="flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-black text-white shadow-xs hover:bg-brand-500 disabled:opacity-50"><CheckCircle className="h-4 w-4" />{isAr ? 'قبول وتفعيل الحساب' : 'Approve & activate account'}</button>
                   <button disabled={!!processingId} onClick={() => { setReviewTarget({ id: app.id, action: 'needs_info' }); setReviewNotes(''); }} className="rounded-lg bg-amber-100 px-3 py-2 text-xs font-bold text-amber-800">{isAr ? 'طلب تعديل' : 'Request changes'}</button>
                   <button disabled={!!processingId} onClick={() => { setReviewTarget({ id: app.id, action: 'rejected' }); setReviewNotes(''); }} className="rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-700">{isAr ? 'رفض' : 'Reject'}</button>
                 </div>
@@ -194,21 +194,21 @@ export function Approvals({ staff, onStaffChange, onRefresh, activeRole, lang }:
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-4 shadow-sm">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-4 shadow-xs">
           <div className="flex items-center gap-2 mb-1">
             <Clock className="h-4 w-4 text-amber-500" />
             <span className="text-xs font-bold text-slate-500">{t.pending}</span>
           </div>
           <p className="text-2xl font-black text-slate-900 dark:text-white">{pendingStaff.length}</p>
         </div>
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-4 shadow-sm">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-4 shadow-xs">
           <div className="flex items-center gap-2 mb-1">
             <CheckCircle className="h-4 w-4 text-brand-500" />
             <span className="text-xs font-bold text-slate-500">{t.active}</span>
           </div>
           <p className="text-2xl font-black text-slate-900 dark:text-white">{activeStaff.length}</p>
         </div>
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-4 shadow-sm">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-4 shadow-xs">
           <div className="flex items-center gap-2 mb-1">
             <XCircle className="h-4 w-4 text-red-500" />
             <span className="text-xs font-bold text-slate-500">{t.inactive}</span>
@@ -226,7 +226,7 @@ export function Approvals({ staff, onStaffChange, onRefresh, activeRole, lang }:
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t.searchStaff}
-            className="w-full bg-white dark:bg-slate-900 text-sm py-2.5 pr-10 pl-4 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white"
+            className="w-full bg-white dark:bg-slate-900 text-sm py-2.5 pr-10 pl-4 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white"
           />
         </div>
         <div className="flex flex-wrap gap-1.5">
@@ -258,14 +258,14 @@ export function Approvals({ staff, onStaffChange, onRefresh, activeRole, lang }:
       ) : (
         <div className="space-y-3">
           {filtered.map((member) => (
-            <div key={member.id} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-4 shadow-sm">
+            <div key={member.id} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-4 shadow-xs">
               <div className="flex items-start gap-4">
                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white shrink-0 ${
                   member.status === 'pending'
-                    ? 'bg-gradient-to-br from-amber-500 to-amber-600'
+                    ? 'bg-linear-to-br from-amber-500 to-amber-600'
                     : member.status === 'active'
-                      ? 'bg-gradient-to-br from-brand-500 to-brand-600'
-                      : 'bg-gradient-to-br from-slate-400 to-slate-500'
+                      ? 'bg-linear-to-br from-brand-500 to-brand-600'
+                      : 'bg-linear-to-br from-slate-400 to-slate-500'
                 }`}>
                   {member.status === 'pending' ? <UserPlus className="h-6 w-6" /> : <ShieldCheck className="h-6 w-6" />}
                 </div>
