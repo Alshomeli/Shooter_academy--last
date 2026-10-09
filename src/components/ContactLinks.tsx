@@ -4,6 +4,14 @@ function cleanPhone(phone: string): string {
   return phone.replace(/[^0-9]/g, '');
 }
 
+function normalizeWhatsappPhone(phone: string): string {
+  const digits = cleanPhone(phone);
+  if (digits.length === 8) return '973' + digits;
+  if (digits.length === 11 && digits.startsWith('973')) return digits;
+  if (digits.length === 13 && digits.startsWith('00973')) return digits.slice(2);
+  return digits;
+}
+
 interface ContactLinksProps {
   phone?: string;
   whatsapp?: string;
@@ -16,7 +24,7 @@ interface ContactLinksProps {
 export function ContactLinks({ phone, whatsapp, email, address, small }: ContactLinksProps) {
   const size = small ? 'h-3.5 w-3.5' : 'h-4 w-4';
   const pad = small ? 'p-1.5' : 'p-2';
-  const wPhone = whatsapp ? cleanPhone(whatsapp) : '';
+  const wPhone = whatsapp ? normalizeWhatsappPhone(whatsapp) : '';
   const telPhone = phone ? cleanPhone(phone) : '';
   const waLink = wPhone ? `https://wa.me/${wPhone}` : '';
   const telLink = telPhone ? `tel:${telPhone}` : '';

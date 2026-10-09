@@ -220,7 +220,7 @@ export function SaveButton({ loading, children, disabled }: SaveButtonProps) {
       className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold text-white bg-brand-600 hover:bg-brand-500 disabled:opacity-60 disabled:cursor-not-allowed transition cursor-pointer"
     >
       {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-      {loading ? 'Saving...' : children}
+      {loading ? (typeof document !== 'undefined' && document.documentElement.lang.toLowerCase().startsWith('ar') ? 'جاري الحفظ...' : 'Saving...') : children}
     </button>
   );
 }

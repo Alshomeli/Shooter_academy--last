@@ -28,12 +28,19 @@ function actionColor(action: string): 'green' | 'blue' | 'amber' | 'red' | 'gray
   return 'gray';
 }
 
+function csvCell(value: unknown): string {
+  // Neutralize spreadsheet formulas and leading control characters from user input.
+  const text = String(value ?? '').replace(/[\x00-\x1F\x7F]/g, ' ');
+  const safe = /^[\s]*[=+@-]/.test(text) ? "'" + text : text;
+  return '"' + safe.replace(/"/g, '""') + '"';
+}
+
 function exportCsv(logs: AuditLog[], filename: string) {
-  const header = 'Timestamp,User,Role,Action,Details';
+  const header = ['Timestamp', 'User', 'Role', 'Action', 'Details'].map(csvCell).join(',');
   const rows = logs.map((l) =>
-    [l.timestamp, l.userName, l.userRole, l.action, `"${(l.details || '').replace(/"/g, '""')}"`].join(',')
+    [l.timestamp, l.userName, l.userRole, l.action, l.details || ''].map(csvCell).join(',')
   );
-  const blob = new Blob([header + '\n' + rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const blob = new Blob(['\uFEFF', header, '\r\n', rows.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
