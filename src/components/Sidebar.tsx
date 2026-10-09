@@ -125,7 +125,7 @@ export function Sidebar({
         id="sidebar"
         className={`shooter-sidebar fixed lg:relative inset-y-0 z-50 lg:z-auto w-72 min-h-screen flex flex-col justify-between shrink-0 shadow-2xl transition-all duration-300 ${isAr ? 'right-0' : 'left-0'} ${
           mobileOpen ? 'translate-x-0' : (isAr ? 'translate-x-full lg:translate-x-0' : '-translate-x-full lg:translate-x-0')
-        } ${darkMode ? 'bg-slate-950 text-slate-100 border-l border-slate-900' : 'bg-slate-900 text-white border-l border-slate-800'}`}
+        } ${darkMode ? 'bg-slate-950 text-slate-100 border-slate-900' : 'bg-slate-900 text-white border-slate-800'} ${isAr ? 'border-l' : 'border-r'}`}
       >
         <div className="flex-1 min-h-0 flex flex-col">
           {/* Logo header */}
@@ -142,7 +142,7 @@ export function Sidebar({
             <div className="relative mx-auto w-40 h-32 flex items-center justify-center overflow-hidden">
               <img
                 src={logoIsImage ? configuredLogo : fallbackLogo}
-                onError={(e) => { e.currentTarget.src = fallbackLogo; }}
+                onError={(e) => { if (!e.currentTarget.src.endsWith(fallbackLogo)) e.currentTarget.src = fallbackLogo; }}
                 alt={isAr ? 'شعار الأكاديمية' : 'Academy logo'}
                 className="h-full w-full object-contain drop-shadow-[0_8px_22px_rgba(0,0,0,0.45)]"
               />
