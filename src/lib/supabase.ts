@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { isInvalidRefreshTokenError } from './auth-refresh-errors';
 
 function requiredEnv(name: string, value: string | undefined): string {
   const normalized = value?.trim();
@@ -23,7 +24,6 @@ export const supabase = createClient(url, anonKey, {
 let authRecoveryInstalled = false;
 let authRecoveryInProgress = false;
 
-import { isInvalidRefreshTokenError } from './auth-refresh-errors';
 
 export function installAuthRecovery() {
   if (authRecoveryInstalled || typeof window === 'undefined') return;
