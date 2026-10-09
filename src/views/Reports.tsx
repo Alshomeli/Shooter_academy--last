@@ -291,7 +291,7 @@ export function Reports({
         <button onClick={() => exportReportCsv('players', players, teams, lang)} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold text-white bg-brand-600 hover:bg-brand-700 transition cursor-pointer shadow-xs">
           <Download className="h-4 w-4" /> {t.exportPlayersCsv}
         </button>
-        {(activeRole === 'manager' || activeRole === 'accountant') && <button onClick={() => exportReportCsv('financial', transactions, teams)} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 transition cursor-pointer shadow-xs">
+        {(activeRole === 'manager' || activeRole === 'accountant') && <button onClick={() => exportReportCsv('financial', transactions, teams, lang)} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 transition cursor-pointer shadow-xs">
           <Download className="h-4 w-4" /> {t.exportFinancialCsv}
         </button>}
         <button onClick={() => window.print()} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer shadow-xs">
