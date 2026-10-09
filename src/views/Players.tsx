@@ -1,3 +1,4 @@
+import { academyToday } from '@/lib/report-dates';
 import { useState, useMemo, useEffect, useDeferredValue, type FormEvent } from 'react';
 import {
   Users, Plus, Search, Phone, Mail, Edit2, Trash2, Eye,
@@ -276,7 +277,7 @@ function PlayerForm({ player, parents, teams, players, activeRole, onSave, onClo
     parentId: player?.parentId || '',
     status: player?.status || 'active',
     notes: player?.notes || '',
-    joinedDate: player?.joinedDate || new Date().toISOString().substring(0, 10),
+    joinedDate: player?.joinedDate || academyToday(),
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -324,7 +325,7 @@ function PlayerForm({ player, parents, teams, players, activeRole, onSave, onClo
             <input value={form.name} onChange={(e) => { setForm({ ...form, name: e.target.value }); setErrors((p) => ({ ...p, name: '' })); }} className={`${inputCls} ${errors.name ? 'border-red-400 ring-1 ring-red-400' : ''}`} required />
           </FormField>
           <FormField label={t.birthDate}>
-            <input type="date" required max={new Date().toISOString().slice(0, 10)} value={form.birthDate} onChange={(e) => setForm({ ...form, birthDate: e.target.value })} className={inputCls} />
+            <input type="date" required max={academyToday()} value={form.birthDate} onChange={(e) => setForm({ ...form, birthDate: e.target.value })} className={inputCls} />
           </FormField>
           <FormField label={t.jerseyNumber} error={errors.jerseyNumber}>
             <input type="number" min={1} max={99} value={form.jerseyNumber} onChange={(e) => { setForm({ ...form, jerseyNumber: parseInt(e.target.value) || 1 }); setErrors((p) => ({ ...p, jerseyNumber: '' })); }} className={`${inputCls} ${errors.jerseyNumber ? 'border-red-400 ring-1 ring-red-400' : ''}`} />

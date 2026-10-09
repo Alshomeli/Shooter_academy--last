@@ -1,21 +1,13 @@
-# Security Policy
+# Security policy — Shooter Academy
 
-## Supported Versions
+The current `main` branch is the supported source for security fixes. Older deployment bundles and branches are not independently maintained. A deployment is supported only after its commit and Supabase migrations are reconciled with `main`.
 
-Use this section to tell people about which versions of your project are
-currently being supported with security updates.
+## Vulnerability reporting
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 5.1.x   | :white_check_mark: |
-| 5.0.x   | :x:                |
-| 4.0.x   | :white_check_mark: |
-| < 4.0   | :x:                |
+A verified private reporting channel has not yet been configured. The repository owner must configure GitHub private vulnerability reporting before inviting external security reports. Do not publish child or parent data, credentials, exploit details, or database exports in public issues or pull requests.
 
-## Reporting a Vulnerability
+Security review results must distinguish source checks, isolated tests, deployed database policy checks, and browser verification. Client-reported login entries are telemetry; trusted authentication evidence comes from Auth server logs.
 
-Use this section to tell people how to report a vulnerability.
+## Change safeguards
 
-Tell them where to go, how often they can expect to get an update on a
-reported vulnerability, what to expect if the vulnerability is accepted or
-declined, etc.
+Use reviewed migrations and PRs, preserve historical financial evidence, and use isolated synthetic data for payment tests. No security test should delete real records or create financial transactions in the deployed academy. The operations gateway's audit failure behavior and hosting response headers require separate verification; a successful build is not evidence that production headers are applied.

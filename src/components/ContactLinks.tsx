@@ -1,16 +1,10 @@
+import { normalizeWhatsappPhone } from '@/lib/phone';
 import { Phone, MessageCircle, Mail, MapPin } from 'lucide-react';
 
 function cleanPhone(phone: string): string {
   return phone.replace(/[^0-9]/g, '');
 }
 
-function normalizeWhatsappPhone(phone: string): string {
-  const digits = cleanPhone(phone);
-  if (digits.length === 8) return '973' + digits;
-  if (digits.length === 11 && digits.startsWith('973')) return digits;
-  if (digits.length === 13 && digits.startsWith('00973')) return digits.slice(2);
-  return digits;
-}
 
 interface ContactLinksProps {
   phone?: string;
