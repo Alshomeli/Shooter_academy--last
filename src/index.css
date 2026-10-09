@@ -206,3 +206,14 @@ button[class~="bg-brand-600"]:hover {
 .dark input[type="date"] { color-scheme: dark; }
 /* Bidirectional user-entered names remain in their original script. */
 [dir="ltr"] [dir="auto"], [dir="rtl"] [dir="auto"] { unicode-bidi: plaintext; }
+
+/* Respect OS-level reduced-motion preference for keyboard and vestibular accessibility. */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto !important; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
