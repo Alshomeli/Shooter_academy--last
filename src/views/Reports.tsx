@@ -71,13 +71,13 @@ function exportReportCsv(
   type: 'players' | 'financial',
   data: (Player | Transaction)[],
   teams: Team[],
-
+  lang: Lang,
 ) {
   const teamName = (id: string) => teams.find((tm) => tm.id === id)?.name || '';
   if (type === 'players') {
     const header = 'Name,Team,Position,Jersey,Birth Date,Status,Joined';
     const rows = (data as Player[]).map((p) =>
-      [esc(p.name), esc(teamName(p.teamId)), esc(p.position), p.jerseyNumber, p.birthDate, p.status, p.joinedDate].join(',')
+      [esc(p.name), esc(teamName(p.teamId)), esc(positionLabel(p.position, lang)), p.jerseyNumber, p.birthDate, p.status, p.joinedDate].join(',')
     );
     downloadCsv(`players-${Date.now()}.csv`, header, rows);
   } else {
@@ -288,7 +288,7 @@ export function Reports({
         </div>
       </div>
       <PageHeader title={t.reports} subtitle={t.reportsSubtitle}>
-        <button onClick={() => exportReportCsv('players', players, teams)} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold text-white bg-brand-600 hover:bg-brand-700 transition cursor-pointer shadow-xs">
+        <button onClick={() => exportReportCsv('players', players, teams, lang)} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold text-white bg-brand-600 hover:bg-brand-700 transition cursor-pointer shadow-xs">
           <Download className="h-4 w-4" /> {t.exportPlayersCsv}
         </button>
         {(activeRole === 'manager' || activeRole === 'accountant') && <button onClick={() => exportReportCsv('financial', transactions, teams)} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 transition cursor-pointer shadow-xs">
