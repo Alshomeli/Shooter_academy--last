@@ -270,7 +270,7 @@ export function Reports({
   }, [staff, lang]);
 
   return (
-    <div className="space-y-6 text-right" dir={isAr ? 'rtl' : 'ltr'}>
+    <div className="space-y-6 text-start" dir={isAr ? 'rtl' : 'ltr'}>
       <div className="hidden print:flex items-center justify-between gap-4 border-b-2 border-slate-800 pb-4 mb-5">
         <div className="flex items-center gap-3">
           {configuredLogo && (logoIsImage
