@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { LocalizedError, errorMessage, localized, type LocalizedText } from '@/lib/user-errors';
 import { AlertCircle, Loader2, LogIn } from 'lucide-react';
 import { db, signIn, signUp, setRegistering } from '@/lib/store';
 import { supabase } from '@/lib/supabase';
@@ -15,17 +16,17 @@ export function Login({ onLogin, lang, setLang, recovery = false, registrationEn
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  const [message, setMessage] = useState('');
+  const [error, setError] = useState<unknown>(null);
+  const [message, setMessage] = useState<LocalizedText | null>(null);
   useEffect(() => {
-    if (recovery) { setScreen('reset'); setError(''); setMessage(''); setPassword(''); setConfirm(''); }
+    if (recovery) { setScreen('reset'); setError(null); setMessage(null); setPassword(''); setConfirm(''); }
   }, [recovery]);
   const ar = lang === 'ar';
   const text = (a: string, e: string) => ar ? a : e;
-  const changeScreen = (next: Screen) => { setScreen(next); setError(''); setMessage(''); setPassword(''); setConfirm(''); };
+  const changeScreen = (next: Screen) => { setScreen(next); setError(null); setMessage(null); setPassword(''); setConfirm(''); };
   const googleLogin = async () => {
     if (busy) return;
-    setBusy(true); setError(''); setMessage('');
+    setBusy(true); setError(null); setMessage(null);
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -33,24 +34,24 @@ export function Login({ onLogin, lang, setLang, recovery = false, registrationEn
       });
       if (error) throw error;
     } catch {
-      setError(text('تعذر الدخول عبر Google. حاول مجددًا أو استخدم البريد الإلكتروني.', 'Unable to sign in with Google. Try again or use your email.'));
+      setError(new LocalizedError('تعذر الدخول عبر Google. حاول مجددًا أو استخدم البريد الإلكتروني.', 'Unable to sign in with Google. Try again or use your email.'));
     } finally { setBusy(false); }
   };
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     if (busy) return;
-    setError(''); setMessage(''); setBusy(true); setRegistering(true);
+    setError(null); setMessage(null); setBusy(true); setRegistering(true);
     try {
       if (screen === 'register' || screen === 'reset') {
         if (password.length < 10 || !/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
-          throw new Error(text('استخدم 10 أحرف على الأقل تتضمن حروفًا إنجليزية وأرقامًا.', 'Use at least 10 characters, including letters and numbers.'));
+          throw new LocalizedError('استخدم 10 أحرف على الأقل تتضمن حروفًا إنجليزية وأرقامًا.', 'Use at least 10 characters, including letters and numbers.');
         }
-        if (password !== confirm) throw new Error(text('كلمتا المرور غير متطابقتين.', 'Passwords do not match.'));
+        if (password !== confirm) throw new LocalizedError('كلمتا المرور غير متطابقتين.', 'Passwords do not match.');
       }
       if (screen === 'forgot') {
         const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: window.location.origin });
         if (error) throw error;
-        setMessage(text('إذا كان البريد مسجلًا، ستصلك رسالة لإعادة تعيين كلمة المرور.', 'If this email is registered, a password reset link will arrive shortly.'));
+        setMessage(localized('إذا كان البريد مسجلًا، ستصلك رسالة لإعادة تعيين كلمة المرور.', 'If this email is registered, a password reset link will arrive shortly.'));
         return;
       }
       if (screen === 'register') {
@@ -60,8 +61,8 @@ export function Login({ onLogin, lang, setLang, recovery = false, registrationEn
         if (!data.session) {
           setPassword(''); setConfirm('');
           setMessage(staffFlow
-            ? text('راجع بريدك لتأكيد الحساب، ثم سجّل الدخول لإكمال طلب الموظف أو المدرب.', 'Check your email to confirm your account, then sign in to complete the staff or coach application.')
-            : text('راجع بريدك لتأكيد الحساب، ثم سجّل الدخول لإكمال بيانات ولي الأمر والأبناء.', 'Check your email to confirm your account, then sign in to complete the parent and children application.'));
+            ? localized('راجع بريدك لتأكيد الحساب، ثم سجّل الدخول لإكمال طلب الموظف أو المدرب.', 'Check your email to confirm your account, then sign in to complete the staff or coach application.')
+            : localized('راجع بريدك لتأكيد الحساب، ثم سجّل الدخول لإكمال بيانات ولي الأمر والأبناء.', 'Check your email to confirm your account, then sign in to complete the parent and children application.'));
           return;
         }
       } else if (screen === 'reset') {
@@ -69,19 +70,19 @@ export function Login({ onLogin, lang, setLang, recovery = false, registrationEn
         if (error) throw error;
       } else {
         const { data, error } = await signIn(email.trim(), password);
-        if (error) throw new Error(text('تعذر الدخول. تحقق من البريد وكلمة المرور وتأكيد الحساب.', 'Unable to sign in. Check your email, password and email confirmation.'));
+        if (error) throw new LocalizedError('تعذر الدخول. تحقق من البريد وكلمة المرور وتأكيد الحساب.', 'Unable to sign in. Check your email, password and email confirmation.');
         if (data.user && registrationKind === 'staff' && data.user.user_metadata?.onboarding_mode !== 'staff') {
           await supabase.auth.updateUser({ data: { ...data.user.user_metadata, onboarding_mode: 'staff' } });
         }
       }
       const member = await db.getCurrentUser();
-      if (!member) throw new Error(text('تعذر تحميل حسابك. حاول مجددًا.', 'Could not load your account. Please try again.'));
+      if (!member) throw new LocalizedError('تعذر تحميل حسابك. حاول مجددًا.', 'Could not load your account. Please try again.');
       if (!member.registrationOnly && member.role !== 'parent') {
         await db.addLoginAuditLog({ id: '', action: 'login', details: 'Signed in', timestamp: '', userRole: '', userName: '' }).catch(console.error);
       }
       onLogin(member);
     } catch (e) {
-      setError(e instanceof Error ? e.message : text('تعذر إتمام العملية. حاول مجددًا.', 'Unable to complete this action. Please try again.'));
+      setError(e);
     } finally { setRegistering(false); setBusy(false); }
   };
   const titles = {
@@ -96,8 +97,8 @@ export function Login({ onLogin, lang, setLang, recovery = false, registrationEn
       </div>
       <h1 className="text-2xl font-black mb-2">{text('أكاديمية شوتر', 'Shooter Academy')}</h1>
       <h2 className="font-bold mb-5 text-slate-500">{titles[screen]}</h2>
-      {error && <p role="alert" className="mb-4 p-3 rounded-lg bg-red-50 text-red-700 text-sm flex gap-2"><AlertCircle className="h-5 w-5 shrink-0" />{error}</p>}
-      {message && <p role="status" className="mb-4 p-3 rounded-lg bg-brand-50 text-brand-800 text-sm">{message}</p>}
+      {error != null && <p role="alert" className="mb-4 p-3 rounded-lg bg-red-50 text-red-700 text-sm flex gap-2"><AlertCircle className="h-5 w-5 shrink-0" />{errorMessage(error, ar)}</p>}
+      {message && <p role="status" className="mb-4 p-3 rounded-lg bg-brand-50 text-brand-800 text-sm">{message[lang]}</p>}
       {screen === 'register' && <div className="mb-4 grid grid-cols-2 gap-2">
         <button type="button" onClick={() => { setRegistrationKind('parent'); if (staffRegistrationEntry) window.history.replaceState({}, '', '?view=registration'); }} className={`rounded-lg border px-3 py-2 text-sm font-bold ${registrationKind === 'parent' ? 'border-brand-600 bg-brand-50 text-brand-700' : 'border-slate-200'}`}>{text('ولي أمر', 'Parent')}</button>
         <button type="button" onClick={() => { setRegistrationKind('staff'); if (registrationEntry) window.history.replaceState({}, '', '?view=staff-registration'); }} className={`rounded-lg border px-3 py-2 text-sm font-bold ${registrationKind === 'staff' ? 'border-brand-600 bg-brand-50 text-brand-700' : 'border-slate-200'}`}>{text('مدير / موظف / مدرب', 'Manager / staff / coach')}</button>

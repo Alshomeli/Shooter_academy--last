@@ -1,3 +1,5 @@
+import { cleanupRegistrationFiles, deleteThenCleanup } from '@/lib/registration-cleanup';
+export { errorMessage } from '@/lib/user-errors';
 import { mapApplication } from '@/lib/registration-mappers';
 import { supabase } from '@/lib/supabase';
 import type {
@@ -130,6 +132,7 @@ export async function fetchMyApplications(): Promise<RegistrationApplication[]> 
     .eq('applicant_user_id', user.id)
     .order('created_at', { ascending: false });
   if (error) throw error;
+  retryPendingCleanup();
   return (data || []).map(mapApplication);
 }
 
@@ -139,6 +142,7 @@ export async function fetchAllApplications(): Promise<RegistrationApplication[]>
     .select('*, registration_children(*), registration_documents(*)')
     .order('created_at', { ascending: false });
   if (error) throw error;
+  retryPendingCleanup();
   return (data || []).map(mapApplication);
 }
 
@@ -161,24 +165,33 @@ export async function getSignedUrl(storagePath: string): Promise<string> {
   return data.signedUrl;
 }
 
-async function removeApplicationFiles(appId: string, childId?: string): Promise<void> {
-  let query = supabase
-    .from('registration_documents')
-    .select('storage_path')
-    .eq('application_id', appId);
-  if (childId) query = query.eq('child_id', childId);
-  const { data, error } = await query;
-  if (error) throw error;
-  const paths = (data || []).map((d: { storage_path: string | null }) => d.storage_path).filter((p): p is string => !!p);
-  if (paths.length === 0) return;
-  const { error: removeError } = await supabase.storage.from('player-documents').remove(paths);
-  if (removeError) throw removeError;
+async function cleanupPendingRegistrationFiles(): Promise<void> {
+  await cleanupRegistrationFiles({
+    pending: async () => {
+      const { data, error } = await supabase.rpc('get_registration_file_cleanup');
+      if (error) throw error;
+      return (data || []) as string[];
+    },
+    remove: async paths => {
+      const { error } = await supabase.storage.from('player-documents').remove(paths);
+      if (error) throw error;
+    },
+    acknowledge: async paths => {
+      const { error } = await supabase.rpc('ack_registration_file_cleanup', { p_paths: paths });
+      if (error) throw error;
+    },
+  });
+}
+
+function retryPendingCleanup(): void {
+  void cleanupPendingRegistrationFiles().catch(() => console.warn('Registration file cleanup pending retry.'));
 }
 
 export async function deleteRegistrationApplication(appId: string) {
-  await removeApplicationFiles(appId);
-  const { error } = await supabase.rpc('delete_registration_application', { p_application_id: appId });
-  if (error) throw error;
+  await deleteThenCleanup(async () => {
+    const { error } = await supabase.rpc('delete_registration_application', { p_application_id: appId });
+    if (error) throw error;
+  }, cleanupPendingRegistrationFiles);
 }
 
 export async function addRegistrationChild(appId: string, child: RegistrationChildInput): Promise<{ childId: string; clientKey: string | null; fullName: string }> {
@@ -198,12 +211,8 @@ export async function addRegistrationChild(appId: string, child: RegistrationChi
 }
 
 export async function deleteRegistrationChild(appId: string, childId: string): Promise<void> {
-  await removeApplicationFiles(appId, childId);
-  const { error } = await supabase.rpc('delete_registration_child', { p_application_id: appId, p_child_id: childId });
-  if (error) throw error;
-}
-
-export function errorMessage(error: unknown, ar: boolean) {
-  const message = error && typeof error === 'object' && 'message' in error ? String(error.message) : '';
-  return `${ar ? 'تعذر إتمام العملية.' : 'Unable to complete this action.'} ${message}`;
+  await deleteThenCleanup(async () => {
+    const { error } = await supabase.rpc('delete_registration_child', { p_application_id: appId, p_child_id: childId });
+    if (error) throw error;
+  }, cleanupPendingRegistrationFiles);
 }
