@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useRef, useEffect, useState } from 'react';
 import { CheckCircle2, Clipboard, CreditCard, FileText, FileUp, LogOut, Plus, Printer, RefreshCw, Star, UserRound, CalendarCheck2, WalletCards } from 'lucide-react';
 import { Badge, Modal } from '@/components/ui';
 import { errorMessage, fetchMyApplications } from '@/lib/registration';
@@ -53,8 +53,14 @@ export function ParentPortal({ user, players, subscriptions, attendance, evaluat
   const currentSubscription = playerSubscriptions.find(s=>s.status==='unpaid') || playerSubscriptions[0];
   const approvedPayments = playerSubscriptions.filter(s=>s.status==='paid');
   const selectedDocuments = selectedPlayer ? playerDocuments.filter(d=>d.playerId===selectedPlayer.id&&d.fileCategory!=='photo') : [];
+  const photoCache = useRef<Record<string, {url: string; expires: number}>>({});
   const load = useCallback(async () => {
-    try { const [myApps, proofs, docs] = await Promise.all([fetchMyApplications(), db.getPaymentProofs(), db.getPlayerDocuments()]); setApps(myApps); setPaymentProofs(proofs); setPlayerDocuments(docs); const photos=docs.filter(d=>d.playerId&&d.fileCategory==='photo'); const pairs=await Promise.all(photos.map(async d=>[d.playerId!,await db.getPlayerDocumentUrl(d.filePath)] as const)); setPhotoUrls(Object.fromEntries(pairs)); setError(''); setReady(true); }
+    try { const [myApps, proofs, docs] = await Promise.all([fetchMyApplications(), db.getPaymentProofs(), db.getPlayerDocuments()]); setApps(myApps); setPaymentProofs(proofs); setPlayerDocuments(docs); const photos=docs.filter(d=>d.playerId&&d.fileCategory==='photo'); const missing = photos.filter(d => !photoCache.current[d.filePath] || photoCache.current[d.filePath].expires < Date.now());
+      const signed = await db.getPlayerDocumentUrls(missing.map(d => d.filePath));
+      for (const [path,url] of Object.entries(signed)) photoCache.current[path] = {url,expires:Date.now()+240000};
+      const urls: Record<string,string> = {};
+      for (const photo of photos) if (!urls[photo.playerId!]) urls[photo.playerId!] = photoCache.current[photo.filePath].url;
+      setPhotoUrls(urls); setError(''); setReady(true); }
     catch (e) { setError(errorMessage(e, lang === 'ar')); }
   }, [lang]);
   useEffect(() => {

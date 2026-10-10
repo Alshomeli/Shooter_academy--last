@@ -1,3 +1,5 @@
+import { csvCell as esc } from '@/lib/csv';
+import { academyToday } from '@/lib/report-dates';
 import { getDateRange, type DateRangePreset } from '@/lib/report-dates';
 import { useState, useMemo, type ReactNode } from 'react';
 import {
@@ -65,7 +67,7 @@ function downloadCsv(filename: string, header: string, rows: string[]) {
   URL.revokeObjectURL(url);
 }
 
-function esc(v: string) { return `"${(v || '').replace(/"/g, '""')}"`; }
+
 
 function exportReportCsv(
   type: 'players' | 'financial',
@@ -246,7 +248,7 @@ export function Reports({
       return first != null && latest != null ? [latest - first] : [];
     });
     const latestReviews = Array.from(byPlayer.values()).map(list => list[list.length - 1]);
-    const today = new Date().toISOString().slice(0, 10);
+    const today = academyToday();
     return {
       publishedCount: published.length,
       playersWithHistory: histories.length,

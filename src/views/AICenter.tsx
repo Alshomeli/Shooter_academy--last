@@ -1,3 +1,4 @@
+import { academyToday } from '@/lib/report-dates';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Sparkles, Send, Bot, User, TrendingUp, Users, Trophy,
@@ -205,7 +206,7 @@ function generateResponse(personaId: PersonaId, q: string, c: AIContext, teams: 
         published.forEach((ev) => byPlayer.set(ev.playerId, [...(byPlayer.get(ev.playerId) || []), ev]));
         const history = Array.from(byPlayer.values()).filter((items) => items.length >= 2);
         const latest = Array.from(byPlayer.values()).map((items) => items[items.length - 1]);
-        const today = new Date().toISOString().slice(0, 10);
+        const today = academyToday();
         const due = latest.filter((ev) => ev.reassessmentDate && ev.reassessmentDate <= today).length;
         const plans = latest.filter((ev) => ev.developmentPriorities?.length || ev.trainingAction || ev.reassessmentDate).length;
         return [
@@ -299,7 +300,7 @@ function generateResponse(personaId: PersonaId, q: string, c: AIContext, teams: 
       published.forEach((ev) => byPlayer.set(ev.playerId, [...(byPlayer.get(ev.playerId) || []), ev]));
       const histories = Array.from(byPlayer.values()).filter((items) => items.length >= 2);
       const latest = Array.from(byPlayer.values()).map((items) => items[items.length - 1]);
-      const today = new Date().toISOString().slice(0, 10);
+      const today = academyToday();
       const due = latest.filter((ev) => ev.reassessmentDate && ev.reassessmentDate <= today).length;
       const plans = latest.filter((ev) => ev.developmentPriorities?.length || ev.trainingAction || ev.reassessmentDate).length;
       const comparisonRequested = /(قارن|مقارنة|compare|أفضل|best|موهبة|talent)/.test(q);
@@ -577,7 +578,7 @@ function AIInsights({ players, subscriptions, transactions, matches, trainings, 
       return sorted[sorted.length - 1];
     });
     const progressHistory = Array.from(byPlayer.values()).filter((items) => items.length >= 2).length;
-    const today = new Date().toISOString().slice(0, 10);
+    const today = academyToday();
     const reassessmentDue = latest.filter((ev) => ev.reassessmentDate && ev.reassessmentDate <= today).length;
     const alerts: { icon: typeof AlertTriangle; text: string; level: 'warning' | 'success' | 'info' }[] = [];
     const unpaidAmount = subscriptions.filter((s) => s.status === 'unpaid').reduce((s, sub) => s + sub.amount, 0);

@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useState, useEffect, useRef, useId, Children, isValidElement, cloneElement, type ReactElement, type ReactNode } from 'react';
 import { X, Loader2, AlertCircle } from 'lucide-react';
 
 interface ModalProps {
@@ -11,6 +11,30 @@ interface ModalProps {
 }
 
 export function Modal({ open, onClose, closeDisabled = false, title, children, size = 'md' }: ModalProps) {
+  const dialog = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+  useEffect(() => {
+    if (!open) return;
+    const previous = document.activeElement as HTMLElement | null;
+    const root = dialog.current!;
+    const controls = () => Array.from(root.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex="0"]')).filter(el => el.getClientRects().length > 0);
+    (controls()[0] || root).focus();
+    const keydown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !closeDisabled) { event.preventDefault(); event.stopPropagation(); closeRef.current(); }
+      if (event.key === 'Tab') {
+        const items = controls();
+        const first = items[0] || root; const last = items[items.length - 1] || root;
+        if (event.shiftKey && (document.activeElement === first || !root.contains(document.activeElement))) { event.preventDefault(); last.focus(); }
+        else if (!event.shiftKey && (document.activeElement === last || !root.contains(document.activeElement))) { event.preventDefault(); first.focus(); }
+      }
+    };
+    root.addEventListener('keydown', keydown);
+    const siblings = Array.from(root.parentElement!.parentElement!.children).filter(el => el !== root.parentElement) as HTMLElement[];
+    const inert = siblings.map(el => el.inert); siblings.forEach(el => { el.inert = true; });
+    return () => { root.removeEventListener('keydown', keydown); siblings.forEach((el,i) => { el.inert = inert[i]; }); if (previous?.isConnected) previous.focus(); };
+  }, [open, closeDisabled]);
   if (!open) return null;
 
   const sizes = {
@@ -23,9 +47,9 @@ export function Modal({ open, onClose, closeDisabled = false, title, children, s
   return (
     <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-xs animate-fadeIn" onClick={closeDisabled ? undefined : onClose} />
-      <div className={`relative w-full ${sizes[size]} max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 animate-fadeIn`}>
+      <div ref={dialog} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} className={`relative w-full ${sizes[size]} max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 animate-fadeIn`}>
         <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-t-2xl">
-          <h3 className="text-base font-black text-slate-900 dark:text-white">{title}</h3>
+          <h3 id={titleId} className="text-base font-black text-slate-900 dark:text-white">{title}</h3>
           <button
             onClick={onClose}
             disabled={closeDisabled}
@@ -159,22 +183,14 @@ export function ConfirmDialog({ open, onClose, onConfirm, title, message, confir
     finally { setBusy(false); }
   };
   return (
-    <div className="fixed inset-0 z-110 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-xs animate-fadeIn" onClick={onClose} />
-      <div className="relative w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 animate-fadeIn">
-        <h3 className="text-base font-black text-slate-900 dark:text-white mb-2">{title}</h3>
+    <Modal open={open} onClose={onClose} closeDisabled={busy} title={title} size="sm">
         <p className="text-sm text-slate-600 dark:text-slate-300 mb-5 leading-relaxed">{message}</p>
         <div role="alert" className="text-sm text-red-600 mb-3">{error}</div>
         <div className="flex gap-2 justify-end">
-          <button disabled={busy} onClick={onClose} className="px-4 py-2 rounded-lg text-sm font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer">
-            {cancelLabel}
-          </button>
-          <button disabled={busy} onClick={() => void confirm()} className="px-4 py-2 rounded-lg text-sm font-bold text-white bg-red-600 hover:bg-red-700 transition cursor-pointer">
-            {confirmLabel}
-          </button>
+          <button disabled={busy} onClick={onClose} className="px-4 py-2 rounded-lg text-sm font-bold bg-slate-100 dark:bg-slate-800">{cancelLabel}</button>
+          <button disabled={busy} onClick={() => void confirm()} className="px-4 py-2 rounded-lg text-sm font-bold text-white bg-red-600">{confirmLabel}</button>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -183,12 +199,25 @@ export function ConfirmDialog({ open, onClose, onConfirm, title, message, confir
 export const inputCls = 'w-full bg-slate-50 dark:bg-slate-800 text-sm py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-brand-500/50 text-slate-800 dark:text-white';
 
 export function FormField({ label, children, error }: { label: string; children: ReactNode; error?: string }) {
+  const generatedId = useId();
+  let fieldId = generatedId;
+  let bound = false;
+  const fields = Children.map(children, child => {
+    if (!bound && isValidElement(child) && ['input','select','textarea'].includes(String(child.type))) {
+      bound = true;
+      const control = child as ReactElement<{id?: string; 'aria-describedby'?: string}>;
+      fieldId = control.props.id || generatedId;
+      return cloneElement(control, {id: fieldId, 'aria-invalid': error ? true : undefined,
+        'aria-describedby': [control.props['aria-describedby'], error ? generatedId + '-error' : ''].filter(Boolean).join(' ') || undefined} as never);
+    }
+    return child;
+  });
   return (
     <div>
-      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">{label}</label>
-      {children}
+      <label htmlFor={fieldId} className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">{label}</label>
+      {fields}
       {error && (
-        <p className="mt-1 flex items-center gap-1 text-[11px] font-bold text-red-500 animate-fadeIn">
+        <p id={generatedId + '-error'} role="alert" className="mt-1 flex items-center gap-1 text-[11px] font-bold text-red-500 animate-fadeIn">
           <AlertCircle className="h-3 w-3 shrink-0" />
           {error}
         </p>
@@ -216,6 +245,8 @@ export function SaveButton({ loading, children, disabled }: SaveButtonProps) {
   return (
     <button
       type="submit"
+      aria-busy={loading}
+      aria-live="polite"
       disabled={loading || disabled}
       className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold text-white bg-brand-600 hover:bg-brand-500 disabled:opacity-60 disabled:cursor-not-allowed transition cursor-pointer"
     >

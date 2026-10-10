@@ -290,6 +290,18 @@ export const db = {
     })) as PlayerDocument[];
   },
 
+  async getPlayerDocumentUrls(paths: string[]): Promise<Record<string, string>> {
+    if (!paths.length) return {};
+    const { data, error } = await supabase.storage.from('player-documents').createSignedUrls([...new Set(paths)], 300);
+    if (error) throw error;
+    const urls: Record<string, string> = {};
+    for (const entry of data || []) {
+      if (entry.error || !entry.path || !entry.signedUrl) throw new Error('Could not sign player photo');
+      urls[entry.path] = entry.signedUrl;
+    }
+    return urls;
+  },
+
   async getPlayerDocumentUrl(path: string): Promise<string> {
     const { data, error } = await supabase.storage.from('player-documents').createSignedUrl(path, 300);
     if (error) throw error;

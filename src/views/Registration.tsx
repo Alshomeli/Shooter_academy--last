@@ -1,3 +1,4 @@
+import { academyToday } from '@/lib/report-dates';
 import { useState, useEffect, useRef } from 'react';
 import {
   ClipboardList, User, Users, Camera, FileCheck, CheckCircle2,
@@ -142,7 +143,7 @@ export function Registration({ lang, initial, onSaved, onExit, onBusyChange }: P
     children.forEach((c, i) => {
       if (c.fullName.trim().length < 2) e[`child_${i}_name`] = t.regFieldRequired;
       if (!c.nationalId.trim()) e[`child_${i}_cpr`] = t.regFieldRequired;
-      if (!c.birthDate || c.birthDate > new Date().toISOString().slice(0, 10)) e[`child_${i}_birth`] = t.regFieldRequired;
+      if (!c.birthDate || c.birthDate > academyToday()) e[`child_${i}_birth`] = t.regFieldRequired;
     });
     return e;
   };
@@ -457,7 +458,7 @@ export function Registration({ lang, initial, onSaved, onExit, onBusyChange }: P
                     <input value={child.nationalId} onChange={(e) => updateChild(child._key, 'nationalId', e.target.value)} className={inputCls} dir="ltr" />
                   </Field>
                   <Field label={t.regChildBirthDate} required error={errors[`child_${idx}_birth`]}>
-                    <input type="date" max={new Date().toISOString().slice(0, 10)} value={child.birthDate} onChange={(e) => updateChild(child._key, 'birthDate', e.target.value)} className={inputCls} dir="ltr" />
+                    <input type="date" max={academyToday()} value={child.birthDate} onChange={(e) => updateChild(child._key, 'birthDate', e.target.value)} className={inputCls} dir="ltr" />
                   </Field>
                   <Field label={t.regChildBloodType}>
                     <select value={child.bloodType} onChange={(e) => updateChild(child._key, 'bloodType', e.target.value)} className={inputCls}>

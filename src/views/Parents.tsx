@@ -1,3 +1,4 @@
+import { academyToday } from '@/lib/report-dates';
 import { useState, useMemo, useDeferredValue, type FormEvent } from 'react';
 import {
   UsersRound, Plus, Search, Phone, Mail, Edit2, Trash2, Eye, MessageSquare, UserPlus, ShieldCheck,
@@ -339,7 +340,7 @@ function ParentForm({
     avatarUrl: parent?.avatarUrl || AVATAR_EMOJIS[Math.floor(Math.random() * AVATAR_EMOJIS.length)],
     status: parent?.status || ('active' as 'active' | 'inactive'),
     notes: parent?.notes || '',
-    joinedDate: parent?.joinedDate || new Date().toISOString().substring(0, 10),
+    joinedDate: parent?.joinedDate || academyToday(),
   });
 
   const [saving, setSaving] = useState(false);

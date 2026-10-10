@@ -344,19 +344,53 @@ export default function App() {
 
 
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser || currentUser.registrationOnly) return;
     const tables = [
       'staff', 'teams', 'players', 'parents', 'subscriptions', 'attendance',
       'matches', 'trainings', 'transactions', 'tournaments', 'player_evaluations',
       'notifications', 'notification_reads', 'academy_settings',
     ];
     let debounce: ReturnType<typeof setTimeout> | null = null;
-    const handleChange = () => {
-      if (debounce) clearTimeout(debounce);
-      debounce = setTimeout(() => void loadAllData(), 500);
+    const pending = new Set<string>();
+    const userId = currentUser.authUserId;
+    const role = currentUser.role;
+    const parent = role === 'parent';
+    const manager = role === 'manager';
+    const getters: Record<string, () => Promise<Record<string, unknown>>> = {
+      academy_settings: async () => ({settings: await db.getSettings()}),
+      players: async () => ({players: await db.getPlayers()}),
+      attendance: async () => ({attendance: await db.getAttendance()}),
+      player_evaluations: async () => ({evaluations: await db.getEvaluations()}),
+      notifications: async () => ({notifications: await db.getNotifications()}),
+      notification_reads: async () => ({notifications: await db.getNotifications()}),
+      ...(!parent ? {
+        staff: async () => ({staff: await db.getStaff()}), teams: async () => ({teams: await db.getTeams()}),
+        matches: async () => ({matches: await db.getMatches()}), trainings: async () => ({trainings: await db.getTrainings()}),
+        tournaments: async () => ({tournaments: await db.getTournaments()}),
+      } : {}),
+      ...(!parent && role !== 'accountant' ? {parents: async () => ({parents: await db.getParents()})} : {}),
+      ...(role !== 'coach' ? {subscriptions: async () => ({subscriptions: await db.getSubscriptions()})} : {}),
+      ...(manager || role === 'accountant' ? {transactions: async () => ({transactions: await db.getTransactions()})} : {}),
     };
-    const channels = tables.map((t) => db.subscribe(t, handleChange));
-    const refreshVisible = () => { if (document.visibilityState === 'visible') void loadAllData(); };
+    const handleChange = (table: string) => {
+      pending.add(table);
+      if (debounce) clearTimeout(debounce);
+      debounce = setTimeout(async () => {
+        const changed = [...pending]; pending.clear();
+        try {
+          const patches = await Promise.all(changed.filter(t => getters[t]).map(t => getters[t]()));
+          if (userRef.current !== userId) return;
+          setData(previous => ({...previous, ...Object.assign({}, ...patches)}));
+        } catch (error) { console.error('[refresh]', error); }
+      }, 500);
+    };
+    const channels = tables.map(t => db.subscribe(t, () => handleChange(t)));
+    let refreshedAt = Date.now();
+    const refreshVisible = () => {
+      if (document.visibilityState === 'visible' && Date.now() - refreshedAt >= 300000) {
+        refreshedAt = Date.now(); void loadAllData();
+      }
+    };
     const poll = window.setInterval(refreshVisible, 60000);
     window.addEventListener('focus', refreshVisible);
     return () => {

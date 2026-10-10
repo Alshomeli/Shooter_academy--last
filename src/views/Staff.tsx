@@ -1,3 +1,4 @@
+import { academyToday } from '@/lib/report-dates';
 import { useState, useMemo, useDeferredValue, useEffect, type FormEvent } from 'react';
 import {
   Dumbbell, Plus, Search, Edit2, Trash2, Eye, Mail, Phone, Award, Star,
@@ -213,8 +214,8 @@ export function StaffView({ staff, teams, players, onStaffChange, onRefresh, act
           {filtered.map((s) => {
             const isCoach = s.role === 'coach';
             const memberDocs = staffDocuments.filter(d=>d.staffId===s.id&&d.documentType!=='profile_photo');
-            const today = new Date().toISOString().slice(0,10);
-            const in30 = new Date(Date.now()+30*86400000).toISOString().slice(0,10);
+            const today = academyToday();
+            const in30 = academyToday(new Date(Date.now()+30*86400000));
             const expiredDocs = memberDocs.filter(d=>d.expiryDate&&d.expiryDate<today).length;
             const expiringDocs = memberDocs.filter(d=>d.expiryDate&&d.expiryDate>=today&&d.expiryDate<=in30).length;
             return (
@@ -451,7 +452,7 @@ function StaffForm({
     salary: member?.salary ?? 0,
     specialization: member?.specialization || '',
     status: member?.status || 'active',
-    joinedDate: member?.joinedDate || new Date().toISOString().substring(0, 10),
+    joinedDate: member?.joinedDate || academyToday(),
     avatarUrl: member?.avatarUrl || '👤',
     nationalId: member?.nationalId || '',
     experienceYears: member?.experienceYears ?? 0,
@@ -712,7 +713,7 @@ function StaffDetail({
         </div>
       )}
 
-      {documents.filter(d=>d.documentType!=='profile_photo').length>0&&<div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 space-y-2"><p className="text-xs font-black text-slate-500 flex items-center gap-1.5"><FileText className="h-4 w-4"/>{isAr?'المستندات والشهادات':'Documents & certificates'}</p>{documents.filter(d=>d.documentType!=='profile_photo').map(d=>{const today=new Date().toISOString().slice(0,10);const in30=new Date(Date.now()+30*86400000).toISOString().slice(0,10);const expired=!!d.expiryDate&&d.expiryDate<today;const soon=!!d.expiryDate&&d.expiryDate>=today&&d.expiryDate<=in30;return <button key={d.id} onClick={async()=>window.open(await db.getStaffDocumentUrl(d.filePath),'_blank','noopener,noreferrer')} className="w-full flex items-center justify-between gap-3 border-t dark:border-slate-700 pt-3 text-sm"><span className="font-bold">{d.title}</span><span className={`flex items-center gap-1 text-xs font-bold ${expired?'text-red-600':soon?'text-amber-600':'text-brand-600'}`}>{(expired||soon)&&<AlertTriangle className="h-3.5 w-3.5"/>}{expired?(isAr?'منتهية':'Expired'):soon?`${isAr?'تنتهي':'Expires'} ${d.expiryDate}`:d.expiryDate?`${isAr?'صالحة حتى':'Valid to'} ${d.expiryDate}`:(isAr?'عرض':'View')}</span></button>})}</div>}
+      {documents.filter(d=>d.documentType!=='profile_photo').length>0&&<div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 space-y-2"><p className="text-xs font-black text-slate-500 flex items-center gap-1.5"><FileText className="h-4 w-4"/>{isAr?'المستندات والشهادات':'Documents & certificates'}</p>{documents.filter(d=>d.documentType!=='profile_photo').map(d=>{const today=academyToday();const in30=academyToday(new Date(Date.now()+30*86400000));const expired=!!d.expiryDate&&d.expiryDate<today;const soon=!!d.expiryDate&&d.expiryDate>=today&&d.expiryDate<=in30;return <button key={d.id} onClick={async()=>window.open(await db.getStaffDocumentUrl(d.filePath),'_blank','noopener,noreferrer')} className="w-full flex items-center justify-between gap-3 border-t dark:border-slate-700 pt-3 text-sm"><span className="font-bold">{d.title}</span><span className={`flex items-center gap-1 text-xs font-bold ${expired?'text-red-600':soon?'text-amber-600':'text-brand-600'}`}>{(expired||soon)&&<AlertTriangle className="h-3.5 w-3.5"/>}{expired?(isAr?'منتهية':'Expired'):soon?`${isAr?'تنتهي':'Expires'} ${d.expiryDate}`:d.expiryDate?`${isAr?'صالحة حتى':'Valid to'} ${d.expiryDate}`:(isAr?'عرض':'View')}</span></button>})}</div>}
 
       {/* Notes */}
       {member.notes && (

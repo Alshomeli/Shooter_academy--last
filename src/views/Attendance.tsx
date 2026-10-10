@@ -1,3 +1,6 @@
+import { assertNewAttendance } from '@/lib/attendance-identity';
+import { errorMessage } from '@/lib/registration';
+import { academyToday } from '@/lib/report-dates';
 import { useState, useMemo } from 'react';
 import {
   ClipboardCheck, Plus, Search, Check, X, Clock, Calendar, Users, Trash2, TrendingUp,
@@ -70,6 +73,7 @@ export function AttendanceView({ players, teams, attendance, matches, trainings,
   };
 
   const handleBatchSave = async (records: Omit<Attendance, 'id'>[]) => {
+    assertNewAttendance(attendance, records);
     const withIds = records.map((r, i) => ({ ...r, id: `att-${Date.now()}-${i}` }));
     await onAttendanceChange([...withIds, ...attendance]);
     setShowAdd(false);
@@ -80,7 +84,7 @@ export function AttendanceView({ players, teams, attendance, matches, trainings,
     s === 'present' ? 'emerald' : s === 'absent' ? 'red' : 'amber';
   const typeLabel = (ty: SessionType) => (ty === 'training' ? t.training : t.match);
 
-  const today = new Date().toISOString().substring(0, 10);
+  const today = academyToday();
 
   return (
     <div className="space-y-5 text-start" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
@@ -384,7 +388,7 @@ function BatchAttendanceForm({
     if (!sessionId || records.length === 0) return;
     if (saving) return; setSaving(true); setSaveError('');
     try { await onSave(records); }
-    catch { setSaveError(isAr ? 'تعذر حفظ الحضور. راجع السجلات قبل إعادة المحاولة.' : 'Could not save attendance. Review the records before retrying.'); }
+    catch (error) { setSaveError(errorMessage(error, isAr)); }
     finally { setSaving(false); }
   };
 

@@ -1,3 +1,5 @@
+import { normalizeWhatsappPhone } from '@/lib/phone';
+import { academyToday } from '@/lib/report-dates';
 import type { Subscription, Player, Notification, Parent } from '@/types';
 
 /** Days before expiry to send a reminder */
@@ -26,8 +28,8 @@ export function getSubscriptionReminders(
   subscriptions: Subscription[],
   players: Player[],
   parents: Parent[],
+  today = academyToday(),
 ): ReminderInfo[] {
-  const today = new Date().toISOString().substring(0, 10);
   return subscriptions
     .filter((s) => s.status === 'unpaid')
     .map((s) => {
@@ -36,7 +38,7 @@ export function getSubscriptionReminders(
       const days = daysBetween(today, s.endDate);
       const status: ReminderInfo['status'] = days < OVERDUE_GRACE ? 'overdue' : days <= Math.max(...REMINDER_DAYS) ? 'expiring' : 'active';
       const phone = parent?.whatsappPhone || parent?.phone || player?.parentPhone || '';
-      const cleanPhone = phone.replace(/[^0-9]/g, '');
+      const cleanPhone = normalizeWhatsappPhone(phone);
       const email = parent?.email || player?.parentEmail || '';
       return {
         subscription: s,
@@ -56,8 +58,8 @@ export function generateReminderNotifications(
   subscriptions: Subscription[],
   players: Player[],
   existing: Notification[],
+  today = academyToday(),
 ): Notification[] {
-  const today = new Date().toISOString().substring(0, 10);
   const existingKeys = new Set(existing.map((n) => n.id));
   const newNotifs: Notification[] = [];
 

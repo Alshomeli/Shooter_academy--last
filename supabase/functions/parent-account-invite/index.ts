@@ -102,7 +102,8 @@ Deno.serve(async (req) => {
   }
 
   if (body.confirm !== true) return reply(origin, 400, { error: "explicit_confirmation_required" });
-  if (parent.user_id) return reply(origin, 409, { error: "parent_already_linked" });
+  // parent_already_linked: retries return the existing successful outcome.
+  if (parent.user_id) return reply(origin, 200, { parentId: parent.id, status: "linked_existing", maskedEmail: maskEmail(email) });
 
   const { data: usersPage, error: listError } = await serverClient.auth.admin.listUsers({ page: 1, perPage: 1000 });
   if (listError) {
@@ -144,6 +145,12 @@ Deno.serve(async (req) => {
     .select("id")
     .maybeSingle();
 
+  if (!linkError && !linked) {
+    const { data: current, error: readError } = await serverClient.from("parents").select("user_id").eq("id", parent.id).maybeSingle();
+    if (!readError && current?.user_id === authUserId) {
+      return reply(origin, 200, { parentId: parent.id, status: "linked_existing", maskedEmail: maskEmail(email) });
+    }
+  }
   if (linkError || !linked) {
     console.error("Parent account link failed", linkError?.code || "state_mismatch");
     return reply(origin, 409, { error: "parent_link_failed" });

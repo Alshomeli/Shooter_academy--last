@@ -1,3 +1,4 @@
+import { csvCell } from '@/lib/csv';
 import { useState, useMemo } from 'react';
 import { Shield, Search, Filter, Clock, FileText, LogIn, Download } from 'lucide-react';
 import type { AuditLog, Lang, Role } from '@/types';
@@ -28,15 +29,6 @@ function actionColor(action: string): 'green' | 'blue' | 'amber' | 'red' | 'gray
   return 'gray';
 }
 
-function csvCell(value: unknown): string {
-  // Neutralize spreadsheet formulas and leading control characters from user input.
-  const text = Array.from(String(value ?? ''), (char) => {
-    const code = char.charCodeAt(0);
-    return code < 32 || code === 127 ? ' ' : char;
-  }).join('');
-  const safe = /^[\s]*[=+@-]/.test(text) ? "'" + text : text;
-  return '"' + safe.replace(/"/g, '""') + '"';
-}
 
 function exportCsv(logs: AuditLog[], filename: string) {
   const header = ['Timestamp', 'User', 'Role', 'Action', 'Details'].map(csvCell).join(',');
