@@ -48,3 +48,34 @@ The web application already contains the staff-only `/oauth/consent` screen. Par
 10. No service-role key or private credential is present in frontend code, MCP tool output, or connector configuration.
 
 Do not treat the connector as production-ready until the cloud OAuth Server settings and deployed web `/oauth/consent` route are verified end to end.
+
+## Registering the ChatGPT OAuth client
+
+For a predefined client, register an OAuth application in this project's
+**Authentication → OAuth Server** dashboard, using the exact callback URL shown
+in the ChatGPT connector's current settings. Copy the generated Client ID and
+the corresponding secret directly into the connector's advanced OAuth settings.
+A callback URL is not a Client ID. Do not store the client secret in this
+repository or share it in chat.
+
+Dynamic registration is a separate alternative and must be enabled in the
+production project's settings if chosen. The local TOML setting does not enable
+it in the hosted project.
+
+Discovery returning HTTP 200 only confirms that the OAuth server is enabled.
+It does not prove that a client is registered or that ChatGPT can authorize,
+exchange tokens, or call the MCP tools. Treat `invalid client_id format` as a
+connector client-configuration error and verify a registered client exists
+before changing the MCP code.
+
+## Deployment consistency
+
+The MCP function uses `verify_jwt = false` so public health and OAuth discovery
+can be reached before authentication. The canonical `/mcp` handler still
+validates the user's Supabase token, and business operations still pass through
+the role-scoped gateway. Legacy function-root requests redirect with HTTP 307
+to `/mcp`, preserving the request method, body, and query string.
+
+The repository MCP source is synchronized with deployed function version 17.
+Keep the hardened untrusted-content instructions and routing regression tests
+when redeploying.
